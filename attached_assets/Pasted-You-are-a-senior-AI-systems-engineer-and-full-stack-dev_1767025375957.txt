@@ -1,0 +1,127 @@
+You are a senior AI systems engineer and full-stack developer.
+
+Your task is to build a web-based AI video generation platform with the following complete pipeline.
+
+SYSTEM OVERVIEW:
+The system converts a user-entered title into a full cinematic video using AI-generated story, audio, images, and automated video editing. The system must be modular, resumable, and scalable.
+
+========================
+FRONTEND REQUIREMENTS
+========================
+- Title input field
+- Generate button
+- Video configuration panel with:
+  - Chapter selection:
+    • 1 Chapter
+    • 5 Chapters
+    • 9 Chapters
+    • 18 Chapters
+    • Custom number input
+  - Voice options:
+    • Without voice
+    • With voice (Speechify)
+  - Image model selection:
+    • Ideogram
+    • Flux
+- Real-time progress UI
+- Live AI video editor (timeline-based)
+- Resume button if generation interrupted
+
+========================
+BACKEND PIPELINE
+========================
+
+STEP 1: STORY GENERATION (Claude API)
+Input:
+- Title
+
+Generate:
+- Hook (1 powerful paragraph)
+- 3 Genres
+- Premise (15–20 sentences)
+- Tone and pacing
+
+Return structured JSON.
+
+STEP 2: CHAPTER GENERATION
+Based on chapter count:
+- Generate chapters sequentially
+- Each chapter ~800 words
+- Clear narrative flow
+- Each chapter saved as chapter_X.json
+
+STEP 3: IMAGE PROMPT GENERATION (ChatGPT API)
+For each chapter:
+- Break chapter into 10–15 cinematic scenes
+- Generate ultra-detailed image prompts
+- Maintain character and visual consistency
+- Prompts must include:
+  • camera angle
+  • lighting
+  • emotion
+  • environment
+Save as prompts.json
+
+STEP 4: IMAGE GENERATION
+Use selected image model:
+- Ideogram OR Flux
+- Generate images per prompt
+- Save images with scene index
+- Handle retries on failure
+
+STEP 5: AUDIO GENERATION (Speechify API)
+If voice enabled:
+- Generate audio per chapter
+- Target duration: ~5 minutes per chapter
+- Save chapter-wise audio files
+If voice disabled:
+- Use background music placeholder
+
+STEP 6: AI VIDEO ASSEMBLY (Python)
+- Match images to audio timeline
+- Auto-cut based on audio energy
+- Generate word-level captions
+- Apply transitions and basic motion
+- Render video using FFmpeg
+- Support up to 1 hour final video
+
+STEP 7: REAL-TIME AI VIDEO EDITOR
+- Timeline UI
+- Drag/drop scenes
+- Replace images
+- Edit captions
+- Re-render instantly
+
+========================
+CLOUD & RESUME SYSTEM
+========================
+- All steps must be saved incrementally
+- If process stops, resume from last completed step
+- Use project_id based storage
+
+========================
+TECH STACK
+========================
+Frontend:
+- React / Next.js
+
+Backend:
+- Python (FastAPI)
+- FFmpeg
+- OpenCV
+- Whisper
+
+APIs:
+- Claude (story)
+- ChatGPT (image prompts)
+- Speechify (voice)
+- Ideogram / Flux (images)
+
+========================
+OUTPUT
+========================
+- Full cinematic video (up to 1 hour)
+- Editable project
+- Downloadable assets
+
+Build this system step-by-step, starting with MVP, ensuring clean architecture and modular design.
