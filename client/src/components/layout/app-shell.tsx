@@ -26,9 +26,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 group cursor-pointer",
                   location === item.href
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <item.icon className={cn("h-4 w-4", location === item.href ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                 {item.label}
-              </a>
+              </div>
             </Link>
           ))}
         </nav>
