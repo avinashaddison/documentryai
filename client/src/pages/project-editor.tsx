@@ -30,8 +30,8 @@ export default function ProjectEditor() {
       if (!res.ok) throw new Error("Failed to fetch project");
       return res.json();
     },
-    refetchInterval: (data) => {
-      return data?.status === "generating" ? 2000 : false;
+    refetchInterval: (query) => {
+      return query.state.data?.status === "generating" ? 2000 : false;
     },
     enabled: !!projectId,
   });
