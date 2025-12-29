@@ -1,0 +1,101 @@
+API SETUP 
+
+
+pip install replicate
+
+export REPLICATE_API_TOKEN=r8_ciBojP72RRZx0tedOLylj7UfXI4423G46UccM
+
+
+claude
+
+
+
+import replicate
+
+input = {
+    "prompt": "Give me a recipe for tasty smashed avocado on sourdough toast that could feed all of California.",
+    "system_prompt": "You are a helpful assistant"
+}
+
+for event in replicate.stream(
+    "anthropic/claude-4-sonnet",
+    input=input
+):
+    print(event, end="")
+#=> "Here's a recipe to feed all of California (about 39 mill...
+
+
+
+
+chatgpt 
+
+import replicate
+
+input = {
+    "prompt": "Are you AGI?"
+}
+
+for event in replicate.stream(
+    "openai/gpt-5",
+    input=input
+):
+    print(event, end="")
+#=> "No. I’m a narrow AI language model. I can generate and r...
+
+export REPLICATE_API_TOKEN=r8_ciBojP72RRZx0tedOLylj7UfXI4423G46UccM
+
+
+
+
+ideogram 
+
+
+
+import replicate
+
+input = {
+    "prompt": "The text \"V3 Turbo\" in the center middle. A color film-inspired portrait of a young man looking to the side with a shallow depth of field that blurs the surrounding elements, drawing attention to his eye. The fine grain and cast suggest a high ISO film stock, while the wide aperture lens creates a motion blur effect, enhancing the candid and natural documentary style.",
+    "aspect_ratio": "3:2"
+}
+
+output = replicate.run(
+    "ideogram-ai/ideogram-v3-turbo",
+    input=input
+)
+
+# To access the file URL:
+print(output.url)
+#=> "https://replicate.delivery/.../output.png"
+
+# To write the file to disk:
+with open("output.png", "wb") as file:
+    file.write(output.read())
+#=> output.png written to disk
+
+
+
+flux 
+
+import { writeFile } from "fs/promises";
+import Replicate from "replicate";
+const replicate = new Replicate();
+
+const input = {
+    prompt: "black forest gateau cake spelling out the words \"FLUX 1 . 1 Pro\", tasty, food photography",
+    prompt_upsampling: true
+};
+
+const output = await replicate.run("black-forest-labs/flux-1.1-pro", { input });
+
+// To access the file URL:
+console.log(output.url());
+//=> "https://replicate.delivery/.../output.jpg"
+
+// To write the file to disk:
+await writeFile("output.jpg", output);
+//=> output.jpg written to disk
+
+
+
+
+

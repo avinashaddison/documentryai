@@ -3,27 +3,43 @@ import { VideoPreview } from "@/components/editor/video-preview";
 import { TimelineEditor } from "@/components/editor/timeline-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, Save, Undo } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Download, Save, Undo } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export default function ProjectEditor() {
   const [progress, setProgress] = useState(10);
+  const [currentStep, setCurrentStep] = useState(1);
   
-  // Simulate initial generation progress
+  // Simulate generation progress
   useEffect(() => {
     const timer = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) {
+        const next = prev + 1;
+        
+        // Update steps based on progress
+        if (next > 20 && currentStep < 2) setCurrentStep(2);
+        if (next > 40 && currentStep < 3) setCurrentStep(3);
+        if (next > 60 && currentStep < 4) setCurrentStep(4);
+        if (next > 80 && currentStep < 5) setCurrentStep(5);
+        if (next >= 100) {
           clearInterval(timer);
+          setCurrentStep(6);
           return 100;
         }
-        return prev + 5;
+        return next;
       });
-    }, 500);
+    }, 150);
     return () => clearInterval(timer);
-  }, []);
+  }, [currentStep]);
+
+  const steps = [
+    { id: 1, label: "Story (Claude 3.5)", status: currentStep > 1 ? "Complete" : currentStep === 1 ? "Generating..." : "Pending" },
+    { id: 2, label: "Prompts (GPT-5)", status: currentStep > 2 ? "Complete" : currentStep === 2 ? "Refining..." : "Pending" },
+    { id: 3, label: "Images (Flux 1.1 Pro)", status: currentStep > 3 ? "Complete" : currentStep === 3 ? "Synthesizing..." : "Pending" },
+    { id: 4, label: "Voice (Speechify)", status: currentStep > 4 ? "Complete" : currentStep === 4 ? "Recording..." : "Pending" },
+    { id: 5, label: "Assembly (FFmpeg)", status: currentStep > 5 ? "Complete" : currentStep === 5 ? "Rendering..." : "Pending" },
+  ];
 
   return (
     <AppShell>
@@ -36,7 +52,9 @@ export default function ProjectEditor() {
                <h2 className="text-xl font-display font-bold text-white">The Last Cyberpunk City</h2>
                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">Draft</Badge>
              </div>
-             <p className="text-xs text-muted-foreground font-mono">Last saved: Just now</p>
+             <p className="text-xs text-muted-foreground font-mono">
+               Pipeline: Claude → GPT-5 → Flux 1.1 Pro
+             </p>
            </div>
 
            <div className="flex items-center gap-2">
@@ -75,26 +93,23 @@ export default function ProjectEditor() {
              
              {/* Asset/Properties Panel */}
              <div className="bg-card border border-border rounded-lg p-4 overflow-y-auto hidden md:block">
-                <h3 className="font-display font-bold text-sm text-white mb-4 uppercase tracking-wider opacity-70">Generation Steps</h3>
+                <h3 className="font-display font-bold text-sm text-white mb-4 uppercase tracking-wider opacity-70">Pipeline Status</h3>
                 
                 <div className="space-y-6 relative">
                   <div className="absolute left-1.5 top-2 bottom-2 w-px bg-white/10" />
                   
-                  {[
-                    { step: 1, label: "Story Analysis", status: "Complete" },
-                    { step: 2, label: "Chapter Generation", status: "Complete" },
-                    { step: 3, label: "Image Prompting", status: "Complete" },
-                    { step: 4, label: "Visual Synthesis", status: "Processing..." },
-                    { step: 5, label: "Audio Mix", status: "Pending" },
-                    { step: 6, label: "Final Assembly", status: "Pending" },
-                  ].map((item, i) => (
+                  {steps.map((item, i) => (
                      <div key={i} className="flex gap-3 relative">
                        <div className={cn(
-                         "h-3 w-3 rounded-full border-2 z-10 bg-card mt-0.5 transition-colors",
-                         i < 3 ? "border-primary bg-primary" : i === 3 ? "border-primary animate-pulse" : "border-muted"
+                         "h-3 w-3 rounded-full border-2 z-10 bg-card mt-0.5 transition-all duration-300",
+                         item.status === "Complete" ? "border-primary bg-primary" : 
+                         item.status.includes("...") ? "border-primary bg-transparent animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.5)]" : 
+                         "border-muted bg-card"
                        )} />
                        <div>
-                         <div className={cn("text-xs font-medium leading-none mb-1", i <= 3 ? "text-white" : "text-muted-foreground")}>
+                         <div className={cn("text-xs font-medium leading-none mb-1 transition-colors", 
+                           item.status === "Pending" ? "text-muted-foreground" : "text-white"
+                         )}>
                            {item.label}
                          </div>
                          <div className="text-[10px] text-muted-foreground">{item.status}</div>

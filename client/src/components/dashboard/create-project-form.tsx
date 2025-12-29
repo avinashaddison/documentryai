@@ -2,21 +2,22 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Wand2, Mic, ImageIcon, Clapperboard, Loader2 } from "lucide-react";
+import { Wand2, Mic, ImageIcon, Clapperboard, Loader2, Sparkles, BrainCircuit } from "lucide-react";
 import { useLocation } from "wouter";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   chapters: z.string(),
   voice: z.boolean().default(true),
-  imageModel: z.enum(["ideogram", "flux"]),
+  imageModel: z.enum(["ideogram-v3", "flux-pro"]),
+  scriptModel: z.enum(["claude-3-5", "gpt-5"]),
 });
 
 export function CreateProjectForm() {
@@ -29,7 +30,8 @@ export function CreateProjectForm() {
       title: "",
       chapters: "5",
       voice: true,
-      imageModel: "ideogram",
+      imageModel: "ideogram-v3",
+      scriptModel: "claude-3-5",
     },
   });
 
@@ -106,24 +108,25 @@ export function CreateProjectForm() {
 
               <FormField
                 control={form.control}
-                name="voice"
+                name="scriptModel"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-white/10 bg-secondary/50 p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base flex items-center gap-2">
-                        <Mic className="h-4 w-4 text-primary" />
-                        AI Voiceover
-                      </FormLabel>
-                      <div className="text-[0.8rem] text-muted-foreground">
-                        Enable Speechify narration
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <BrainCircuit className="h-4 w-4 text-primary" />
+                      Script Engine
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-secondary/50 border-white/10">
+                          <SelectValue placeholder="Select Model" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="claude-3-5">Claude 3.5 Sonnet (Best for Story)</SelectItem>
+                        <SelectItem value="gpt-5">GPT-5 (Experimental)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -136,7 +139,7 @@ export function CreateProjectForm() {
                 <FormItem className="space-y-3">
                   <FormLabel className="flex items-center gap-2">
                     <ImageIcon className="h-4 w-4 text-primary" />
-                    Visual Model
+                    Visual Synthesis Model
                   </FormLabel>
                   <FormControl>
                     <RadioGroup
@@ -146,20 +149,26 @@ export function CreateProjectForm() {
                     >
                       <FormItem>
                         <FormControl>
-                          <RadioGroupItem value="ideogram" className="peer sr-only" />
+                          <RadioGroupItem value="ideogram-v3" className="peer sr-only" />
                         </FormControl>
                         <FormLabel className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-secondary/30 p-4 hover:bg-secondary/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                          <span className="text-lg font-display font-bold mb-1">Ideogram</span>
-                          <span className="text-xs text-muted-foreground text-center">Best for text & design</span>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Sparkles className="h-4 w-4" />
+                            <span className="text-lg font-display font-bold">Ideogram V3</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground text-center">Best for text & design accuracy</span>
                         </FormLabel>
                       </FormItem>
                       <FormItem>
                         <FormControl>
-                          <RadioGroupItem value="flux" className="peer sr-only" />
+                          <RadioGroupItem value="flux-pro" className="peer sr-only" />
                         </FormControl>
                         <FormLabel className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-secondary/30 p-4 hover:bg-secondary/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                          <span className="text-lg font-display font-bold mb-1">Flux</span>
-                          <span className="text-xs text-muted-foreground text-center">Photorealistic & Cinematic</span>
+                           <div className="flex items-center gap-2 mb-1">
+                            <Sparkles className="h-4 w-4" />
+                            <span className="text-lg font-display font-bold">Flux 1.1 Pro</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground text-center">Cinematic photorealism</span>
                         </FormLabel>
                       </FormItem>
                     </RadioGroup>
@@ -168,6 +177,30 @@ export function CreateProjectForm() {
                 </FormItem>
               )}
             />
+            
+             <FormField
+                control={form.control}
+                name="voice"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-white/10 bg-secondary/50 p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base flex items-center gap-2">
+                        <Mic className="h-4 w-4 text-primary" />
+                        Speechify Voiceover
+                      </FormLabel>
+                      <div className="text-[0.8rem] text-muted-foreground">
+                        Generate neural human speech
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
             <Button 
               type="submit" 
@@ -177,7 +210,7 @@ export function CreateProjectForm() {
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Initializing Pipeline...
+                  Connecting to Replicate API...
                 </>
               ) : (
                 <>
