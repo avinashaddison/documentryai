@@ -8,12 +8,13 @@ import Settings from "@/pages/settings";
 import Home from "@/pages/home";
 import ProjectEditor from "@/pages/project-editor";
 import VideoEditorPage from "@/pages/video-editor-page";
+import FilmMaker from "@/pages/film-maker";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/new" component={Home} />
+      <Route path="/" component={FilmMaker} />
+      <Route path="/create" component={FilmMaker} />
       <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
       <Route path="/editor/:id" component={ProjectEditor} />

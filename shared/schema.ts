@@ -92,3 +92,30 @@ export type InsertScene = z.infer<typeof insertSceneSchema>;
 export type Scene = typeof scenes.$inferSelect;
 export type InsertGenerationLog = z.infer<typeof insertGenerationLogSchema>;
 export type GenerationLog = typeof generationLogs.$inferSelect;
+
+export const storyFrameworks = pgTable("story_frameworks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  generatedTitle: text("generated_title"),
+  genres: text("genres").array(),
+  premise: text("premise"),
+  openingHook: text("opening_hook"),
+  narratorVoice: text("narrator_voice").default("male-deep"),
+  storyLength: text("story_length").default("medium"),
+  hookImageModel: text("hook_image_model").default("flux-1.1-pro"),
+  hookImageCount: integer("hook_image_count").default(3),
+  chapterImageModel: text("chapter_image_model").default("flux-1.1-pro"),
+  imagesPerChapter: integer("images_per_chapter").default(5),
+  approved: boolean("approved").default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertStoryFrameworkSchema = createInsertSchema(storyFrameworks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertStoryFramework = z.infer<typeof insertStoryFrameworkSchema>;
+export type StoryFramework = typeof storyFrameworks.$inferSelect;
+
+export * from "./models/chat";

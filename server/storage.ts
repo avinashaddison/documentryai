@@ -9,11 +9,14 @@ import {
   type InsertScene,
   type GenerationLog,
   type InsertGenerationLog,
+  type StoryFramework,
+  type InsertStoryFramework,
   users,
   projects,
   chapters,
   scenes,
-  generationLogs
+  generationLogs,
+  storyFrameworks
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -37,6 +40,10 @@ export interface IStorage {
   
   createGenerationLog(log: InsertGenerationLog): Promise<GenerationLog>;
   getGenerationLogsByProject(projectId: number): Promise<GenerationLog[]>;
+  
+  createStoryFramework(framework: InsertStoryFramework): Promise<StoryFramework>;
+  getStoryFrameworkByProject(projectId: number): Promise<StoryFramework | undefined>;
+  updateStoryFramework(id: number, updates: Partial<StoryFramework>): Promise<StoryFramework | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -107,6 +114,25 @@ export class DatabaseStorage implements IStorage {
 
   async getGenerationLogsByProject(projectId: number): Promise<GenerationLog[]> {
     return await db.select().from(generationLogs).where(eq(generationLogs.projectId, projectId));
+  }
+
+  async createStoryFramework(framework: InsertStoryFramework): Promise<StoryFramework> {
+    const result = await db.insert(storyFrameworks).values(framework).returning();
+    return result[0];
+  }
+
+  async getStoryFrameworkByProject(projectId: number): Promise<StoryFramework | undefined> {
+    const result = await db.select().from(storyFrameworks).where(eq(storyFrameworks.projectId, projectId));
+    return result[0];
+  }
+
+  async updateStoryFramework(id: number, updates: Partial<StoryFramework>): Promise<StoryFramework | undefined> {
+    const result = await db
+      .update(storyFrameworks)
+      .set(updates)
+      .where(eq(storyFrameworks.id, id))
+      .returning();
+    return result[0];
   }
 }
 

@@ -5,6 +5,7 @@ import { ensureDbConnected } from "./db";
 import { insertProjectSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { videoService } from "./video-service";
+import { generateStoryFramework } from "./framework-generator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -210,6 +211,95 @@ export async function registerRoutes(
       }
       const result = await videoService.getVideoInfo(videoPath);
       res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/framework/generate", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const frameworkResult = await generateStoryFramework(project.title);
+      
+      let framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (framework) {
+        framework = await storage.updateStoryFramework(framework.id, {
+          generatedTitle: frameworkResult.title,
+          genres: frameworkResult.genres,
+          premise: frameworkResult.premise,
+          openingHook: frameworkResult.openingHook,
+        });
+      } else {
+        framework = await storage.createStoryFramework({
+          projectId,
+          generatedTitle: frameworkResult.title,
+          genres: frameworkResult.genres,
+          premise: frameworkResult.premise,
+          openingHook: frameworkResult.openingHook,
+        });
+      }
+
+      res.json(framework);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/projects/:id/framework", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (!framework) {
+        return res.status(404).json({ error: "Framework not found" });
+      }
+
+      res.json(framework);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/projects/:id/framework", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      let framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (!framework) {
+        framework = await storage.createStoryFramework({
+          projectId,
+          ...req.body,
+        });
+      } else {
+        framework = await storage.updateStoryFramework(framework.id, req.body);
+      }
+
+      res.json(framework);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/framework/approve", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      let framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (!framework) {
+        return res.status(404).json({ error: "Framework not found" });
+      }
+
+      framework = await storage.updateStoryFramework(framework.id, { approved: true });
+      await storage.updateProject(projectId, { status: "approved" });
+
+      res.json(framework);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
