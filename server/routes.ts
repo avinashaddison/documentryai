@@ -6,6 +6,11 @@ import { insertProjectSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { videoService } from "./video-service";
 import { generateStoryFramework } from "./framework-generator";
+import { 
+  generateDocumentaryFramework, 
+  generateChapterScript, 
+  generateChapterOutline 
+} from "./documentary-generator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -300,6 +305,144 @@ export async function registerRoutes(
       await storage.updateProject(projectId, { status: "approved" });
 
       res.json(framework);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/documentary/generate-framework", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const { storyLength = "medium" } = req.body;
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: "framework",
+        status: "started",
+        message: "Generating documentary framework with Claude..."
+      });
+
+      const framework = await generateDocumentaryFramework(project.title, storyLength);
+      
+      let storedFramework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (storedFramework) {
+        storedFramework = await storage.updateStoryFramework(storedFramework.id, {
+          generatedTitle: framework.title,
+          genres: framework.genres,
+          premise: framework.premise,
+          openingHook: framework.openingHook,
+          storyLength,
+        });
+      } else {
+        storedFramework = await storage.createStoryFramework({
+          projectId,
+          generatedTitle: framework.title,
+          genres: framework.genres,
+          premise: framework.premise,
+          openingHook: framework.openingHook,
+          storyLength,
+        });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: "framework",
+        status: "completed",
+        message: `Framework generated: ${framework.title}`
+      });
+
+      res.json({ framework, storedFramework, totalChapters: framework.totalChapters });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/documentary/generate-outline", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (!framework) {
+        return res.status(404).json({ error: "Framework not found. Generate framework first." });
+      }
+
+      const { totalChapters = 5 } = req.body;
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: "outline",
+        status: "started",
+        message: "Generating chapter outline..."
+      });
+
+      const chapters = await generateChapterOutline(
+        framework.generatedTitle || "",
+        framework.premise || "",
+        framework.openingHook || "",
+        totalChapters
+      );
+
+      await storage.createGenerationLog({
+        projectId,
+        step: "outline",
+        status: "completed",
+        message: `Generated ${chapters.length} chapter titles`
+      });
+
+      res.json({ chapters });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/documentary/generate-chapter", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const framework = await storage.getStoryFrameworkByProject(projectId);
+      
+      if (!framework) {
+        return res.status(404).json({ error: "Framework not found" });
+      }
+
+      const { chapterNumber, totalChapters, chapterTitle } = req.body;
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}`,
+        status: "started",
+        message: `Generating Chapter ${chapterNumber} script...`
+      });
+
+      const chapter = await generateChapterScript(
+        framework.generatedTitle || "",
+        framework.premise || "",
+        chapterNumber,
+        totalChapters,
+        chapterTitle
+      );
+
+      const savedChapter = await storage.createChapter({
+        projectId,
+        chapterNumber,
+        content: JSON.stringify(chapter),
+        wordCount: chapter.narration.split(/\s+/).length,
+      });
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}`,
+        status: "completed",
+        message: `Chapter ${chapterNumber}: "${chapter.title}" - ${chapter.scenes.length} scenes`
+      });
+
+      res.json({ chapter, savedChapter });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

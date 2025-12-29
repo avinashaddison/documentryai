@@ -9,12 +9,14 @@ import Home from "@/pages/home";
 import ProjectEditor from "@/pages/project-editor";
 import VideoEditorPage from "@/pages/video-editor-page";
 import FilmMaker from "@/pages/film-maker";
+import DocumentaryMaker from "@/pages/documentary-maker";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={FilmMaker} />
-      <Route path="/create" component={FilmMaker} />
+      <Route path="/" component={DocumentaryMaker} />
+      <Route path="/create" component={DocumentaryMaker} />
+      <Route path="/film-maker" component={FilmMaker} />
       <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
       <Route path="/editor/:id" component={ProjectEditor} />
