@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Settings from "@/pages/settings";
 import Home from "@/pages/home";
 import ProjectEditor from "@/pages/project-editor";
+import VideoEditorPage from "@/pages/video-editor-page";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
       <Route path="/editor/:id" component={ProjectEditor} />
+      <Route path="/video-editor" component={VideoEditorPage} />
       <Route component={NotFound} />
     </Switch>
   );
