@@ -11,41 +11,52 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Wand2, Mic, ImageIcon, Clapperboard, Loader2, Sparkles, BrainCircuit } from "lucide-react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
-  chapters: z.string(),
-  voice: z.boolean().default(true),
+  chapterCount: z.number().min(1).max(50),
+  voiceEnabled: z.boolean().default(true),
   imageModel: z.enum(["ideogram-v3", "flux-pro"]),
   scriptModel: z.enum(["claude-3-5", "gpt-5"]),
 });
 
 export function CreateProjectForm() {
   const [, setLocation] = useLocation();
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      chapters: "5",
-      voice: true,
+      chapterCount: 5,
+      voiceEnabled: true,
       imageModel: "ideogram-v3",
       scriptModel: "claude-3-5",
     },
   });
 
+  const createProjectMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: async (project) => {
+      await fetch(`/api/projects/${project.id}/generate`, { method: "POST" });
+      setLocation(`/editor/${project.id}`);
+    },
+  });
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsGenerating(true);
-    // Simulate generation delay
-    setTimeout(() => {
-      setIsGenerating(false);
-      setLocation("/editor/123");
-    }, 2000);
+    createProjectMutation.mutate(values);
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto glass-panel border-white/10 shadow-2xl relative overflow-hidden">
+    <Card className="w-full max-w-2xl mx-auto glass-panel border-white/10 shadow-2xl relative overflow-hidden" data-testid="card-create-project">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/0 via-primary to-primary/0 opacity-50" />
       
       <CardHeader>
@@ -72,6 +83,7 @@ export function CreateProjectForm() {
                     <Input 
                       placeholder="e.g. The Last Cyberpunk City" 
                       className="bg-secondary/50 border-white/10 focus:border-primary/50 text-lg py-6"
+                      data-testid="input-title"
                       {...field} 
                     />
                   </FormControl>
@@ -83,13 +95,16 @@ export function CreateProjectForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
-                name="chapters"
+                name="chapterCount"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Story Length</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(val) => field.onChange(parseInt(val))} 
+                      defaultValue={field.value.toString()}
+                    >
                       <FormControl>
-                        <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectTrigger className="bg-secondary/50 border-white/10" data-testid="select-chapters">
                           <SelectValue placeholder="Select chapters" />
                         </SelectTrigger>
                       </FormControl>
@@ -98,7 +113,6 @@ export function CreateProjectForm() {
                         <SelectItem value="5">5 Chapters (Standard)</SelectItem>
                         <SelectItem value="9">9 Chapters (Extended)</SelectItem>
                         <SelectItem value="18">18 Chapters (Feature)</SelectItem>
-                        <SelectItem value="custom">Custom...</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -117,7 +131,7 @@ export function CreateProjectForm() {
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectTrigger className="bg-secondary/50 border-white/10" data-testid="select-script-model">
                           <SelectValue placeholder="Select Model" />
                         </SelectTrigger>
                       </FormControl>
@@ -149,7 +163,7 @@ export function CreateProjectForm() {
                     >
                       <FormItem>
                         <FormControl>
-                          <RadioGroupItem value="ideogram-v3" className="peer sr-only" />
+                          <RadioGroupItem value="ideogram-v3" className="peer sr-only" data-testid="radio-ideogram" />
                         </FormControl>
                         <FormLabel className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-secondary/30 p-4 hover:bg-secondary/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
                           <div className="flex items-center gap-2 mb-1">
@@ -161,7 +175,7 @@ export function CreateProjectForm() {
                       </FormItem>
                       <FormItem>
                         <FormControl>
-                          <RadioGroupItem value="flux-pro" className="peer sr-only" />
+                          <RadioGroupItem value="flux-pro" className="peer sr-only" data-testid="radio-flux" />
                         </FormControl>
                         <FormLabel className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-secondary/30 p-4 hover:bg-secondary/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
                            <div className="flex items-center gap-2 mb-1">
@@ -180,7 +194,7 @@ export function CreateProjectForm() {
             
              <FormField
                 control={form.control}
-                name="voice"
+                name="voiceEnabled"
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border border-white/10 bg-secondary/50 p-3 shadow-sm">
                     <div className="space-y-0.5">
@@ -196,6 +210,7 @@ export function CreateProjectForm() {
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        data-testid="switch-voice"
                       />
                     </FormControl>
                   </FormItem>
@@ -205,9 +220,10 @@ export function CreateProjectForm() {
             <Button 
               type="submit" 
               className="w-full py-6 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all hover:shadow-[0_0_30px_rgba(34,211,238,0.5)]"
-              disabled={isGenerating}
+              disabled={createProjectMutation.isPending}
+              data-testid="button-generate"
             >
-              {isGenerating ? (
+              {createProjectMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Connecting to Replicate API...

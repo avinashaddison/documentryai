@@ -4,42 +4,55 @@ import { TimelineEditor } from "@/components/editor/timeline-editor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, Save, Undo } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "wouter";
+
+interface Project {
+  id: number;
+  title: string;
+  status: string;
+  progress: number;
+  currentStep: number;
+  chapters?: any[];
+  logs?: Array<{ step: string; status: string; message: string; createdAt: string }>;
+}
 
 export default function ProjectEditor() {
-  const [progress, setProgress] = useState(10);
-  const [currentStep, setCurrentStep] = useState(1);
-  
-  // Simulate generation progress
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress(prev => {
-        const next = prev + 1;
-        
-        // Update steps based on progress
-        if (next > 20 && currentStep < 2) setCurrentStep(2);
-        if (next > 40 && currentStep < 3) setCurrentStep(3);
-        if (next > 60 && currentStep < 4) setCurrentStep(4);
-        if (next > 80 && currentStep < 5) setCurrentStep(5);
-        if (next >= 100) {
-          clearInterval(timer);
-          setCurrentStep(6);
-          return 100;
-        }
-        return next;
-      });
-    }, 150);
-    return () => clearInterval(timer);
-  }, [currentStep]);
+  const [, params] = useRoute("/editor/:id");
+  const projectId = params?.id;
+
+  const { data: project, refetch } = useQuery<Project>({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}`);
+      if (!res.ok) throw new Error("Failed to fetch project");
+      return res.json();
+    },
+    refetchInterval: (data) => {
+      return data?.status === "generating" ? 2000 : false;
+    },
+    enabled: !!projectId,
+  });
 
   const steps = [
-    { id: 1, label: "Story (Claude 3.5)", status: currentStep > 1 ? "Complete" : currentStep === 1 ? "Generating..." : "Pending" },
-    { id: 2, label: "Prompts (GPT-5)", status: currentStep > 2 ? "Complete" : currentStep === 2 ? "Refining..." : "Pending" },
-    { id: 3, label: "Images (Flux 1.1 Pro)", status: currentStep > 3 ? "Complete" : currentStep === 3 ? "Synthesizing..." : "Pending" },
-    { id: 4, label: "Voice (Speechify)", status: currentStep > 4 ? "Complete" : currentStep === 4 ? "Recording..." : "Pending" },
-    { id: 5, label: "Assembly (FFmpeg)", status: currentStep > 5 ? "Complete" : currentStep === 5 ? "Rendering..." : "Pending" },
+    { id: 1, label: "Story (Claude 3.5)", status: project?.currentStep && project.currentStep > 0 ? "Complete" : project?.currentStep === 0 && project.status === "generating" ? "Generating..." : "Pending" },
+    { id: 2, label: "Prompts (GPT-5)", status: project?.currentStep && project.currentStep > 1 ? "Complete" : project?.currentStep === 1 && project.status === "generating" ? "Refining..." : "Pending" },
+    { id: 3, label: "Images (Flux 1.1 Pro)", status: project?.currentStep && project.currentStep > 2 ? "Complete" : project?.currentStep === 2 && project.status === "generating" ? "Synthesizing..." : "Pending" },
+    { id: 4, label: "Voice (Speechify)", status: project?.currentStep && project.currentStep > 3 ? "Complete" : project?.currentStep === 3 && project.status === "generating" ? "Recording..." : "Pending" },
+    { id: 5, label: "Assembly (FFmpeg)", status: project?.currentStep && project.currentStep > 4 ? "Complete" : project?.currentStep === 4 && project.status === "generating" ? "Rendering..." : "Pending" },
   ];
+
+  if (!project) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-muted-foreground">Loading project...</div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -49,8 +62,10 @@ export default function ProjectEditor() {
         <div className="flex items-center justify-between pb-2">
            <div className="space-y-1">
              <div className="flex items-center gap-3">
-               <h2 className="text-xl font-display font-bold text-white">The Last Cyberpunk City</h2>
-               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">Draft</Badge>
+               <h2 className="text-xl font-display font-bold text-white" data-testid="text-project-title">{project.title}</h2>
+               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20" data-testid="badge-status">
+                 {project.status}
+               </Badge>
              </div>
              <p className="text-xs text-muted-foreground font-mono">
                Pipeline: Claude → GPT-5 → Flux 1.1 Pro
@@ -58,25 +73,26 @@ export default function ProjectEditor() {
            </div>
 
            <div className="flex items-center gap-2">
-             <Button variant="outline" size="sm" className="h-8 gap-2 bg-transparent border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white">
+             <Button variant="outline" size="sm" className="h-8 gap-2 bg-transparent border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white" data-testid="button-undo">
                <Undo className="h-3.5 w-3.5" /> Undo
              </Button>
-             <Button variant="outline" size="sm" className="h-8 gap-2 bg-transparent border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white">
+             <Button variant="outline" size="sm" className="h-8 gap-2 bg-transparent border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white" data-testid="button-save">
                <Save className="h-3.5 w-3.5" /> Save
              </Button>
              <div className="h-4 w-px bg-white/10 mx-2" />
-             <Button size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+             <Button size="sm" className="h-8 gap-2 bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-export">
                <Download className="h-3.5 w-3.5" /> Export
              </Button>
            </div>
         </div>
 
         {/* Progress Bar (Visible during generation) */}
-        {progress < 100 && (
+        {project.status === "generating" && (
           <div className="w-full bg-secondary/50 rounded-full h-1 overflow-hidden mb-2">
             <div 
               className="bg-primary h-full transition-all duration-300 ease-out relative"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${project.progress}%` }}
+              data-testid="progress-bar"
             >
               <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white/50 to-transparent opacity-50" />
             </div>
@@ -99,7 +115,7 @@ export default function ProjectEditor() {
                   <div className="absolute left-1.5 top-2 bottom-2 w-px bg-white/10" />
                   
                   {steps.map((item, i) => (
-                     <div key={i} className="flex gap-3 relative">
+                     <div key={i} className="flex gap-3 relative" data-testid={`step-${item.id}`}>
                        <div className={cn(
                          "h-3 w-3 rounded-full border-2 z-10 bg-card mt-0.5 transition-all duration-300",
                          item.status === "Complete" ? "border-primary bg-primary" : 
