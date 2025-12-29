@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { ensureDbConnected } from "./db";
 import { insertProjectSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
+import { videoService } from "./video-service";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -137,6 +138,78 @@ export async function registerRoutes(
         currentStep: project.currentStep,
         logs
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/detect-scenes", async (req, res) => {
+    try {
+      const { videoPath, threshold } = req.body;
+      const result = await videoService.detectScenes(videoPath, threshold);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/trim", async (req, res) => {
+    try {
+      const { inputPath, outputPath, startTime, endTime } = req.body;
+      const result = await videoService.trimVideo(inputPath, outputPath, startTime, endTime);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/merge", async (req, res) => {
+    try {
+      const { outputPath, videoPaths } = req.body;
+      const result = await videoService.mergeVideos(outputPath, videoPaths);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/images-to-video", async (req, res) => {
+    try {
+      const result = await videoService.imagesToVideo(req.body);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/assemble-chapter", async (req, res) => {
+    try {
+      const { chapter, outputPath } = req.body;
+      const result = await videoService.assembleChapterVideo(chapter, outputPath);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video/assemble-full", async (req, res) => {
+    try {
+      const { project, outputPath } = req.body;
+      const result = await videoService.assembleFullVideo(project, outputPath);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/video/info", async (req, res) => {
+    try {
+      const { path: videoPath } = req.query;
+      if (!videoPath || typeof videoPath !== 'string') {
+        return res.status(400).json({ error: "videoPath is required" });
+      }
+      const result = await videoService.getVideoInfo(videoPath);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
