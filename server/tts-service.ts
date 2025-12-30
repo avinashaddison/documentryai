@@ -9,11 +9,11 @@ export interface TTSOptions {
 }
 
 const VOICE_MODELS: Record<string, string> = {
-  "male-deep": "aura-arcas-en",
-  "male-warm": "aura-perseus-en", 
-  "female-soft": "aura-athena-en",
-  "female-dramatic": "aura-luna-en",
-  "neutral": "aura-asteria-en",
+  "male-deep": "aura-2-zeus-en",
+  "male-warm": "aura-2-arcas-en", 
+  "female-soft": "aura-2-athena-en",
+  "female-dramatic": "aura-2-luna-en",
+  "neutral": "aura-2-asteria-en",
 };
 
 function getBucketId(): string {
@@ -112,10 +112,10 @@ export async function generateSceneVoiceover(
 
 export function getAvailableVoices(): Array<{ id: string; name: string; description: string }> {
   return [
-    { id: "male-deep", name: "Male - Deep & Dramatic", description: "Powerful, authoritative male voice" },
-    { id: "male-warm", name: "Male - Warm & Authoritative", description: "Friendly, trustworthy male voice" },
-    { id: "female-soft", name: "Female - Soft & Mysterious", description: "Gentle, captivating female voice" },
-    { id: "female-dramatic", name: "Female - Dramatic Narrator", description: "Expressive, emotional female voice" },
-    { id: "neutral", name: "Neutral - Documentary Style", description: "Clear, professional narration" },
+    { id: "male-deep", name: "Zeus - Deep & Trustworthy", description: "Deep, trustworthy, smooth male voice" },
+    { id: "male-warm", name: "Arcas - Natural & Smooth", description: "Natural, smooth, clear, comfortable male voice" },
+    { id: "female-soft", name: "Athena - Calm & Professional", description: "Calm, smooth, professional female voice for storytelling" },
+    { id: "female-dramatic", name: "Luna - Friendly & Engaging", description: "Friendly, natural, engaging female voice" },
+    { id: "neutral", name: "Asteria - Clear & Confident", description: "Clear, confident, knowledgeable, energetic voice" },
   ];
 }
