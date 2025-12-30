@@ -443,24 +443,28 @@ export default function DocumentaryMaker() {
   }, [generationLogs]);
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+    <div className="min-h-screen bg-background text-white relative overflow-hidden">
+      {/* Animated background effects */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-purple-500/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       
-      <header className="relative z-10 border-b border-white/5">
+      <header className="relative z-10 border-b border-cyan-500/10 backdrop-blur-xl bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-muted-foreground hover:text-cyan-400 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="text-sm">Back</span>
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
-                <Film className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center neon-glow">
+                <Film className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-lg tracking-tight">DocuAI</span>
+              <span className="font-bold text-xl tracking-tight gradient-text">AIVideo.sys</span>
             </div>
             <div className="w-16" />
           </div>
@@ -470,23 +474,23 @@ export default function DocumentaryMaker() {
       <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
         {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-wider">
-            <Film className="h-3 w-3" />
-            AI Documentary Maker
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono uppercase tracking-wider neon-border">
+            <Sparkles className="h-3 w-3" />
+            AI Documentary Studio
           </div>
-          <h1 className="text-4xl font-display font-bold text-white">
+          <h1 className="text-5xl font-display font-bold neon-text text-cyan-400">
             Create Your Documentary
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             Enter a topic and let AI generate a complete documentary with narration, visuals, and professional editing.
           </p>
         </div>
 
         {/* Progress Steps */}
         {currentStep !== "idle" && (
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
+          <div className="glass-panel-glow rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
               {steps.map((step, i) => {
                 const stepIndex = steps.findIndex(s => s.id === currentStep);
                 const isActive = step.id === currentStep;
@@ -495,25 +499,30 @@ export default function DocumentaryMaker() {
                 return (
                   <div key={step.id} className="flex items-center">
                     <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                      isComplete ? "bg-green-500 text-white" :
-                      isActive ? "bg-primary text-white animate-pulse" :
-                      "bg-muted text-muted-foreground"
+                      "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300",
+                      isComplete ? "bg-gradient-to-br from-green-400 to-emerald-600 text-white neon-glow" :
+                      isActive ? "bg-gradient-to-br from-cyan-400 to-purple-600 text-white animate-pulse-glow" :
+                      "bg-card border border-border text-muted-foreground"
                     )}>
-                      {isComplete ? <Check className="h-4 w-4" /> : <step.icon className="h-4 w-4" />}
+                      {isComplete ? <Check className="h-5 w-5" /> : <step.icon className="h-5 w-5" />}
                     </div>
                     {i < steps.length - 1 && (
-                      <ChevronRight className={cn(
-                        "h-4 w-4 mx-2",
-                        isComplete ? "text-green-500" : "text-muted-foreground"
+                      <div className={cn(
+                        "w-8 h-0.5 mx-2 rounded-full transition-all duration-300",
+                        isComplete ? "bg-gradient-to-r from-green-400 to-emerald-600" : "bg-border"
                       )} />
                     )}
                   </div>
                 );
               })}
             </div>
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+            <div className="relative h-3 bg-card rounded-full overflow-hidden border border-border">
+              <div 
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500 animate-shimmer"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-cyan-300 mt-3 text-center font-medium">
               {currentStep === "framework" && "Generating documentary framework with Claude..."}
               {currentStep === "outline" && "Creating chapter outline..."}
               {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
@@ -522,51 +531,53 @@ export default function DocumentaryMaker() {
               {currentStep === "assembly" && "Assembling final video..."}
               {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
             </p>
-            
           </div>
         )}
 
         {/* Title Input Section */}
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-          <Label className="text-sm font-medium text-white">Documentary Topic</Label>
+        <div className="glass-panel-glow rounded-2xl p-6 space-y-5">
+          <Label className="text-sm font-medium text-cyan-300 flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Documentary Topic
+          </Label>
           <div className="flex gap-3">
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., The Dark Secrets of the Woolworth Mansion..."
-              className="flex-1 h-12 bg-background/50 border-border text-white placeholder:text-muted-foreground"
+              className="flex-1 h-14 bg-card/50 border-cyan-500/30 text-white placeholder:text-muted-foreground rounded-xl focus:border-cyan-400 focus:ring-cyan-400/20 text-lg neon-input"
               disabled={isGenerating}
               data-testid="input-title"
             />
             <Button
               onClick={handleGenerateFramework}
               disabled={!title.trim() || isGenerating}
-              className="h-12 px-6 gap-2 bg-primary hover:bg-primary/90"
+              className="h-14 px-8 gap-2 rounded-xl text-base font-semibold neon-button bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 border-0"
               data-testid="button-generate-framework"
             >
               {isGenerating && currentStep !== "chapters" ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Wand2 className="h-4 w-4" />
-                  Generate Framework
+                  <Wand2 className="h-5 w-5" />
+                  Generate
                 </>
               )}
             </Button>
           </div>
           
           {/* Chapter Count Selector with Visual Boxes */}
-          <div className="space-y-3">
-            <Label className="text-sm text-muted-foreground flex items-center gap-2">
+          <div className="space-y-4">
+            <Label className="text-sm text-purple-300 flex items-center gap-2">
               <Hash className="h-4 w-4" />
               Number of Chapters
             </Label>
             
             {/* Preset Chapter Boxes */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-4">
               {chapterPresets.map((preset) => {
                 const isSelected = totalChapters === preset.count;
                 return (
@@ -579,11 +590,11 @@ export default function DocumentaryMaker() {
                     }}
                     disabled={isGenerating}
                     className={cn(
-                      "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
-                      "border-2",
+                      "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
+                      "border",
                       isSelected 
-                        ? "border-primary bg-primary/10 scale-[1.02] shadow-lg shadow-primary/20" 
-                        : "border-border bg-card hover:border-primary/50 hover:bg-card/80",
+                        ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow" 
+                        : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
                       isGenerating && "opacity-50 cursor-not-allowed"
                     )}
                     data-testid={`button-chapter-${preset.count}`}
@@ -592,14 +603,14 @@ export default function DocumentaryMaker() {
                     <div className={cn(
                       "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300",
                       preset.color,
-                      isSelected ? "opacity-10" : "group-hover:opacity-5"
+                      isSelected ? "opacity-15" : "group-hover:opacity-5"
                     )} />
                     
                     {/* Animated border glow */}
                     {isSelected && (
-                      <div className="absolute inset-0 rounded-xl animate-pulse">
+                      <div className="absolute inset-0 rounded-xl">
                         <div className={cn(
-                          "absolute inset-0 rounded-xl bg-gradient-to-br blur-sm opacity-30",
+                          "absolute inset-0 rounded-xl bg-gradient-to-br blur-md opacity-40",
                           preset.color
                         )} />
                       </div>
@@ -608,14 +619,14 @@ export default function DocumentaryMaker() {
                     {/* Content */}
                     <div className="relative z-10 text-center space-y-1">
                       <div className={cn(
-                        "text-3xl font-bold transition-all duration-300",
-                        isSelected ? "text-white scale-110" : "text-white/70 group-hover:text-white"
+                        "text-4xl font-bold transition-all duration-300",
+                        isSelected ? "text-cyan-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
                       )}>
                         {preset.count}
                       </div>
                       <div className={cn(
-                        "text-xs font-medium uppercase tracking-wider transition-colors",
-                        isSelected ? "text-primary" : "text-muted-foreground group-hover:text-white/70"
+                        "text-xs font-semibold uppercase tracking-wider transition-colors",
+                        isSelected ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
                       )}>
                         {preset.label}
                       </div>
@@ -628,10 +639,10 @@ export default function DocumentaryMaker() {
                     {isSelected && (
                       <div className="absolute top-2 right-2">
                         <div className={cn(
-                          "w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center",
+                          "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg",
                           preset.color
                         )}>
-                          <Check className="h-3 w-3 text-white" />
+                          <Check className="h-3.5 w-3.5 text-white" />
                         </div>
                       </div>
                     )}
@@ -641,7 +652,7 @@ export default function DocumentaryMaker() {
             </div>
             
             {/* Custom Chapter Input */}
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-3 pt-3 border-t border-border/50">
               <span className="text-xs text-muted-foreground">Or enter custom:</span>
               <div className="relative">
                 <Input
@@ -657,11 +668,11 @@ export default function DocumentaryMaker() {
                     setConfig({ ...config, storyLength: lengthMap[clamped] || "custom" });
                   }}
                   disabled={isGenerating}
-                  className="w-20 h-9 text-center bg-background/50 border-border text-white font-bold"
+                  className="w-20 h-9 text-center bg-card/50 border-cyan-500/30 text-white font-bold rounded-lg"
                   data-testid="input-custom-chapters"
                 />
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-cyan-300">
                 chapters (~{Math.round(totalChapters * 3)} min)
               </span>
             </div>
@@ -670,27 +681,29 @@ export default function DocumentaryMaker() {
 
         {/* Generated Framework Display */}
         {framework && (
-          <div className="bg-card border border-border rounded-xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-bold text-white">Generated Framework</h2>
-              <Badge variant="outline" className="ml-2 text-xs bg-green-500/10 text-green-400 border-green-500/20">
+          <div className="glass-panel-glow rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center neon-glow-purple">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-display font-bold gradient-text">Generated Framework</h2>
+              <Badge variant="outline" className="ml-auto text-xs bg-green-500/10 text-green-400 border-green-500/30 px-3 py-1">
                 Claude Sonnet 4.5
               </Badge>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Title</Label>
-              <h3 className="text-2xl font-display font-bold text-white" data-testid="text-generated-title">
+              <Label className="text-xs uppercase tracking-wider text-purple-300">Title</Label>
+              <h3 className="text-3xl font-display font-bold text-white neon-text-purple" data-testid="text-generated-title">
                 {framework.generatedTitle}
               </h3>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Genres</Label>
+              <Label className="text-xs uppercase tracking-wider text-purple-300">Genres</Label>
               <div className="flex gap-2" data-testid="container-genres">
                 {framework.genres?.map((genre, i) => (
-                  <Badge key={i} variant="secondary" className="bg-primary/20 text-primary border-0">
+                  <Badge key={i} className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1">
                     {genre}
                   </Badge>
                 ))}
