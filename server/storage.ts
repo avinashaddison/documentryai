@@ -163,9 +163,17 @@ export class DatabaseStorage implements IStorage {
       asset.assetType
     );
     if (existing) {
+      // Only update fields that are actually provided (non-undefined)
+      const updateFields: Partial<typeof asset> = {};
+      if (asset.assetUrl !== undefined) updateFields.assetUrl = asset.assetUrl;
+      if (asset.prompt !== undefined) updateFields.prompt = asset.prompt;
+      if (asset.narration !== undefined) updateFields.narration = asset.narration;
+      if (asset.duration !== undefined) updateFields.duration = asset.duration;
+      if (asset.status !== undefined) updateFields.status = asset.status;
+      
       const result = await db
         .update(generatedAssets)
-        .set(asset)
+        .set(updateFields)
         .where(eq(generatedAssets.id, existing.id))
         .returning();
       return result[0];

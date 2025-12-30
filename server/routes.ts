@@ -13,7 +13,7 @@ import {
 } from "./documentary-generator";
 import { generateImage, generateChapterImages } from "./image-generator";
 import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
-import { runAutopilotGeneration, generateSceneAssets } from "./autopilot-generator";
+import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -739,6 +739,78 @@ export async function registerRoutes(
       );
 
       res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get generation status (for resume functionality)
+  app.get("/api/projects/:id/generation-status", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const status = await getGenerationStatus(projectId);
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Resume incomplete generation
+  app.post("/api/projects/:id/resume-generation", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: "autopilot",
+        status: "resumed",
+        message: "Resuming interrupted generation..."
+      });
+
+      const result = await resumeGeneration(projectId);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          videoPath: result.videoPath,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+          errors: result.errors,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          errors: result.errors,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+        });
+      }
+    } catch (error: any) {
+      console.error("Resume generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all generated assets for a project
+  app.get("/api/projects/:id/generated-assets", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const assets = await storage.getGeneratedAssetsByProject(projectId);
+      
+      // Organize by type
+      const images: Record<string, string> = {};
+      const audio: Record<string, string> = {};
+      
+      for (const asset of assets) {
+        const key = `ch${asset.chapterNumber}_sc${asset.sceneNumber}`;
+        if (asset.assetType === "image") {
+          images[key] = asset.assetUrl;
+        } else if (asset.assetType === "audio") {
+          audio[key] = asset.assetUrl;
+        }
+      }
+      
+      res.json({ images, audio, assets });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

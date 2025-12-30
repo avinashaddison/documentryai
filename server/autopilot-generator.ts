@@ -4,6 +4,7 @@ import { generateSceneVoiceover } from "./tts-service";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
+import type { GenerationSession, GeneratedAsset } from "@shared/schema";
 
 interface AutopilotOptions {
   projectId: number;
@@ -30,6 +31,7 @@ interface AutopilotResult {
   generatedImages: Record<string, string>;
   generatedAudio: Record<string, string>;
   errors: string[];
+  sessionId?: number;
 }
 
 export async function runAutopilotGeneration(options: AutopilotOptions): Promise<AutopilotResult> {
@@ -50,143 +52,226 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
   try {
     log("init", 0, "Starting autopilot generation...");
     
+    let totalScenes = 0;
+    chapters.forEach(ch => totalScenes += ch.scenes.length);
+
+    // Check for existing session to resume
+    let session = await storage.getActiveGenerationSession(projectId);
+    
+    if (!session) {
+      // Create new session
+      session = await storage.createGenerationSession({
+        projectId,
+        status: "in_progress",
+        currentChapter: 1,
+        currentScene: 1,
+        currentStep: "images",
+        totalChapters: chapters.length,
+        totalScenes,
+        completedImages: 0,
+        completedAudio: 0,
+        voice,
+        imageModel,
+        chaptersData: JSON.stringify(chapters),
+      });
+    }
+
+    result.sessionId = session.id;
+
+    // Load existing assets
+    const existingAssets = await storage.getGeneratedAssetsByProject(projectId);
+    for (const asset of existingAssets) {
+      const key = `ch${asset.chapterNumber}_sc${asset.sceneNumber}`;
+      if (asset.assetType === "image") {
+        result.generatedImages[key] = asset.assetUrl;
+      } else if (asset.assetType === "audio") {
+        result.generatedAudio[key] = asset.assetUrl;
+      }
+    }
+
     await storage.createGenerationLog({
       projectId,
       step: "autopilot",
       status: "started",
-      message: "Starting automated video generation pipeline..."
+      message: `Starting automated video generation (resumable)...`
     });
 
-    let totalScenes = 0;
-    chapters.forEach(ch => totalScenes += ch.scenes.length);
-    let completedScenes = 0;
+    // Phase 1: Generate images
+    if (session.currentStep === "images") {
+      log("images", 5, "Generating images...");
 
-    for (const chapter of chapters) {
-      log("images", Math.round((completedScenes / totalScenes) * 30), 
-        `Generating images for Chapter ${chapter.chapterNumber}...`);
+      for (const chapter of chapters) {
+        // Skip already completed chapters (if resuming)
+        if (chapter.chapterNumber < session.currentChapter && session.currentStep !== "images") {
+          continue;
+        }
+
+        for (const scene of chapter.scenes) {
+          const key = `ch${chapter.chapterNumber}_sc${scene.sceneNumber}`;
+          
+          // Skip if image already exists
+          if (result.generatedImages[key]) {
+            log("images", calculateProgress(session, "images", totalScenes),
+              `Skipping image ${key} (already generated)`);
+            continue;
+          }
+
+          try {
+            log("images", calculateProgress(session, "images", totalScenes),
+              `Generating image for Ch${chapter.chapterNumber} Sc${scene.sceneNumber}...`);
+
+            const imageResults = await generateChapterImages(
+              {
+                chapterNumber: chapter.chapterNumber,
+                scenes: [{ 
+                  sceneNumber: scene.sceneNumber, 
+                  imagePrompt: scene.imagePrompt,
+                }],
+              },
+              projectId,
+              { model: imageModel as any }
+            );
+
+            if (imageResults[0]?.success && imageResults[0]?.imageUrl) {
+              result.generatedImages[key] = imageResults[0].imageUrl;
+              
+              // Save to database
+              await storage.saveGeneratedAsset({
+                projectId,
+                chapterNumber: chapter.chapterNumber,
+                sceneNumber: scene.sceneNumber,
+                assetType: "image",
+                assetUrl: imageResults[0].imageUrl,
+                prompt: scene.imagePrompt,
+                status: "completed",
+              });
+
+              // Update session progress
+              session = await storage.updateGenerationSession(session.id, {
+                currentChapter: chapter.chapterNumber,
+                currentScene: scene.sceneNumber,
+                completedImages: (session.completedImages || 0) + 1,
+              }) as GenerationSession;
+            } else {
+              const error = imageResults[0]?.error || "Unknown image generation error";
+              result.errors.push(`Image ${key}: ${error}`);
+            }
+          } catch (error: any) {
+            result.errors.push(`Image ${key}: ${error.message}`);
+            // Continue to next scene even if one fails
+          }
+        }
+      }
+
+      // Move to audio phase
+      session = await storage.updateGenerationSession(session.id, {
+        currentStep: "audio",
+        currentChapter: 1,
+        currentScene: 1,
+      }) as GenerationSession;
+    }
+
+    // Phase 2: Generate audio
+    if (session.currentStep === "audio") {
+      log("audio", 40, "Generating voiceovers...");
+
+      for (const chapter of chapters) {
+        for (const scene of chapter.scenes) {
+          const key = `ch${chapter.chapterNumber}_sc${scene.sceneNumber}`;
+          
+          // Skip if audio already exists
+          if (result.generatedAudio[key]) {
+            log("audio", calculateProgress(session, "audio", totalScenes),
+              `Skipping audio ${key} (already generated)`);
+            continue;
+          }
+
+          try {
+            log("audio", calculateProgress(session, "audio", totalScenes),
+              `Generating audio for Ch${chapter.chapterNumber} Sc${scene.sceneNumber}...`);
+
+            const audioUrl = await generateSceneVoiceover(
+              projectId,
+              chapter.chapterNumber,
+              scene.sceneNumber,
+              scene.narrationSegment,
+              voice
+            );
+
+            result.generatedAudio[key] = audioUrl;
+
+            // Save to database
+            await storage.saveGeneratedAsset({
+              projectId,
+              chapterNumber: chapter.chapterNumber,
+              sceneNumber: scene.sceneNumber,
+              assetType: "audio",
+              assetUrl: audioUrl,
+              narration: scene.narrationSegment,
+              duration: scene.duration,
+              status: "completed",
+            });
+
+            // Update session progress
+            session = await storage.updateGenerationSession(session.id, {
+              currentChapter: chapter.chapterNumber,
+              currentScene: scene.sceneNumber,
+              completedAudio: (session.completedAudio || 0) + 1,
+            }) as GenerationSession;
+
+          } catch (error: any) {
+            result.errors.push(`Audio ${key}: ${error.message}`);
+          }
+        }
+      }
+
+      // Move to video phase
+      session = await storage.updateGenerationSession(session.id, {
+        currentStep: "video",
+      }) as GenerationSession;
+    }
+
+    // Phase 3: Assemble video
+    if (session.currentStep === "video") {
+      log("assembly", 80, "Assembling final video...");
 
       await storage.createGenerationLog({
         projectId,
-        step: `chapter_${chapter.chapterNumber}_images`,
+        step: "video_assembly",
         status: "started",
-        message: `Generating ${chapter.scenes.length} images for Chapter ${chapter.chapterNumber}...`
+        message: "Assembling video with Ken Burns effects and transitions..."
       });
 
-      try {
-        const imageResults = await generateChapterImages(
-          {
-            chapterNumber: chapter.chapterNumber,
-            scenes: chapter.scenes.map(s => ({
-              sceneNumber: s.sceneNumber,
-              imagePrompt: s.imagePrompt,
-              chapterNumber: chapter.chapterNumber,
-            })),
-          },
-          projectId,
-          { model: imageModel as any }
-        );
+      const projectData = buildProjectData(projectId, chapters, result.generatedImages, result.generatedAudio);
+      const outputPath = `generated_videos/project_${projectId}_documentary.mp4`;
+      
+      const assemblySuccess = await assembleVideoWithPython(projectData, outputPath);
 
-        for (const imgResult of imageResults) {
-          if (imgResult.success && imgResult.imageUrl) {
-            const key = `ch${chapter.chapterNumber}_sc${imgResult.sceneNumber}`;
-            result.generatedImages[key] = imgResult.imageUrl;
-          } else if (imgResult.error) {
-            result.errors.push(`Image Ch${chapter.chapterNumber} Sc${imgResult.sceneNumber}: ${imgResult.error}`);
-          }
-        }
+      if (assemblySuccess) {
+        result.success = true;
+        result.videoPath = `/${outputPath}`;
+        
+        // Mark session complete
+        await storage.updateGenerationSession(session.id, {
+          status: "completed",
+        });
 
         await storage.createGenerationLog({
           projectId,
-          step: `chapter_${chapter.chapterNumber}_images`,
+          step: "autopilot",
           status: "completed",
-          message: `Generated images for Chapter ${chapter.chapterNumber}`
+          message: `Autopilot complete! Video saved to ${outputPath}`
         });
-      } catch (error: any) {
-        result.errors.push(`Chapter ${chapter.chapterNumber} images: ${error.message}`);
+
+        log("complete", 100, "Video generation complete!");
+      } else {
+        result.errors.push("Video assembly failed");
+        
+        await storage.updateGenerationSession(session.id, {
+          status: "failed",
+          errorMessage: "Video assembly failed",
+        });
       }
-
-      log("audio", 30 + Math.round((completedScenes / totalScenes) * 30),
-        `Generating voiceover for Chapter ${chapter.chapterNumber}...`);
-
-      await storage.createGenerationLog({
-        projectId,
-        step: `chapter_${chapter.chapterNumber}_audio`,
-        status: "started",
-        message: `Generating voiceover for Chapter ${chapter.chapterNumber}...`
-      });
-
-      for (const scene of chapter.scenes) {
-        try {
-          const audioUrl = await generateSceneVoiceover(
-            projectId,
-            chapter.chapterNumber,
-            scene.sceneNumber,
-            scene.narrationSegment,
-            voice
-          );
-          
-          const key = `ch${chapter.chapterNumber}_sc${scene.sceneNumber}`;
-          result.generatedAudio[key] = audioUrl;
-          completedScenes++;
-          
-          log("audio", 30 + Math.round((completedScenes / totalScenes) * 30),
-            `Generated audio for Ch${chapter.chapterNumber} Sc${scene.sceneNumber}`);
-        } catch (error: any) {
-          result.errors.push(`Audio Ch${chapter.chapterNumber} Sc${scene.sceneNumber}: ${error.message}`);
-          completedScenes++;
-        }
-      }
-
-      await storage.createGenerationLog({
-        projectId,
-        step: `chapter_${chapter.chapterNumber}_audio`,
-        status: "completed",
-        message: `Generated voiceover for Chapter ${chapter.chapterNumber}`
-      });
-    }
-
-    log("assembly", 70, "Assembling final video...");
-
-    await storage.createGenerationLog({
-      projectId,
-      step: "video_assembly",
-      status: "started",
-      message: "Assembling video with Ken Burns effects and transitions..."
-    });
-
-    const projectData = buildProjectData(projectId, chapters, result.generatedImages, result.generatedAudio);
-    const outputPath = `generated_videos/project_${projectId}_documentary.mp4`;
-    
-    const assemblySuccess = await assembleVideoWithPython(projectData, outputPath);
-
-    if (assemblySuccess) {
-      result.success = true;
-      result.videoPath = `/${outputPath}`;
-      
-      await storage.createGenerationLog({
-        projectId,
-        step: "video_assembly",
-        status: "completed",
-        message: "Video assembly complete!"
-      });
-
-      await storage.createGenerationLog({
-        projectId,
-        step: "autopilot",
-        status: "completed",
-        message: `Autopilot complete! Video saved to ${outputPath}`
-      });
-
-      log("complete", 100, "Video generation complete!");
-    } else {
-      result.errors.push("Video assembly failed");
-      
-      await storage.createGenerationLog({
-        projectId,
-        step: "video_assembly",
-        status: "failed",
-        message: "Video assembly failed"
-      });
     }
 
     return result;
@@ -202,6 +287,75 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
 
     return result;
   }
+}
+
+function calculateProgress(session: GenerationSession, phase: string, totalScenes: number): number {
+  const imagesComplete = session.completedImages || 0;
+  const audioComplete = session.completedAudio || 0;
+
+  if (phase === "images") {
+    return 5 + Math.round((imagesComplete / totalScenes) * 35);
+  } else if (phase === "audio") {
+    return 40 + Math.round((audioComplete / totalScenes) * 35);
+  }
+  return 80;
+}
+
+export async function getGenerationStatus(projectId: number): Promise<{
+  hasActiveSession: boolean;
+  session?: GenerationSession;
+  assets: GeneratedAsset[];
+  canResume: boolean;
+}> {
+  const session = await storage.getActiveGenerationSession(projectId);
+  const assets = await storage.getGeneratedAssetsByProject(projectId);
+  
+  return {
+    hasActiveSession: !!session,
+    session,
+    assets,
+    canResume: !!session && session.status === "in_progress",
+  };
+}
+
+export async function resumeGeneration(projectId: number): Promise<AutopilotResult> {
+  const session = await storage.getActiveGenerationSession(projectId);
+  
+  if (!session || !session.chaptersData) {
+    return {
+      success: false,
+      generatedImages: {},
+      generatedAudio: {},
+      errors: ["No active session to resume"],
+    };
+  }
+
+  let chapters;
+  try {
+    chapters = JSON.parse(session.chaptersData);
+    if (!Array.isArray(chapters) || chapters.length === 0) {
+      throw new Error("Invalid chapters data");
+    }
+  } catch (e) {
+    // Mark session as failed since data is corrupted
+    await storage.updateGenerationSession(session.id, {
+      status: "failed",
+      errorMessage: "Corrupted session data - cannot resume",
+    });
+    return {
+      success: false,
+      generatedImages: {},
+      generatedAudio: {},
+      errors: ["Session data is corrupted - please start a new generation"],
+    };
+  }
+  
+  return runAutopilotGeneration({
+    projectId,
+    chapters,
+    voice: session.voice || "neutral",
+    imageModel: session.imageModel || "flux-1.1-pro",
+  });
 }
 
 function buildProjectData(
@@ -256,7 +410,6 @@ async function assembleVideoWithPython(projectData: any, outputPath: string): Pr
     });
 
     console.log("[Autopilot] Running Python video assembly...");
-    console.log("[Autopilot] Config:", config.substring(0, 500) + "...");
 
     const python = spawn("python3", [
       "server/python/video_processor.py",
@@ -325,6 +478,17 @@ export async function generateSceneAssets(
 
     if (imageResults[0]?.success) {
       imageUrl = imageResults[0].imageUrl;
+      
+      // Save to database
+      await storage.saveGeneratedAsset({
+        projectId,
+        chapterNumber,
+        sceneNumber,
+        assetType: "image",
+        assetUrl: imageUrl!,
+        prompt: imagePrompt,
+        status: "completed",
+      });
     } else {
       errors.push(imageResults[0]?.error || "Image generation failed");
     }
@@ -334,6 +498,17 @@ export async function generateSceneAssets(
 
   try {
     audioUrl = await generateSceneVoiceover(projectId, chapterNumber, sceneNumber, narration, voice);
+    
+    // Save to database
+    await storage.saveGeneratedAsset({
+      projectId,
+      chapterNumber,
+      sceneNumber,
+      assetType: "audio",
+      assetUrl: audioUrl,
+      narration,
+      status: "completed",
+    });
   } catch (e: any) {
     errors.push(`Audio error: ${e.message}`);
   }

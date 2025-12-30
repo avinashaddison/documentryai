@@ -23,6 +23,7 @@ import {
   AlertCircle,
   Wand2,
   Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,8 @@ export default function DocumentaryEditor() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState("");
+  const [canResume, setCanResume] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -121,16 +124,46 @@ export default function DocumentaryEditor() {
   }, []);
 
   useEffect(() => {
-    const storedData = sessionStorage.getItem("documentaryEditorData");
-    if (storedData) {
-      try {
-        const parsed = JSON.parse(storedData);
-        setDocumentaryData(parsed);
-      } catch (e) {
-        console.error("Failed to parse documentary data:", e);
+    const loadData = async () => {
+      const storedData = sessionStorage.getItem("documentaryEditorData");
+      if (storedData) {
+        try {
+          const parsed = JSON.parse(storedData);
+          setDocumentaryData(parsed);
+          
+          // Check for saved assets and resume capability
+          if (parsed.projectId) {
+            try {
+              // Load saved assets from database
+              const assetsResponse = await fetch(`/api/projects/${parsed.projectId}/generated-assets`);
+              if (assetsResponse.ok) {
+                const assetsData = await assetsResponse.json();
+                if (Object.keys(assetsData.images).length > 0 || Object.keys(assetsData.audio).length > 0) {
+                  setDocumentaryData(prev => prev ? {
+                    ...prev,
+                    generatedImages: { ...prev.generatedImages, ...assetsData.images },
+                  } : prev);
+                }
+              }
+              
+              // Check for resume capability
+              const statusResponse = await fetch(`/api/projects/${parsed.projectId}/generation-status`);
+              if (statusResponse.ok) {
+                const status = await statusResponse.json();
+                setCanResume(status.canResume);
+                setSessionInfo(status.session);
+              }
+            } catch (e) {
+              console.error("Failed to load saved assets:", e);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse documentary data:", e);
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    loadData();
   }, []);
 
   const allScenes = documentaryData?.chapters.flatMap((ch, chIdx) =>
@@ -188,6 +221,53 @@ export default function DocumentaryEditor() {
       elapsed += allScenes[i].duration || 5;
     }
     setCurrentTime(elapsed);
+  };
+
+  const handleResumeGeneration = async () => {
+    if (!documentaryData) return;
+    
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setGenerationStatus("Resuming generation...");
+
+    try {
+      const response = await fetch(`/api/projects/${documentaryData.projectId}/resume-generation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setGenerationProgress(100);
+        setGenerationStatus("Complete!");
+        setCanResume(false);
+        
+        setDocumentaryData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            generatedImages: { ...prev.generatedImages, ...result.generatedImages },
+          };
+        });
+
+        setTimeout(() => {
+          setIsGenerating(false);
+          setGenerationProgress(0);
+          setGenerationStatus("");
+        }, 1500);
+      } else {
+        throw new Error(result.errors?.join(", ") || "Resume failed");
+      }
+    } catch (error: any) {
+      console.error("Resume error:", error);
+      setGenerationStatus(`Error: ${error.message}`);
+      setTimeout(() => {
+        setIsGenerating(false);
+        setGenerationProgress(0);
+        setGenerationStatus("");
+      }, 3000);
+    }
   };
 
   const handleGenerateAll = async () => {
@@ -362,25 +442,47 @@ export default function DocumentaryEditor() {
           </p>
         </div>
 
-        <Button
-          onClick={handleGenerateAll}
-          disabled={isGenerating || isExporting}
-          variant="outline"
-          className="gap-2 border-primary/50 hover:bg-primary/10"
-          data-testid="button-generate-all"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {generationStatus || `${generationProgress}%`}
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-4 w-4" />
-              Generate All
-            </>
-          )}
-        </Button>
+        {canResume && sessionInfo ? (
+          <Button
+            onClick={handleResumeGeneration}
+            disabled={isGenerating || isExporting}
+            variant="outline"
+            className="gap-2 border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-500"
+            data-testid="button-resume"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {generationStatus || `${generationProgress}%`}
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4" />
+                Resume ({sessionInfo.completedImages || 0}/{sessionInfo.totalScenes} images)
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleGenerateAll}
+            disabled={isGenerating || isExporting}
+            variant="outline"
+            className="gap-2 border-primary/50 hover:bg-primary/10"
+            data-testid="button-generate-all"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {generationStatus || `${generationProgress}%`}
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4" />
+                Generate All
+              </>
+            )}
+          </Button>
+        )}
 
         <Button
           onClick={handleExport}
