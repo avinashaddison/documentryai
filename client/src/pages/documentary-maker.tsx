@@ -83,7 +83,7 @@ export default function DocumentaryMaker() {
   const [editingChapterValue, setEditingChapterValue] = useState("");
   
   const [config, setConfig] = useState({
-    narratorVoice: "male-deep",
+    narratorVoice: "narrator",
     storyLength: "medium",
     hookImageModel: "flux-1.1-pro",
     hookImageCount: 3,
@@ -369,11 +369,12 @@ export default function DocumentaryMaker() {
   const isGenerating = currentStep !== "idle" && currentStep !== "complete";
 
   const voiceOptions = [
-    { value: "male-deep", label: "Male - Deep & Dramatic" },
-    { value: "male-warm", label: "Male - Warm & Authoritative" },
-    { value: "female-soft", label: "Female - Soft & Mysterious" },
-    { value: "female-dramatic", label: "Female - Dramatic Narrator" },
-    { value: "neutral", label: "Neutral - Documentary Style" },
+    { value: "narrator", label: "Mars - Narrator Voice" },
+    { value: "male-deep", label: "Zeus - Deep & Trustworthy" },
+    { value: "male-warm", label: "Arcas - Natural & Smooth" },
+    { value: "female-soft", label: "Athena - Calm & Professional" },
+    { value: "female-dramatic", label: "Luna - Friendly & Engaging" },
+    { value: "neutral", label: "Asteria - Clear & Confident" },
   ];
 
   const chapterPresets = [
