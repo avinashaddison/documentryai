@@ -83,7 +83,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
                 <Film className="h-4 w-4 text-white" />
               </div>
-              <span className="font-bold text-lg tracking-tight">DocuAI</span>
+              <span className="font-bold text-lg tracking-tight">Petr AI</span>
             </div>
             <nav className="hidden md:flex items-center gap-6 text-sm text-gray-400">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -293,7 +293,7 @@ export default function Home() {
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Film className="h-4 w-4" />
-              <span>DocuAI</span>
+              <span>Petr AI</span>
             </div>
             <p>AI-Powered Documentary Generation</p>
           </div>

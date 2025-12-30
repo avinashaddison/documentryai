@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
             <Video className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-xl tracking-tight">AIVideo.sys</span>
+          <span className="font-display font-bold text-xl tracking-tight">Petr AI</span>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         
         {/* Header (Mobile only mainly, or universal search) */}
         <header className="h-16 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between px-6 z-10">
-          <div className="md:hidden font-display font-bold">AIVideo.sys</div>
+          <div className="md:hidden font-display font-bold">Petr AI</div>
           <div className="ml-auto flex items-center gap-4">
              <div className="h-8 w-8 rounded-full bg-secondary border border-white/10" />
           </div>
