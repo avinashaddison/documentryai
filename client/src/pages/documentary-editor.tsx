@@ -106,6 +106,7 @@ export default function DocumentaryEditor() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState<"idle" | "processing" | "complete" | "error">("idle");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -534,9 +535,7 @@ export default function DocumentaryEditor() {
       setExportStatus("complete");
 
       if (result.videoUrl) {
-        setTimeout(() => {
-          window.open(result.videoUrl, "_blank");
-        }, 500);
+        setExportedVideoUrl(result.videoUrl);
       }
     } catch (error: any) {
       console.error("Export error:", error);
@@ -1021,7 +1020,7 @@ export default function DocumentaryEditor() {
       </div>
 
       {/* Export Progress Overlay */}
-      {(isExporting || exportStatus === "error") && (
+      {(isExporting || exportStatus === "error" || exportStatus === "complete") && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-[#1a1f26] rounded-xl p-8 max-w-md w-full mx-4">
             <div className="text-center">
@@ -1046,18 +1045,50 @@ export default function DocumentaryEditor() {
                   <Film className="h-12 w-12 mx-auto text-green-500 mb-4" />
                   <h3 className="text-lg font-bold text-white mb-2">Export Complete!</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Your documentary video is ready.
+                    Your documentary video is ready to download.
                   </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button 
+                      onClick={() => {
+                        setExportStatus("idle");
+                        setExportedVideoUrl(null);
+                      }} 
+                      variant="outline"
+                    >
+                      Close
+                    </Button>
+                    {exportedVideoUrl && (
+                      <Button 
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = exportedVideoUrl;
+                          link.download = `documentary_${documentaryData?.projectId || 'video'}.mp4`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="bg-gradient-to-r from-primary to-purple-500"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Video
+                      </Button>
+                    )}
+                  </div>
                 </>
               ) : (
                 <>
                   <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
                   <h3 className="text-lg font-bold text-white mb-2">Exporting Documentary</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Assembling video with Ken Burns effects...
+                    Rendering video with Ken Burns effects and audio...
                   </p>
-                  <Progress value={exportProgress} className="h-2" />
-                  <p className="text-xs text-muted-foreground mt-2">{exportProgress}% complete</p>
+                  <p className="text-xs text-amber-400 mb-4">
+                    This may take several minutes depending on the number of scenes.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Processing video...
+                  </div>
                 </>
               )}
             </div>
