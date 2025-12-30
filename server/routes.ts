@@ -12,6 +12,7 @@ import {
   generateChapterOutline 
 } from "./documentary-generator";
 import { generateImage, generateChapterImages } from "./image-generator";
+import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -520,6 +521,71 @@ export async function registerRoutes(
 
       res.json({ results, successCount, totalScenes: scenes.length });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/voices", (_req, res) => {
+    res.json(getAvailableVoices());
+  });
+
+  app.post("/api/projects/:id/generate-voiceover", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { chapterNumber, narration, voice = "neutral" } = req.body;
+      
+      if (!narration) {
+        return res.status(400).json({ error: "Narration text is required" });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_voiceover`,
+        status: "started",
+        message: `Generating voiceover for Chapter ${chapterNumber}...`
+      });
+
+      const audioUrl = await generateChapterVoiceover(
+        projectId,
+        chapterNumber,
+        narration,
+        voice
+      );
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_voiceover`,
+        status: "completed",
+        message: `Voiceover generated for Chapter ${chapterNumber}`
+      });
+
+      res.json({ audioUrl, chapterNumber });
+    } catch (error: any) {
+      console.error("Voiceover generation error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/generate-scene-voiceover", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { chapterNumber, sceneNumber, narration, voice = "neutral" } = req.body;
+      
+      if (!narration) {
+        return res.status(400).json({ error: "Narration text is required" });
+      }
+
+      const audioUrl = await generateSceneVoiceover(
+        projectId,
+        chapterNumber,
+        sceneNumber,
+        narration,
+        voice
+      );
+
+      res.json({ audioUrl, chapterNumber, sceneNumber });
+    } catch (error: any) {
+      console.error("Scene voiceover generation error:", error);
       res.status(500).json({ error: error.message });
     }
   });
