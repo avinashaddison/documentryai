@@ -21,6 +21,8 @@ import {
   ZoomIn,
   ZoomOut,
   AlertCircle,
+  Wand2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +104,9 @@ export default function DocumentaryEditor() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState("");
   const previewRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -183,6 +188,75 @@ export default function DocumentaryEditor() {
       elapsed += allScenes[i].duration || 5;
     }
     setCurrentTime(elapsed);
+  };
+
+  const handleGenerateAll = async () => {
+    if (!documentaryData) return;
+    
+    setIsGenerating(true);
+    setGenerationProgress(0);
+    setGenerationStatus("Initializing autopilot...");
+
+    try {
+      const chaptersPayload = documentaryData.chapters.map(ch => ({
+        chapterNumber: ch.chapterNumber,
+        title: ch.title,
+        scenes: ch.scenes.map(sc => ({
+          sceneNumber: sc.sceneNumber,
+          imagePrompt: sc.imagePrompt,
+          narrationSegment: sc.narrationSegment,
+          duration: sc.duration || 5,
+          mood: "dramatic",
+          shotType: "wide",
+        })),
+      }));
+
+      setGenerationStatus("Generating images & audio...");
+      setGenerationProgress(10);
+
+      const response = await fetch(`/api/projects/${documentaryData.projectId}/autopilot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chapters: chaptersPayload,
+          voice: "neutral",
+          imageModel: "flux-1.1-pro",
+        }),
+      });
+
+      setGenerationProgress(70);
+
+      const result = await response.json();
+
+      if (result.success) {
+        setGenerationProgress(100);
+        setGenerationStatus("Complete!");
+        
+        setDocumentaryData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            generatedImages: { ...prev.generatedImages, ...result.generatedImages },
+          };
+        });
+
+        setTimeout(() => {
+          setIsGenerating(false);
+          setGenerationProgress(0);
+          setGenerationStatus("");
+        }, 1500);
+      } else {
+        throw new Error(result.errors?.join(", ") || "Generation failed");
+      }
+    } catch (error: any) {
+      console.error("Autopilot error:", error);
+      setGenerationStatus(`Error: ${error.message}`);
+      setTimeout(() => {
+        setIsGenerating(false);
+        setGenerationProgress(0);
+        setGenerationStatus("");
+      }, 3000);
+    }
   };
 
   const handleExport = async () => {
@@ -289,8 +363,28 @@ export default function DocumentaryEditor() {
         </div>
 
         <Button
+          onClick={handleGenerateAll}
+          disabled={isGenerating || isExporting}
+          variant="outline"
+          className="gap-2 border-primary/50 hover:bg-primary/10"
+          data-testid="button-generate-all"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {generationStatus || `${generationProgress}%`}
+            </>
+          ) : (
+            <>
+              <Wand2 className="h-4 w-4" />
+              Generate All
+            </>
+          )}
+        </Button>
+
+        <Button
           onClick={handleExport}
-          disabled={isExporting}
+          disabled={isExporting || isGenerating}
           className="gap-2 bg-gradient-to-r from-primary to-purple-500"
           data-testid="button-export"
         >

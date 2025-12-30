@@ -341,31 +341,37 @@ def assemble_chapter_video(
 ) -> bool:
     """
     Assemble a complete chapter video from scenes with Ken Burns effects.
+    Supports per-scene audio files.
     
     chapter_data format:
     {
         "chapter_number": 1,
         "scenes": [
-            {"image_path": "...", "duration": 5.0, "prompt": "..."},
+            {"image_path": "...", "audio_path": "...", "duration": 5.0, "ken_burns_effect": "zoom_in"},
             ...
         ],
-        "audio_path": "...",
-        "captions": [...]
+        "audio_path": "...",  # Optional: fallback chapter-level audio
     }
     """
     try:
         ensure_dirs()
         
-        image_paths = [s["image_path"] for s in chapter_data.get("scenes", [])]
-        durations = [s.get("duration", 5.0) for s in chapter_data.get("scenes", [])]
-        audio_path = chapter_data.get("audio_path")
-        captions = chapter_data.get("captions", [])
+        scenes = chapter_data.get("scenes", [])
+        chapter_audio_path = chapter_data.get("audio_path")
         
         effect_types = ["zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"]
         clips = []
+        audio_clips = []
+        current_time = 0.0
         
-        for i, (img_path, duration) in enumerate(zip(image_paths, durations)):
+        for i, scene in enumerate(scenes):
+            img_path = scene.get("image_path", "")
+            audio_path = scene.get("audio_path", "")
+            duration = scene.get("duration", 5.0)
+            effect = scene.get("ken_burns_effect", effect_types[i % len(effect_types)])
+            
             if not os.path.exists(img_path):
+                print(f"Warning: Image not found: {img_path}", file=sys.stderr)
                 continue
             
             img = Image.open(img_path)
@@ -373,20 +379,36 @@ def assemble_chapter_video(
             img_array = np.array(img)
             
             if ken_burns:
-                effect = effect_types[i % len(effect_types)]
                 clip = apply_ken_burns_effect(img_array, duration, 30, effect)
             else:
                 clip = ImageClip(img_array, duration=duration)
             
             clips.append(clip)
+            
+            if audio_path and os.path.exists(audio_path):
+                try:
+                    scene_audio = AudioFileClip(audio_path)
+                    scene_audio = scene_audio.with_start(current_time)
+                    if scene_audio.duration > duration:
+                        scene_audio = scene_audio.subclipped(0, duration)
+                    audio_clips.append(scene_audio)
+                except Exception as e:
+                    print(f"Warning: Could not load audio {audio_path}: {e}", file=sys.stderr)
+            
+            current_time += duration
         
         if not clips:
+            print("No valid image clips found", file=sys.stderr)
             return False
         
         video = concatenate_videoclips(clips, method="compose")
         
-        if audio_path and os.path.exists(audio_path):
-            audio = AudioFileClip(audio_path)
+        if audio_clips:
+            from moviepy import CompositeAudioClip
+            combined_audio = CompositeAudioClip(audio_clips)
+            video = video.with_audio(combined_audio)
+        elif chapter_audio_path and os.path.exists(chapter_audio_path):
+            audio = AudioFileClip(chapter_audio_path)
             if audio.duration != video.duration:
                 audio = audio.subclipped(0, min(audio.duration, video.duration))
             video = video.with_audio(audio)
@@ -404,6 +426,8 @@ def assemble_chapter_video(
         
     except Exception as e:
         print(f"Error assembling chapter video: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return False
 
 

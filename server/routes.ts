@@ -13,6 +13,7 @@ import {
 } from "./documentary-generator";
 import { generateImage, generateChapterImages } from "./image-generator";
 import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
+import { runAutopilotGeneration, generateSceneAssets } from "./autopilot-generator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -668,6 +669,76 @@ export async function registerRoutes(
       }
 
       res.json({ ...result, outputPath });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/autopilot", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { chapters, voice = "neutral", imageModel = "flux-1.1-pro" } = req.body;
+
+      if (!chapters || !Array.isArray(chapters) || chapters.length === 0) {
+        return res.status(400).json({ error: "Chapters array is required" });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: "autopilot",
+        status: "started",
+        message: "Starting autopilot generation: images → audio → video assembly..."
+      });
+
+      const result = await runAutopilotGeneration({
+        projectId,
+        chapters,
+        voice,
+        imageModel,
+      });
+
+      if (result.success) {
+        res.json({
+          success: true,
+          videoPath: result.videoPath,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+          errors: result.errors,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          errors: result.errors,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+        });
+      }
+    } catch (error: any) {
+      console.error("Autopilot error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/generate-scene-assets", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { chapterNumber, sceneNumber, imagePrompt, narration, voice = "neutral", imageModel = "flux-1.1-pro" } = req.body;
+
+      if (typeof chapterNumber !== "number" || typeof sceneNumber !== "number") {
+        return res.status(400).json({ error: "chapterNumber and sceneNumber are required" });
+      }
+
+      const result = await generateSceneAssets(
+        projectId,
+        chapterNumber,
+        sceneNumber,
+        imagePrompt,
+        narration,
+        voice,
+        imageModel
+      );
+
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
