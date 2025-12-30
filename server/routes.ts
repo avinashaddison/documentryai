@@ -534,7 +534,10 @@ export async function registerRoutes(
       const projectId = parseInt(req.params.id);
       const { chapterNumber, narration, voice = "neutral" } = req.body;
       
-      if (!narration) {
+      if (typeof chapterNumber !== "number" || chapterNumber < 1) {
+        return res.status(400).json({ error: "Valid chapterNumber (positive integer) is required" });
+      }
+      if (!narration || typeof narration !== "string") {
         return res.status(400).json({ error: "Narration text is required" });
       }
 
@@ -571,9 +574,22 @@ export async function registerRoutes(
       const projectId = parseInt(req.params.id);
       const { chapterNumber, sceneNumber, narration, voice = "neutral" } = req.body;
       
-      if (!narration) {
+      if (typeof chapterNumber !== "number" || chapterNumber < 1) {
+        return res.status(400).json({ error: "Valid chapterNumber (positive integer) is required" });
+      }
+      if (typeof sceneNumber !== "number" || sceneNumber < 1) {
+        return res.status(400).json({ error: "Valid sceneNumber (positive integer) is required" });
+      }
+      if (!narration || typeof narration !== "string") {
         return res.status(400).json({ error: "Narration text is required" });
       }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_scene_${sceneNumber}_voiceover`,
+        status: "started",
+        message: `Generating voiceover for Chapter ${chapterNumber}, Scene ${sceneNumber}...`
+      });
 
       const audioUrl = await generateSceneVoiceover(
         projectId,
@@ -582,6 +598,13 @@ export async function registerRoutes(
         narration,
         voice
       );
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_scene_${sceneNumber}_voiceover`,
+        status: "completed",
+        message: `Voiceover generated for Chapter ${chapterNumber}, Scene ${sceneNumber}`
+      });
 
       res.json({ audioUrl, chapterNumber, sceneNumber });
     } catch (error: any) {
