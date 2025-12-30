@@ -321,16 +321,17 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Project not found" });
       }
 
-      const { storyLength = "medium" } = req.body;
+      const { storyLength = "medium", totalChapters } = req.body;
+      const numChapters = totalChapters || project.chapterCount || 5;
       
       await storage.createGenerationLog({
         projectId,
         step: "framework",
         status: "started",
-        message: "Generating documentary framework with Claude..."
+        message: `Generating documentary framework with ${numChapters} chapters...`
       });
 
-      const framework = await generateDocumentaryFramework(project.title, storyLength);
+      const framework = await generateDocumentaryFramework(project.title, storyLength, numChapters);
       
       let storedFramework = await storage.getStoryFrameworkByProject(projectId);
       

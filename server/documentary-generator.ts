@@ -33,7 +33,8 @@ export interface ScenePrompt {
 
 export async function generateDocumentaryFramework(
   title: string,
-  storyLength: string = "medium"
+  storyLength: string = "medium",
+  customChapters?: number
 ): Promise<DocumentaryFramework> {
   const chapterCounts: Record<string, number> = {
     short: 3,
@@ -49,12 +50,17 @@ export async function generateDocumentaryFramework(
     feature: "60+ minutes",
   };
 
+  const numChapters = customChapters || chapterCounts[storyLength] || 5;
+  const estimatedDuration = customChapters 
+    ? `~${Math.round(numChapters * 3)} minutes` 
+    : (durations[storyLength] || durations.medium);
+
   const prompt = `You are a professional documentary scriptwriter specializing in compelling historical narratives similar to channels like "Grand Manors" or "Old Money Dynasty".
 
 Create a documentary framework for: "${title}"
 
-Target length: ${durations[storyLength] || durations.medium}
-Number of chapters: ${chapterCounts[storyLength] || 5}
+Target length: ${estimatedDuration}
+Number of chapters: ${numChapters}
 
 Generate a compelling documentary framework in JSON format:
 {
@@ -62,8 +68,8 @@ Generate a compelling documentary framework in JSON format:
   "genres": ["Documentary", "History", "one more relevant genre"],
   "premise": "A 2-3 sentence premise that captures the essence of this documentary",
   "openingHook": "A 150-word dramatic opening hook that would grab viewers in the first 30 seconds. Use vivid imagery, suspense, and hint at revelations to come. Write in present tense, documentary narration style.",
-  "totalChapters": ${chapterCounts[storyLength] || 5},
-  "estimatedDuration": "${durations[storyLength] || durations.medium}"
+  "totalChapters": ${numChapters},
+  "estimatedDuration": "${estimatedDuration}"
 }
 
 Write in the style of premium documentary narration - dramatic, evocative, revealing dark secrets and untold stories.
@@ -89,8 +95,8 @@ Respond ONLY with valid JSON.`;
     } else {
       result = JSON.parse(content.text);
     }
-    // Force correct chapter count based on storyLength to prevent AI variance
-    result.totalChapters = chapterCounts[storyLength] || 5;
+    result.totalChapters = numChapters;
+    result.estimatedDuration = estimatedDuration;
     return result;
   } catch (e) {
     throw new Error("Failed to parse documentary framework");

@@ -99,13 +99,13 @@ export default function DocumentaryMaker() {
   };
 
   const createProjectMutation = useMutation({
-    mutationFn: async (projectTitle: string) => {
+    mutationFn: async ({ projectTitle, chapterCount }: { projectTitle: string; chapterCount: number }) => {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: projectTitle,
-          chapterCount: storyLengthToChapters[config.storyLength] || 5,
+          chapterCount,
           voiceEnabled: true,
           imageModel: config.hookImageModel,
           scriptModel: "claude-sonnet-4-5",
@@ -117,11 +117,11 @@ export default function DocumentaryMaker() {
   });
 
   const generateFrameworkMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, numChapters }: { id: number; numChapters: number }) => {
       const res = await fetch(`/api/projects/${id}/documentary/generate-framework`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyLength: config.storyLength }),
+        body: JSON.stringify({ storyLength: config.storyLength, totalChapters: numChapters }),
       });
       if (!res.ok) throw new Error("Failed to generate framework");
       return res.json();
@@ -170,19 +170,21 @@ export default function DocumentaryMaker() {
     setCurrentStep("framework");
     setProgress(5);
     
-    const project = await createProjectMutation.mutateAsync(title);
+    const project = await createProjectMutation.mutateAsync({ 
+      projectTitle: title, 
+      chapterCount: totalChapters 
+    });
     const id = project.id;
     setProjectId(id);
     
-    const result = await generateFrameworkMutation.mutateAsync(id);
+    const result = await generateFrameworkMutation.mutateAsync({ id, numChapters: totalChapters });
     setFramework(result.storedFramework);
-    setTotalChapters(result.totalChapters);
     setProgress(15);
     
     setCurrentStep("outline");
     const outlineResult = await generateOutlineMutation.mutateAsync({ 
       id, 
-      numChapters: result.totalChapters 
+      numChapters: totalChapters 
     });
     setChapters(outlineResult.chapters);
     setProgress(25);
@@ -291,6 +293,13 @@ export default function DocumentaryMaker() {
     { value: "female-soft", label: "Female - Soft & Mysterious" },
     { value: "female-dramatic", label: "Female - Dramatic Narrator" },
     { value: "neutral", label: "Neutral - Documentary Style" },
+  ];
+
+  const chapterPresets = [
+    { count: 3, label: "Short", duration: "5-8 min", color: "from-blue-500 to-cyan-500" },
+    { count: 5, label: "Medium", duration: "15-20 min", color: "from-purple-500 to-pink-500" },
+    { count: 8, label: "Long", duration: "30-45 min", color: "from-orange-500 to-red-500" },
+    { count: 12, label: "Feature", duration: "60+ min", color: "from-green-500 to-emerald-500" },
   ];
 
   const storyLengthOptions = [
@@ -438,25 +447,113 @@ export default function DocumentaryMaker() {
             </Button>
           </div>
           
-          {/* Story Length Selector */}
-          <div className="flex items-center gap-4">
-            <Label className="text-sm text-muted-foreground">Length:</Label>
-            <Select
-              value={config.storyLength}
-              onValueChange={(value) => setConfig({ ...config, storyLength: value })}
-              disabled={isGenerating}
-            >
-              <SelectTrigger className="w-64 bg-background/50 border-border" data-testid="select-story-length">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {storyLengthOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Chapter Count Selector with Visual Boxes */}
+          <div className="space-y-3">
+            <Label className="text-sm text-muted-foreground flex items-center gap-2">
+              <Hash className="h-4 w-4" />
+              Number of Chapters
+            </Label>
+            
+            {/* Preset Chapter Boxes */}
+            <div className="grid grid-cols-4 gap-3">
+              {chapterPresets.map((preset) => {
+                const isSelected = totalChapters === preset.count;
+                return (
+                  <button
+                    key={preset.count}
+                    onClick={() => {
+                      setTotalChapters(preset.count);
+                      const lengthMap: Record<number, string> = { 3: "short", 5: "medium", 8: "long", 12: "feature" };
+                      setConfig({ ...config, storyLength: lengthMap[preset.count] || "medium" });
+                    }}
+                    disabled={isGenerating}
+                    className={cn(
+                      "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                      "border-2",
+                      isSelected 
+                        ? "border-primary bg-primary/10 scale-[1.02] shadow-lg shadow-primary/20" 
+                        : "border-border bg-card hover:border-primary/50 hover:bg-card/80",
+                      isGenerating && "opacity-50 cursor-not-allowed"
+                    )}
+                    data-testid={`button-chapter-${preset.count}`}
+                  >
+                    {/* Gradient background effect on hover/select */}
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300",
+                      preset.color,
+                      isSelected ? "opacity-10" : "group-hover:opacity-5"
+                    )} />
+                    
+                    {/* Animated border glow */}
+                    {isSelected && (
+                      <div className="absolute inset-0 rounded-xl animate-pulse">
+                        <div className={cn(
+                          "absolute inset-0 rounded-xl bg-gradient-to-br blur-sm opacity-30",
+                          preset.color
+                        )} />
+                      </div>
+                    )}
+                    
+                    {/* Content */}
+                    <div className="relative z-10 text-center space-y-1">
+                      <div className={cn(
+                        "text-3xl font-bold transition-all duration-300",
+                        isSelected ? "text-white scale-110" : "text-white/70 group-hover:text-white"
+                      )}>
+                        {preset.count}
+                      </div>
+                      <div className={cn(
+                        "text-xs font-medium uppercase tracking-wider transition-colors",
+                        isSelected ? "text-primary" : "text-muted-foreground group-hover:text-white/70"
+                      )}>
+                        {preset.label}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {preset.duration}
+                      </div>
+                    </div>
+                    
+                    {/* Selection indicator */}
+                    {isSelected && (
+                      <div className="absolute top-2 right-2">
+                        <div className={cn(
+                          "w-5 h-5 rounded-full bg-gradient-to-br flex items-center justify-center",
+                          preset.color
+                        )}>
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Custom Chapter Input */}
+            <div className="flex items-center gap-3 pt-2">
+              <span className="text-xs text-muted-foreground">Or enter custom:</span>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={totalChapters}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    const clamped = Math.min(20, Math.max(1, val));
+                    setTotalChapters(clamped);
+                    const lengthMap: Record<number, string> = { 3: "short", 5: "medium", 8: "long", 12: "feature" };
+                    setConfig({ ...config, storyLength: lengthMap[clamped] || "custom" });
+                  }}
+                  disabled={isGenerating}
+                  className="w-20 h-9 text-center bg-background/50 border-border text-white font-bold"
+                  data-testid="input-custom-chapters"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">
+                chapters (~{Math.round(totalChapters * 3)} min)
+              </span>
+            </div>
           </div>
         </div>
 
