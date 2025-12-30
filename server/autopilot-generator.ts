@@ -370,13 +370,13 @@ function buildProjectData(
       chapter_number: ch.chapterNumber,
       title: ch.title,
       audio_path: audio[`ch${ch.chapterNumber}_sc1`]?.replace(/^\//, "") || 
-        `generated_assets/audio/project_${projectId}/ch${ch.chapterNumber}_sc1.mp3`,
+        `generated_assets/audio/project_${projectId}/ch${ch.chapterNumber}_sc1.wav`,
       scenes: ch.scenes.map(sc => {
         const key = `ch${ch.chapterNumber}_sc${sc.sceneNumber}`;
         const imagePath = images[key]?.replace(/^\//, "") || 
           `generated_assets/images/${projectId}_ch${ch.chapterNumber}_sc${sc.sceneNumber}.webp`;
         const audioPath = audio[key]?.replace(/^\//, "") || 
-          `generated_assets/audio/project_${projectId}/ch${ch.chapterNumber}_sc${sc.sceneNumber}.mp3`;
+          `generated_assets/audio/project_${projectId}/ch${ch.chapterNumber}_sc${sc.sceneNumber}.wav`;
         
         return {
           scene_number: sc.sceneNumber,

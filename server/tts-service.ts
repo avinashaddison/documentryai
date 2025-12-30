@@ -39,8 +39,8 @@ export async function generateSpeech(
       { text },
       {
         model,
-        encoding: "mp3",
-        container: "mp3",
+        encoding: "linear16",
+        sample_rate: 24000,
       }
     );
 
@@ -83,11 +83,11 @@ export async function generateChapterVoiceover(
   voice: string = "neutral"
 ): Promise<string> {
   const outputDir = path.join(process.cwd(), "generated_assets", "audio", `project_${projectId}`);
-  const outputPath = path.join(outputDir, `chapter_${chapterNumber}.mp3`);
+  const outputPath = path.join(outputDir, `chapter_${chapterNumber}.wav`);
 
   await generateSpeech(narration, outputPath, { voice });
 
-  return `/generated_assets/audio/project_${projectId}/chapter_${chapterNumber}.mp3`;
+  return `/generated_assets/audio/project_${projectId}/chapter_${chapterNumber}.wav`;
 }
 
 export async function generateSceneVoiceover(
@@ -98,11 +98,11 @@ export async function generateSceneVoiceover(
   voice: string = "neutral"
 ): Promise<string> {
   const outputDir = path.join(process.cwd(), "generated_assets", "audio", `project_${projectId}`);
-  const outputPath = path.join(outputDir, `ch${chapterNumber}_sc${sceneNumber}.mp3`);
+  const outputPath = path.join(outputDir, `ch${chapterNumber}_sc${sceneNumber}.wav`);
 
   await generateSpeech(narration, outputPath, { voice });
 
-  return `/generated_assets/audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.mp3`;
+  return `/generated_assets/audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.wav`;
 }
 
 export function getAvailableVoices(): Array<{ id: string; name: string; description: string }> {
