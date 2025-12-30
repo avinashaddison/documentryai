@@ -753,18 +753,6 @@ export default function DocumentaryEditor() {
                       transform: !isPlaying ? "scale(1)" : undefined,
                     }}
                   />
-                  {/* Narration Caption */}
-                  <div className={cn(
-                    "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent",
-                    isFullscreen ? "p-8" : "p-4"
-                  )}>
-                    <p className={cn(
-                      "text-white text-center leading-relaxed max-w-3xl mx-auto",
-                      isFullscreen ? "text-xl md:text-2xl" : "text-sm md:text-base"
-                    )}>
-                      {currentScene.narrationSegment}
-                    </p>
-                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
