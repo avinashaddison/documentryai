@@ -268,8 +268,15 @@ export default function DocumentaryMaker() {
   };
 
   const handleContinueToEditor = () => {
-    if (projectId) {
-      navigate(`/editor/${projectId}`);
+    if (projectId && framework) {
+      const editorData = {
+        projectId,
+        title: framework.generatedTitle || title,
+        chapters: generatedChapters,
+        generatedImages,
+      };
+      sessionStorage.setItem("documentaryEditorData", JSON.stringify(editorData));
+      navigate("/documentary-editor");
     }
   };
 

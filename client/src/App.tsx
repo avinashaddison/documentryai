@@ -10,6 +10,7 @@ import ProjectEditor from "@/pages/project-editor";
 import VideoEditorPage from "@/pages/video-editor-page";
 import FilmMaker from "@/pages/film-maker";
 import DocumentaryMaker from "@/pages/documentary-maker";
+import DocumentaryEditor from "@/pages/documentary-editor";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/" component={DocumentaryMaker} />
       <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
+      <Route path="/documentary-editor" component={DocumentaryEditor} />
       <Route path="/film-maker" component={FilmMaker} />
       <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
