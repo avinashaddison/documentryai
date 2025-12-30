@@ -83,10 +83,15 @@ Respond ONLY with valid JSON.`;
 
   try {
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    let result;
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      result = JSON.parse(jsonMatch[0]);
+    } else {
+      result = JSON.parse(content.text);
     }
-    return JSON.parse(content.text);
+    // Force correct chapter count based on storyLength to prevent AI variance
+    result.totalChapters = chapterCounts[storyLength] || 5;
+    return result;
   } catch (e) {
     throw new Error("Failed to parse documentary framework");
   }

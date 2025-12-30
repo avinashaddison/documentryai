@@ -79,6 +79,8 @@ export default function DocumentaryMaker() {
   const [currentStep, setCurrentStep] = useState<GenerationStep>("idle");
   const [progress, setProgress] = useState(0);
   const [totalChapters, setTotalChapters] = useState(5);
+  const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
+  const [editingChapterValue, setEditingChapterValue] = useState("");
   
   const [config, setConfig] = useState({
     narratorVoice: "male-deep",
@@ -519,22 +521,39 @@ export default function DocumentaryMaker() {
                 </Badge>
               </div>
               
-              {generatedChapters.length === 0 && !isGenerating && (
-                <Button
-                  onClick={handleGenerateAllChapters}
-                  className="gap-2"
-                  data-testid="button-generate-chapters"
-                >
-                  <Play className="h-4 w-4" />
-                  Generate All Chapters
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {generatedChapters.length === 0 && !isGenerating && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newChapters = [...chapters, `Chapter ${chapters.length + 1}: New Chapter`];
+                        setChapters(newChapters);
+                      }}
+                      className="gap-1"
+                      data-testid="button-add-chapter"
+                    >
+                      + Add
+                    </Button>
+                    <Button
+                      onClick={handleGenerateAllChapters}
+                      className="gap-2"
+                      data-testid="button-generate-chapters"
+                    >
+                      <Play className="h-4 w-4" />
+                      Generate All Chapters
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
               {chapters.map((chapter, i) => {
                 const isGenerated = generatedChapters.some(c => c.chapterNumber === i + 1);
                 const generatedChapter = generatedChapters.find(c => c.chapterNumber === i + 1);
+                const isEditing = editingChapterIndex === i;
                 
                 return (
                   <div 
@@ -546,26 +565,85 @@ export default function DocumentaryMaker() {
                         : "bg-background/50 border-border"
                     )}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                           isGenerated ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
                         )}>
                           {isGenerated ? <Check className="h-3 w-3" /> : i + 1}
                         </div>
-                        <span className="text-white font-medium">{chapter}</span>
+                        {isEditing ? (
+                          <Input
+                            value={editingChapterValue}
+                            onChange={(e) => setEditingChapterValue(e.target.value)}
+                            onBlur={() => {
+                              const newChapters = [...chapters];
+                              newChapters[i] = editingChapterValue || chapter;
+                              setChapters(newChapters);
+                              setEditingChapterIndex(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const newChapters = [...chapters];
+                                newChapters[i] = editingChapterValue || chapter;
+                                setChapters(newChapters);
+                                setEditingChapterIndex(null);
+                              } else if (e.key === "Escape") {
+                                setEditingChapterIndex(null);
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1 h-8 text-sm"
+                            data-testid={`input-chapter-${i}`}
+                          />
+                        ) : (
+                          <span 
+                            className="text-white font-medium cursor-pointer hover:text-primary transition-colors flex-1"
+                            onClick={() => {
+                              if (!isGenerated && !isGenerating) {
+                                setEditingChapterIndex(i);
+                                setEditingChapterValue(chapter);
+                              }
+                            }}
+                            data-testid={`text-chapter-${i}`}
+                          >
+                            {chapter}
+                          </span>
+                        )}
                       </div>
-                      {generatedChapter && (
-                        <span className="text-xs text-muted-foreground">
-                          {generatedChapter.scenes.length} scenes • {generatedChapter.narration.split(/\s+/).length} words
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {generatedChapter && (
+                          <span className="text-xs text-muted-foreground">
+                            {generatedChapter.scenes.length} scenes
+                          </span>
+                        )}
+                        {!isGenerated && !isGenerating && chapters.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
+                            onClick={() => {
+                              const newChapters = chapters.filter((_, idx) => idx !== i);
+                              setChapters(newChapters);
+                            }}
+                            data-testid={`button-remove-chapter-${i}`}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+            
+            {generatedChapters.length === 0 && !isGenerating && (
+              <p className="text-xs text-muted-foreground text-center">
+                Click on a chapter name to edit it, or add/remove chapters before generating.
+              </p>
+            )}
           </div>
         )}
 
