@@ -763,14 +763,6 @@ export default function DocumentaryEditor() {
                 </div>
               )}
 
-              {/* Scene Info Overlay */}
-              <div className={cn(
-                "absolute bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2",
-                isFullscreen ? "top-6 left-6" : "top-4 left-4"
-              )}>
-                <p className="text-xs text-white/80">{currentScene?.chapterTitle}</p>
-                <p className="text-sm font-semibold text-white">Scene {currentScene?.sceneNumber}</p>
-              </div>
 
               {/* Fullscreen Button */}
               <Button
