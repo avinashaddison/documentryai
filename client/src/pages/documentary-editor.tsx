@@ -115,6 +115,7 @@ export default function DocumentaryEditor() {
   const previewRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const styleTag = document.createElement("style");
@@ -215,7 +216,23 @@ export default function DocumentaryEditor() {
   }, [isPlaying, allScenes.length, totalDuration, currentSceneIndex]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newIsPlaying = !isPlaying;
+    setIsPlaying(newIsPlaying);
+    
+    if (newIsPlaying) {
+      // Start audio playback for current scene
+      const scene = allScenes[currentSceneIndex];
+      if (scene?.audioUrl && audioRef.current) {
+        audioRef.current.src = scene.audioUrl;
+        audioRef.current.volume = isMuted ? 0 : volume / 100;
+        audioRef.current.play().catch(console.error);
+      }
+    } else {
+      // Pause audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    }
   };
 
   const handleSceneClick = (index: number) => {
@@ -225,7 +242,46 @@ export default function DocumentaryEditor() {
       elapsed += allScenes[i].duration || 5;
     }
     setCurrentTime(elapsed);
+    
+    // If playing, switch to new scene's audio
+    if (isPlaying) {
+      const scene = allScenes[index];
+      if (scene?.audioUrl && audioRef.current) {
+        audioRef.current.src = scene.audioUrl;
+        audioRef.current.volume = isMuted ? 0 : volume / 100;
+        audioRef.current.play().catch(console.error);
+      }
+    }
   };
+  
+  // Handle audio when scene changes during playback
+  useEffect(() => {
+    if (isPlaying && allScenes[currentSceneIndex]?.audioUrl) {
+      const scene = allScenes[currentSceneIndex];
+      if (audioRef.current && scene.audioUrl) {
+        // Only change source if it's different
+        if (audioRef.current.src !== window.location.origin + scene.audioUrl) {
+          audioRef.current.src = scene.audioUrl;
+          audioRef.current.volume = isMuted ? 0 : volume / 100;
+          audioRef.current.play().catch(console.error);
+        }
+      }
+    }
+  }, [currentSceneIndex, isPlaying]);
+  
+  // Update audio volume when volume/mute changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume / 100;
+    }
+  }, [volume, isMuted]);
+  
+  // Stop audio when playback stops
+  useEffect(() => {
+    if (!isPlaying && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
 
   const handleResumeGeneration = async () => {
     if (!documentaryData) return;
@@ -427,6 +483,9 @@ export default function DocumentaryEditor() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0e13] text-white" data-testid="documentary-editor">
+      {/* Hidden audio element for playback */}
+      <audio ref={audioRef} preload="auto" />
+      
       {/* Header */}
       <div className="h-14 bg-[#1a1f26] border-b border-[#2a3441] flex items-center px-4 gap-4">
         <Button
