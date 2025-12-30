@@ -24,6 +24,8 @@ import {
   Wand2,
   Sparkles,
   RotateCcw,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -112,7 +114,9 @@ export default function DocumentaryEditor() {
   const [canResume, setCanResume] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [imageStyle, setImageStyle] = useState<"color" | "black-and-white">("color");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -340,6 +344,33 @@ export default function DocumentaryEditor() {
       audioRef.current.pause();
     }
   }, [isPlaying]);
+
+  // Fullscreen toggle
+  const toggleFullscreen = async () => {
+    if (!videoContainerRef.current) return;
+    
+    try {
+      if (!document.fullscreenElement) {
+        await videoContainerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const handleResumeGeneration = async () => {
     if (!documentaryData) return;
@@ -688,10 +719,19 @@ export default function DocumentaryEditor() {
         {/* Main Preview Area */}
         <div className="flex-1 flex flex-col">
           {/* Preview */}
-          <div className="flex-1 bg-[#0a0e13] flex items-center justify-center p-4" ref={previewRef}>
+          <div 
+            ref={videoContainerRef}
+            className={cn(
+              "flex-1 bg-[#0a0e13] flex items-center justify-center p-4",
+              isFullscreen && "p-0"
+            )}
+          >
             <div
-              className="relative bg-black rounded-lg overflow-hidden shadow-2xl"
-              style={{
+              className={cn(
+                "relative bg-black rounded-lg overflow-hidden shadow-2xl",
+                isFullscreen && "rounded-none w-full h-full max-w-none"
+              )}
+              style={isFullscreen ? {} : {
                 aspectRatio: "16/9",
                 maxHeight: "100%",
                 width: "min(100%, 960px)",
@@ -714,8 +754,14 @@ export default function DocumentaryEditor() {
                     }}
                   />
                   {/* Narration Caption */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
-                    <p className="text-white text-center text-sm md:text-base leading-relaxed max-w-3xl mx-auto">
+                  <div className={cn(
+                    "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent",
+                    isFullscreen ? "p-8" : "p-4"
+                  )}>
+                    <p className={cn(
+                      "text-white text-center leading-relaxed max-w-3xl mx-auto",
+                      isFullscreen ? "text-xl md:text-2xl" : "text-sm md:text-base"
+                    )}>
                       {currentScene.narrationSegment}
                     </p>
                   </div>
@@ -730,15 +776,65 @@ export default function DocumentaryEditor() {
               )}
 
               {/* Scene Info Overlay */}
-              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className={cn(
+                "absolute bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2",
+                isFullscreen ? "top-6 left-6" : "top-4 left-4"
+              )}>
                 <p className="text-xs text-white/80">{currentScene?.chapterTitle}</p>
                 <p className="text-sm font-semibold text-white">Scene {currentScene?.sceneNumber}</p>
               </div>
 
-              {/* Ken Burns Effect Badge */}
-              {currentScene?.kenBurnsEffect && (
-                <div className="absolute top-4 right-4 bg-primary/80 backdrop-blur-sm rounded-lg px-2 py-1">
-                  <p className="text-xs text-white font-mono">{currentScene.kenBurnsEffect}</p>
+              {/* Fullscreen Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                className={cn(
+                  "absolute bg-black/60 backdrop-blur-sm hover:bg-black/80",
+                  isFullscreen ? "top-6 right-6 h-10 w-10" : "top-4 right-4 h-8 w-8"
+                )}
+                data-testid="button-fullscreen"
+              >
+                {isFullscreen ? (
+                  <Minimize className="h-4 w-4 text-white" />
+                ) : (
+                  <Maximize className="h-4 w-4 text-white" />
+                )}
+              </Button>
+
+              {/* Fullscreen Playback Controls */}
+              {isFullscreen && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-4 px-6">
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleSceneClick(Math.max(0, currentSceneIndex - 1))}
+                      className="h-12 w-12 bg-black/40 hover:bg-black/60"
+                    >
+                      <SkipBack className="h-6 w-6 text-white" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      onClick={handlePlayPause}
+                      className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90"
+                    >
+                      {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleSceneClick(Math.min(allScenes.length - 1, currentSceneIndex + 1))}
+                      className="h-12 w-12 bg-black/40 hover:bg-black/60"
+                    >
+                      <SkipForward className="h-6 w-6 text-white" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 text-white/80 text-sm">
+                    <span>{formatTime(currentTime)}</span>
+                    <Progress value={(currentTime / totalDuration) * 100} className="flex-1 h-2" />
+                    <span>{formatTime(totalDuration)}</span>
+                  </div>
                 </div>
               )}
             </div>
