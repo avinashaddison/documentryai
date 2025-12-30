@@ -168,26 +168,30 @@ export async function generateChapterOutline(
   openingHook: string,
   totalChapters: number
 ): Promise<string[]> {
+  const chapterExamples = totalChapters === 1 
+    ? '"Chapter 1: [Complete title for the single chapter]"'
+    : `"Chapter 1: [Title that hooks the viewer]"${totalChapters > 1 ? ',\n    "Chapter 2: [Title that deepens the mystery]"' : ''}${totalChapters > 2 ? ',\n    ...' : ''}`;
+    
   const prompt = `Create a chapter outline for a documentary titled: "${documentaryTitle}"
 
 Premise: ${premise}
 
 Opening Hook: ${openingHook}
 
-Generate ${totalChapters} chapter titles that tell a compelling narrative arc. Each chapter should build on the previous, with revelations, twists, and dramatic progression.
+IMPORTANT: Generate EXACTLY ${totalChapters} chapter title${totalChapters === 1 ? '' : 's'}. No more, no less.
 
 Respond in JSON format:
 {
   "chapters": [
-    "Chapter 1: [Title that hooks the viewer]",
-    "Chapter 2: [Title that deepens the mystery]",
-    ...
+    ${chapterExamples}
   ]
 }
 
+${totalChapters === 1 ? 'This is a single-chapter documentary. Create one comprehensive chapter title.' : 'Each chapter should build on the previous, with revelations, twists, and dramatic progression.'}
+
 The titles should be evocative and hint at the content without spoiling it. Use the style of premium documentary series.
 
-Respond ONLY with valid JSON.`;
+Respond ONLY with valid JSON with exactly ${totalChapters} chapter${totalChapters === 1 ? '' : 's'}.`;
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-5",
@@ -203,7 +207,18 @@ Respond ONLY with valid JSON.`;
   try {
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     const data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.text);
-    return data.chapters || [];
+    let chapters = data.chapters || [];
+    
+    // Force exact chapter count - trim if too many, pad if too few
+    if (chapters.length > totalChapters) {
+      chapters = chapters.slice(0, totalChapters);
+    } else if (chapters.length < totalChapters) {
+      for (let i = chapters.length; i < totalChapters; i++) {
+        chapters.push(`Chapter ${i + 1}: The Untold Story`);
+      }
+    }
+    
+    return chapters;
   } catch (e) {
     throw new Error("Failed to parse chapter outline");
   }
