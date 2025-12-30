@@ -58,57 +58,57 @@
 }
 
 :root {
-  /* Cinematic Dark Theme with Neon Accents */
-  --background: 230 25% 5%;
-  --foreground: 210 40% 98%;
+  /* Cinematic Dark Theme with Orange Neon Accents */
+  --background: 20 15% 5%;
+  --foreground: 30 20% 98%;
 
-  --card: 230 25% 8%;
-  --card-foreground: 210 40% 98%;
+  --card: 20 15% 8%;
+  --card-foreground: 30 20% 98%;
 
-  --popover: 230 25% 10%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 20 15% 10%;
+  --popover-foreground: 30 20% 98%;
 
-  --primary: 180 100% 50%; /* Cyan Neon Glow */
-  --primary-foreground: 230 25% 5%;
+  --primary: 25 100% 55%; /* Orange Neon Glow */
+  --primary-foreground: 20 15% 5%;
 
-  --secondary: 230 20% 15%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 20 15% 15%;
+  --secondary-foreground: 30 20% 98%;
 
-  --muted: 230 20% 15%;
-  --muted-foreground: 220 15% 55%;
+  --muted: 20 15% 15%;
+  --muted-foreground: 25 15% 55%;
 
-  --accent: 270 100% 60%; /* Purple Accent */
-  --accent-foreground: 210 40% 98%;
+  --accent: 35 100% 50%; /* Gold/Amber Accent */
+  --accent-foreground: 30 20% 98%;
 
   --destructive: 0 70% 45%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 30 20% 98%;
 
-  --border: 230 20% 18%;
-  --input: 230 20% 12%;
-  --ring: 180 100% 50%;
+  --border: 20 15% 18%;
+  --input: 20 15% 12%;
+  --ring: 25 100% 55%;
 
   --radius: 0.75rem;
   
-  --sidebar: 230 25% 8%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 180 100% 50%;
-  --sidebar-primary-foreground: 230 25% 5%;
-  --sidebar-accent: 230 20% 15%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 230 20% 18%;
-  --sidebar-ring: 180 100% 50%;
+  --sidebar: 20 15% 8%;
+  --sidebar-foreground: 30 20% 98%;
+  --sidebar-primary: 25 100% 55%;
+  --sidebar-primary-foreground: 20 15% 5%;
+  --sidebar-accent: 20 15% 15%;
+  --sidebar-accent-foreground: 30 20% 98%;
+  --sidebar-border: 20 15% 18%;
+  --sidebar-ring: 25 100% 55%;
 
-  --chart-1: 180 100% 50%;
-  --chart-2: 270 100% 65%;
-  --chart-3: 45 100% 60%;
-  --chart-4: 320 80% 60%;
-  --chart-5: 140 70% 50%;
+  --chart-1: 25 100% 55%;
+  --chart-2: 35 100% 50%;
+  --chart-3: 15 100% 60%;
+  --chart-4: 45 90% 55%;
+  --chart-5: 5 80% 55%;
   
   /* Neon glow colors */
-  --neon-cyan: 180 100% 50%;
-  --neon-purple: 270 100% 60%;
-  --neon-pink: 320 100% 60%;
-  --neon-gold: 45 100% 55%;
+  --neon-orange: 25 100% 55%;
+  --neon-gold: 40 100% 50%;
+  --neon-amber: 35 100% 55%;
+  --neon-red: 10 100% 50%;
 }
 
 @layer base {
@@ -130,74 +130,74 @@
   }
   
   .glass-panel-glow {
-    @apply bg-card/70 backdrop-blur-2xl border border-cyan-500/20 shadow-2xl;
+    @apply bg-card/70 backdrop-blur-2xl border border-orange-500/20 shadow-2xl;
     box-shadow: 
-      0 0 20px -5px hsl(var(--neon-cyan) / 0.15),
+      0 0 20px -5px hsl(var(--neon-orange) / 0.15),
       0 25px 50px -12px rgb(0 0 0 / 0.5),
-      inset 0 1px 0 0 hsl(var(--neon-cyan) / 0.1);
+      inset 0 1px 0 0 hsl(var(--neon-orange) / 0.1);
   }
   
   .neon-text {
     text-shadow: 
-      0 0 10px hsl(var(--neon-cyan) / 0.8),
-      0 0 20px hsl(var(--neon-cyan) / 0.5),
-      0 0 40px hsl(var(--neon-cyan) / 0.3);
-  }
-  
-  .neon-text-purple {
-    text-shadow: 
-      0 0 10px hsl(var(--neon-purple) / 0.8),
-      0 0 20px hsl(var(--neon-purple) / 0.5),
-      0 0 40px hsl(var(--neon-purple) / 0.3);
+      0 0 10px hsl(var(--neon-orange) / 0.8),
+      0 0 20px hsl(var(--neon-orange) / 0.5),
+      0 0 40px hsl(var(--neon-orange) / 0.3);
   }
   
   .neon-text-gold {
     text-shadow: 
       0 0 10px hsl(var(--neon-gold) / 0.8),
-      0 0 20px hsl(var(--neon-gold) / 0.5);
+      0 0 20px hsl(var(--neon-gold) / 0.5),
+      0 0 40px hsl(var(--neon-gold) / 0.3);
+  }
+  
+  .neon-text-amber {
+    text-shadow: 
+      0 0 10px hsl(var(--neon-amber) / 0.8),
+      0 0 20px hsl(var(--neon-amber) / 0.5);
   }
   
   .neon-border {
-    border-color: hsl(var(--neon-cyan) / 0.5);
+    border-color: hsl(var(--neon-orange) / 0.5);
     box-shadow: 
-      0 0 15px -3px hsl(var(--neon-cyan) / 0.4),
-      inset 0 0 15px -3px hsl(var(--neon-cyan) / 0.1);
+      0 0 15px -3px hsl(var(--neon-orange) / 0.4),
+      inset 0 0 15px -3px hsl(var(--neon-orange) / 0.1);
   }
   
-  .neon-border-purple {
-    border-color: hsl(var(--neon-purple) / 0.5);
+  .neon-border-gold {
+    border-color: hsl(var(--neon-gold) / 0.5);
     box-shadow: 
-      0 0 15px -3px hsl(var(--neon-purple) / 0.4),
-      inset 0 0 15px -3px hsl(var(--neon-purple) / 0.1);
+      0 0 15px -3px hsl(var(--neon-gold) / 0.4),
+      inset 0 0 15px -3px hsl(var(--neon-gold) / 0.1);
   }
   
   .neon-glow {
     box-shadow: 
-      0 0 20px -5px hsl(var(--neon-cyan) / 0.6),
-      0 0 40px -10px hsl(var(--neon-cyan) / 0.4);
+      0 0 20px -5px hsl(var(--neon-orange) / 0.6),
+      0 0 40px -10px hsl(var(--neon-orange) / 0.4);
   }
   
-  .neon-glow-purple {
+  .neon-glow-gold {
     box-shadow: 
-      0 0 20px -5px hsl(var(--neon-purple) / 0.6),
-      0 0 40px -10px hsl(var(--neon-purple) / 0.4);
+      0 0 20px -5px hsl(var(--neon-gold) / 0.6),
+      0 0 40px -10px hsl(var(--neon-gold) / 0.4);
   }
   
   .neon-button {
     @apply relative overflow-hidden transition-all duration-300;
-    background: linear-gradient(135deg, hsl(var(--neon-cyan) / 0.2), hsl(var(--neon-purple) / 0.2));
-    border: 1px solid hsl(var(--neon-cyan) / 0.5);
+    background: linear-gradient(135deg, hsl(var(--neon-orange) / 0.2), hsl(var(--neon-gold) / 0.2));
+    border: 1px solid hsl(var(--neon-orange) / 0.5);
     box-shadow: 
-      0 0 20px -5px hsl(var(--neon-cyan) / 0.5),
-      inset 0 1px 0 0 hsl(var(--neon-cyan) / 0.2);
+      0 0 20px -5px hsl(var(--neon-orange) / 0.5),
+      inset 0 1px 0 0 hsl(var(--neon-orange) / 0.2);
   }
   
   .neon-button:hover {
     box-shadow: 
-      0 0 30px -5px hsl(var(--neon-cyan) / 0.7),
-      0 0 60px -10px hsl(var(--neon-cyan) / 0.4),
-      inset 0 1px 0 0 hsl(var(--neon-cyan) / 0.3);
-    border-color: hsl(var(--neon-cyan) / 0.8);
+      0 0 30px -5px hsl(var(--neon-orange) / 0.7),
+      0 0 60px -10px hsl(var(--neon-orange) / 0.4),
+      inset 0 1px 0 0 hsl(var(--neon-orange) / 0.3);
+    border-color: hsl(var(--neon-orange) / 0.8);
   }
   
   .neon-input {
@@ -207,15 +207,15 @@
   }
   
   .neon-input:focus {
-    border-color: hsl(var(--neon-cyan) / 0.6);
+    border-color: hsl(var(--neon-orange) / 0.6);
     box-shadow: 
-      0 0 20px -5px hsl(var(--neon-cyan) / 0.4),
-      inset 0 0 10px -5px hsl(var(--neon-cyan) / 0.1);
+      0 0 20px -5px hsl(var(--neon-orange) / 0.4),
+      inset 0 0 10px -5px hsl(var(--neon-orange) / 0.1);
   }
   
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--neon-cyan)), hsl(var(--neon-purple)));
+    background-image: linear-gradient(135deg, hsl(var(--neon-orange)), hsl(var(--neon-gold)));
   }
   
   .gradient-border {
@@ -228,7 +228,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, hsl(var(--neon-cyan) / 0.5), hsl(var(--neon-purple) / 0.5));
+    background: linear-gradient(135deg, hsl(var(--neon-orange) / 0.5), hsl(var(--neon-gold) / 0.5));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -254,7 +254,7 @@
     background: linear-gradient(
       to bottom,
       transparent 50%,
-      hsl(var(--neon-cyan) / 0.02) 50%
+      hsl(var(--neon-orange) / 0.02) 50%
     );
     background-size: 100% 4px;
     pointer-events: none;
@@ -266,10 +266,10 @@
   
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 20px -5px hsl(var(--neon-cyan) / 0.5);
+      box-shadow: 0 0 20px -5px hsl(var(--neon-orange) / 0.5);
     }
     50% {
-      box-shadow: 0 0 40px -5px hsl(var(--neon-cyan) / 0.8);
+      box-shadow: 0 0 40px -5px hsl(var(--neon-orange) / 0.8);
     }
   }
   
@@ -277,7 +277,7 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      hsl(var(--neon-cyan) / 0.1) 50%,
+      hsl(var(--neon-orange) / 0.1) 50%,
       transparent 100%
     );
     background-size: 200% 100%;

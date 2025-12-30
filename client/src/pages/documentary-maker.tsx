@@ -445,23 +445,23 @@ export default function DocumentaryMaker() {
   return (
     <div className="min-h-screen bg-background text-white relative overflow-hidden">
       {/* Animated background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-500/10 via-purple-500/5 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-500/10 via-amber-500/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       
-      <header className="relative z-10 border-b border-cyan-500/10 backdrop-blur-xl bg-card/30">
+      <header className="relative z-10 border-b border-orange-500/10 backdrop-blur-xl bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-muted-foreground hover:text-cyan-400 transition-colors"
+              className="flex items-center gap-2 text-muted-foreground hover:text-orange-400 transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="text-sm">Back</span>
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center neon-glow">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center neon-glow">
                 <Film className="h-5 w-5 text-white" />
               </div>
               <span className="font-bold text-xl tracking-tight gradient-text">AIVideo.sys</span>
@@ -475,11 +475,11 @@ export default function DocumentaryMaker() {
         
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono uppercase tracking-wider neon-border">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono uppercase tracking-wider neon-border">
             <Sparkles className="h-3 w-3" />
             AI Documentary Studio
           </div>
-          <h1 className="text-5xl font-display font-bold neon-text text-cyan-400">
+          <h1 className="text-5xl font-display font-bold neon-text text-orange-400">
             Create Your Documentary
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
@@ -501,7 +501,7 @@ export default function DocumentaryMaker() {
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300",
                       isComplete ? "bg-gradient-to-br from-green-400 to-emerald-600 text-white neon-glow" :
-                      isActive ? "bg-gradient-to-br from-cyan-400 to-purple-600 text-white animate-pulse-glow" :
+                      isActive ? "bg-gradient-to-br from-orange-400 to-amber-600 text-white animate-pulse-glow" :
                       "bg-card border border-border text-muted-foreground"
                     )}>
                       {isComplete ? <Check className="h-5 w-5" /> : <step.icon className="h-5 w-5" />}
@@ -518,11 +518,11 @@ export default function DocumentaryMaker() {
             </div>
             <div className="relative h-3 bg-card rounded-full overflow-hidden border border-border">
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500 animate-shimmer"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-full transition-all duration-500 animate-shimmer"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-sm text-cyan-300 mt-3 text-center font-medium">
+            <p className="text-sm text-orange-300 mt-3 text-center font-medium">
               {currentStep === "framework" && "Generating documentary framework with Claude..."}
               {currentStep === "outline" && "Creating chapter outline..."}
               {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
@@ -536,7 +536,7 @@ export default function DocumentaryMaker() {
 
         {/* Title Input Section */}
         <div className="glass-panel-glow rounded-2xl p-6 space-y-5">
-          <Label className="text-sm font-medium text-cyan-300 flex items-center gap-2">
+          <Label className="text-sm font-medium text-orange-300 flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             Documentary Topic
           </Label>
@@ -545,14 +545,14 @@ export default function DocumentaryMaker() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., The Dark Secrets of the Woolworth Mansion..."
-              className="flex-1 h-14 bg-card/50 border-cyan-500/30 text-white placeholder:text-muted-foreground rounded-xl focus:border-cyan-400 focus:ring-cyan-400/20 text-lg neon-input"
+              className="flex-1 h-14 bg-card/50 border-orange-500/30 text-white placeholder:text-muted-foreground rounded-xl focus:border-orange-400 focus:ring-orange-400/20 text-lg neon-input"
               disabled={isGenerating}
               data-testid="input-title"
             />
             <Button
               onClick={handleGenerateFramework}
               disabled={!title.trim() || isGenerating}
-              className="h-14 px-8 gap-2 rounded-xl text-base font-semibold neon-button bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 border-0"
+              className="h-14 px-8 gap-2 rounded-xl text-base font-semibold neon-button bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 border-0"
               data-testid="button-generate-framework"
             >
               {isGenerating && currentStep !== "chapters" ? (
@@ -571,7 +571,7 @@ export default function DocumentaryMaker() {
           
           {/* Chapter Count Selector with Visual Boxes */}
           <div className="space-y-4">
-            <Label className="text-sm text-purple-300 flex items-center gap-2">
+            <Label className="text-sm text-amber-300 flex items-center gap-2">
               <Hash className="h-4 w-4" />
               Number of Chapters
             </Label>
@@ -593,8 +593,8 @@ export default function DocumentaryMaker() {
                       "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
                       "border",
                       isSelected 
-                        ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow" 
-                        : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
+                        ? "border-orange-400/60 bg-orange-500/10 scale-[1.02] neon-glow" 
+                        : "border-border bg-card/50 hover:border-orange-500/40 hover:bg-card/80",
                       isGenerating && "opacity-50 cursor-not-allowed"
                     )}
                     data-testid={`button-chapter-${preset.count}`}
@@ -620,13 +620,13 @@ export default function DocumentaryMaker() {
                     <div className="relative z-10 text-center space-y-1">
                       <div className={cn(
                         "text-4xl font-bold transition-all duration-300",
-                        isSelected ? "text-cyan-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
+                        isSelected ? "text-orange-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
                       )}>
                         {preset.count}
                       </div>
                       <div className={cn(
                         "text-xs font-semibold uppercase tracking-wider transition-colors",
-                        isSelected ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
+                        isSelected ? "text-orange-300" : "text-muted-foreground group-hover:text-white/70"
                       )}>
                         {preset.label}
                       </div>
@@ -668,11 +668,11 @@ export default function DocumentaryMaker() {
                     setConfig({ ...config, storyLength: lengthMap[clamped] || "custom" });
                   }}
                   disabled={isGenerating}
-                  className="w-20 h-9 text-center bg-card/50 border-cyan-500/30 text-white font-bold rounded-lg"
+                  className="w-20 h-9 text-center bg-card/50 border-orange-500/30 text-white font-bold rounded-lg"
                   data-testid="input-custom-chapters"
                 />
               </div>
-              <span className="text-xs text-cyan-300">
+              <span className="text-xs text-orange-300">
                 chapters (~{Math.round(totalChapters * 3)} min)
               </span>
             </div>
@@ -683,7 +683,7 @@ export default function DocumentaryMaker() {
         {framework && (
           <div className="glass-panel-glow rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center neon-glow-purple">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center neon-glow-gold">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <h2 className="text-xl font-display font-bold gradient-text">Generated Framework</h2>
@@ -693,17 +693,17 @@ export default function DocumentaryMaker() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-purple-300">Title</Label>
-              <h3 className="text-3xl font-display font-bold text-white neon-text-purple" data-testid="text-generated-title">
+              <Label className="text-xs uppercase tracking-wider text-amber-300">Title</Label>
+              <h3 className="text-3xl font-display font-bold text-white neon-text-gold" data-testid="text-generated-title">
                 {framework.generatedTitle}
               </h3>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-purple-300">Genres</Label>
+              <Label className="text-xs uppercase tracking-wider text-amber-300">Genres</Label>
               <div className="flex gap-2" data-testid="container-genres">
                 {framework.genres?.map((genre, i) => (
-                  <Badge key={i} className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1">
+                  <Badge key={i} className="bg-orange-500/20 text-orange-300 border border-orange-500/30 px-3 py-1">
                     {genre}
                   </Badge>
                 ))}
