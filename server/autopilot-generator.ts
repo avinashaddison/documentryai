@@ -280,19 +280,6 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
   } catch (error: any) {
     result.errors.push(`Autopilot error: ${error.message}`);
     
-    // Try to update session with error
-    try {
-      const session = await storage.getActiveGenerationSession(projectId);
-      if (session) {
-        await storage.updateGenerationSession(session.id, {
-          status: "failed",
-          errorMessage: error.message,
-        });
-      }
-    } catch (e) {
-      console.error("Failed to update session error:", e);
-    }
-    
     await storage.createGenerationLog({
       projectId,
       step: "autopilot",
@@ -322,20 +309,14 @@ export async function getGenerationStatus(projectId: number): Promise<{
   assets: GeneratedAsset[];
   canResume: boolean;
 }> {
-  // Get latest session (any status) to show completed/failed state
-  const latestSession = await storage.getLatestGenerationSession(projectId);
-  // Also check for active in-progress session
-  const activeSession = await storage.getActiveGenerationSession(projectId);
+  const session = await storage.getActiveGenerationSession(projectId);
   const assets = await storage.getGeneratedAssetsByProject(projectId);
   
-  // Use active session if exists, otherwise use latest
-  const session = activeSession || latestSession;
-  
   return {
-    hasActiveSession: !!activeSession,
+    hasActiveSession: !!session,
     session,
     assets,
-    canResume: !!activeSession && activeSession.status === "in_progress",
+    canResume: !!session && session.status === "in_progress",
   };
 }
 

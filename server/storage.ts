@@ -246,16 +246,6 @@ export class DatabaseStorage implements IStorage {
   async deleteGenerationSession(id: number): Promise<void> {
     await db.delete(generationSessions).where(eq(generationSessions.id, id));
   }
-
-  async getLatestGenerationSession(projectId: number): Promise<GenerationSession | undefined> {
-    const result = await db
-      .select()
-      .from(generationSessions)
-      .where(eq(generationSessions.projectId, projectId))
-      .orderBy(desc(generationSessions.createdAt))
-      .limit(1);
-    return result[0];
-  }
 }
 
 export const storage = new DatabaseStorage();

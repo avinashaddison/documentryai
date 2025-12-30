@@ -11,13 +11,11 @@ import VideoEditorPage from "@/pages/video-editor-page";
 import FilmMaker from "@/pages/film-maker";
 import DocumentaryMaker from "@/pages/documentary-maker";
 import DocumentaryEditor from "@/pages/documentary-editor";
-import Autopilot from "@/pages/autopilot";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/autopilot" component={Autopilot} />
       <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
       <Route path="/editor" component={DocumentaryEditor} />
