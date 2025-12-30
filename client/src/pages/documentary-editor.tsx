@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -255,17 +254,15 @@ export default function DocumentaryEditor() {
 
   if (!documentaryData) {
     return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center h-full gap-4">
-          <Film className="h-16 w-16 text-muted-foreground" />
-          <h2 className="text-xl font-bold text-white">No Documentary Data</h2>
-          <p className="text-muted-foreground">Generate a documentary first to use the editor.</p>
-          <Button onClick={() => setLocation("/")} className="gap-2">
-            <ChevronLeft className="h-4 w-4" />
-            Go to Documentary Maker
-          </Button>
-        </div>
-      </AppShell>
+      <div className="min-h-screen bg-[#0a0d14] text-white flex flex-col items-center justify-center gap-4">
+        <Film className="h-16 w-16 text-gray-600" />
+        <h2 className="text-xl font-bold">No Documentary Data</h2>
+        <p className="text-gray-400">Generate a documentary first to use the editor.</p>
+        <Button onClick={() => setLocation("/create")} className="gap-2 bg-gradient-to-r from-primary to-purple-500">
+          <ChevronLeft className="h-4 w-4" />
+          Go to Documentary Maker
+        </Button>
+      </div>
     );
   }
 

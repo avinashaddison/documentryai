@@ -15,14 +15,15 @@ import DocumentaryEditor from "@/pages/documentary-editor";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={DocumentaryMaker} />
+      <Route path="/" component={Home} />
       <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
+      <Route path="/editor" component={DocumentaryEditor} />
       <Route path="/documentary-editor" component={DocumentaryEditor} />
       <Route path="/film-maker" component={FilmMaker} />
       <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
-      <Route path="/editor/:id" component={ProjectEditor} />
+      <Route path="/project/:id" component={ProjectEditor} />
       <Route path="/video-editor" component={VideoEditorPage} />
       <Route component={NotFound} />
     </Switch>

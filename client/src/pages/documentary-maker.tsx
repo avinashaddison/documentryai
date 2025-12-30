@@ -1,11 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,10 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { 
   Sparkles, 
   Loader2, 
-  Settings, 
   Mic, 
   Clock, 
   Image as ImageIcon,
@@ -28,10 +26,13 @@ import {
   Film,
   BookOpen,
   ChevronRight,
+  ChevronLeft,
   Play,
   FileText,
   Volume2,
-  Layers
+  Layers,
+  ArrowRight,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -312,9 +313,40 @@ export default function DocumentaryMaker() {
     { id: "assembly", label: "Assembly", icon: Film },
   ];
 
+  useEffect(() => {
+    const savedTopic = sessionStorage.getItem("documentaryTopic");
+    if (savedTopic) {
+      setTitle(savedTopic);
+      sessionStorage.removeItem("documentaryTopic");
+    }
+  }, []);
+
   return (
-    <AppShell>
-      <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
+    <div className="min-h-screen bg-[#0a0d14] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
+      
+      <header className="relative z-10 border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <button 
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="text-sm">Back</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
+                <Film className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-bold text-lg tracking-tight">DocuAI</span>
+            </div>
+            <div className="w-16" />
+          </div>
+        </div>
+      </header>
+
+      <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-3">
@@ -717,6 +749,6 @@ export default function DocumentaryMaker() {
         )}
 
       </div>
-    </AppShell>
+    </div>
   );
 }
