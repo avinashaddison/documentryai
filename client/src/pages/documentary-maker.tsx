@@ -522,43 +522,6 @@ export default function DocumentaryMaker() {
               {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
             </p>
             
-            {/* Real-time Logs Panel */}
-            {generationLogs.length > 0 && (
-              <div className="mt-4 border-t border-border pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Generation Logs</h4>
-                  <button
-                    onClick={() => setShowLogs(!showLogs)}
-                    className="text-xs text-primary hover:underline"
-                    data-testid="button-toggle-logs"
-                  >
-                    {showLogs ? "Hide" : "Show"}
-                  </button>
-                </div>
-                {showLogs && (
-                  <div className="bg-black/50 rounded-lg p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1" data-testid="logs-panel">
-                    {generationLogs.map((log) => (
-                      <div key={log.id} className="flex gap-2">
-                        <span className="text-muted-foreground shrink-0">
-                          {new Date(log.createdAt).toLocaleTimeString()}
-                        </span>
-                        <span className={cn(
-                          "shrink-0 px-1 rounded",
-                          log.status === "started" ? "bg-blue-500/20 text-blue-400" :
-                          log.status === "completed" ? "bg-green-500/20 text-green-400" :
-                          log.status === "failed" ? "bg-red-500/20 text-red-400" :
-                          "bg-yellow-500/20 text-yellow-400"
-                        )}>
-                          [{log.status}]
-                        </span>
-                        <span className="text-white break-all">{log.message}</span>
-                      </div>
-                    ))}
-                    <div ref={logsEndRef} />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
 
@@ -1090,6 +1053,56 @@ export default function DocumentaryMaker() {
         )}
 
       </div>
+
+      {/* Fixed Footer Logs Panel */}
+      {currentStep !== "idle" && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0d14] border-t border-white/10">
+          <div className="max-w-7xl mx-auto">
+            <div 
+              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-white/5"
+              onClick={() => setShowLogs(!showLogs)}
+              data-testid="button-toggle-logs"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs font-medium text-white uppercase tracking-wide">
+                  Generation Logs ({generationLogs.length})
+                </span>
+              </div>
+              <ChevronRight className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                showLogs ? "rotate-90" : "-rotate-90"
+              )} />
+            </div>
+            {showLogs && (
+              <div className="bg-black/80 px-4 pb-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1" data-testid="logs-panel">
+                {generationLogs.length === 0 ? (
+                  <p className="text-muted-foreground py-2">Waiting for logs...</p>
+                ) : (
+                  generationLogs.map((log) => (
+                    <div key={log.id} className="flex gap-2 py-0.5">
+                      <span className="text-muted-foreground shrink-0">
+                        {new Date(log.createdAt).toLocaleTimeString()}
+                      </span>
+                      <span className={cn(
+                        "shrink-0 px-1 rounded text-[10px]",
+                        log.status === "started" ? "bg-blue-500/20 text-blue-400" :
+                        log.status === "completed" ? "bg-green-500/20 text-green-400" :
+                        log.status === "failed" ? "bg-red-500/20 text-red-400" :
+                        "bg-yellow-500/20 text-yellow-400"
+                      )}>
+                        {log.status}
+                      </span>
+                      <span className="text-white/80 break-all">{log.message}</span>
+                    </div>
+                  ))
+                )}
+                <div ref={logsEndRef} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
