@@ -9,10 +9,10 @@ export interface TTSOptions {
 }
 
 const VOICE_MODELS: Record<string, string> = {
-  "male-deep": "aura-2-arcas-en",
-  "male-warm": "aura-2-perseus-en", 
-  "female-soft": "aura-2-thalia-en",
-  "female-dramatic": "aura-2-luna-en",
+  "male-deep": "aura-arcas-en",
+  "male-warm": "aura-perseus-en", 
+  "female-soft": "aura-athena-en",
+  "female-dramatic": "aura-luna-en",
   "neutral": "aura-asteria-en",
 };
 
