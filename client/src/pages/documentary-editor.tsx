@@ -116,6 +116,8 @@ export default function DocumentaryEditor() {
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const nextAudioRef = useRef<HTMLAudioElement | null>(null);
+  const preloadedAudios = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   useEffect(() => {
     const styleTag = document.createElement("style");
@@ -215,20 +217,97 @@ export default function DocumentaryEditor() {
     };
   }, [isPlaying, allScenes.length, totalDuration, currentSceneIndex]);
 
+  // Preload all audio files when data is loaded
+  useEffect(() => {
+    if (!documentaryData?.generatedAudio) return;
+    
+    // Preload all audio files
+    Object.entries(documentaryData.generatedAudio).forEach(([key, url]) => {
+      if (url && !preloadedAudios.current.has(key)) {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = url;
+        preloadedAudios.current.set(key, audio);
+      }
+    });
+  }, [documentaryData?.generatedAudio]);
+
+  // Get preloaded audio for a scene
+  const getAudioForScene = (scene: typeof allScenes[0]) => {
+    if (!scene?.audioUrl) return null;
+    const key = `ch${scene.chapterIndex + 1}_sc${scene.sceneNumber}`;
+    return preloadedAudios.current.get(key) || null;
+  };
+
+  const playSceneAudio = (sceneIndex: number) => {
+    const scene = allScenes[sceneIndex];
+    if (!scene) return;
+    
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+    }
+    
+    // Get preloaded audio or create new one
+    const audioKey = `ch${scene.chapterIndex + 1}_sc${scene.sceneNumber}`;
+    let audio = preloadedAudios.current.get(audioKey);
+    
+    if (!audio && scene.audioUrl) {
+      audio = new Audio(scene.audioUrl);
+      preloadedAudios.current.set(audioKey, audio);
+    }
+    
+    if (audio) {
+      audioRef.current = audio;
+      audio.currentTime = 0;
+      audio.volume = isMuted ? 0 : volume / 100;
+      
+      // When audio ends, go to next scene immediately
+      audio.onended = () => {
+        if (sceneIndex < allScenes.length - 1) {
+          const nextIndex = sceneIndex + 1;
+          setCurrentSceneIndex(nextIndex);
+          
+          // Update current time
+          let elapsed = 0;
+          for (let i = 0; i <= sceneIndex; i++) {
+            elapsed += allScenes[i].duration || 5;
+          }
+          setCurrentTime(elapsed);
+          
+          // Play next scene audio immediately
+          playSceneAudio(nextIndex);
+        } else {
+          // End of documentary
+          setIsPlaying(false);
+          setCurrentTime(0);
+          setCurrentSceneIndex(0);
+        }
+      };
+      
+      audio.play().catch(console.error);
+      
+      // Preload next audio
+      if (sceneIndex < allScenes.length - 1) {
+        const nextScene = allScenes[sceneIndex + 1];
+        const nextKey = `ch${nextScene.chapterIndex + 1}_sc${nextScene.sceneNumber}`;
+        if (nextScene.audioUrl && !preloadedAudios.current.has(nextKey)) {
+          const nextAudio = new Audio(nextScene.audioUrl);
+          nextAudio.preload = 'auto';
+          preloadedAudios.current.set(nextKey, nextAudio);
+        }
+      }
+    }
+  };
+
   const handlePlayPause = () => {
     const newIsPlaying = !isPlaying;
     setIsPlaying(newIsPlaying);
     
     if (newIsPlaying) {
-      // Start audio playback for current scene
-      const scene = allScenes[currentSceneIndex];
-      if (scene?.audioUrl && audioRef.current) {
-        audioRef.current.src = scene.audioUrl;
-        audioRef.current.volume = isMuted ? 0 : volume / 100;
-        audioRef.current.play().catch(console.error);
-      }
+      playSceneAudio(currentSceneIndex);
     } else {
-      // Pause audio
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -243,31 +322,10 @@ export default function DocumentaryEditor() {
     }
     setCurrentTime(elapsed);
     
-    // If playing, switch to new scene's audio
     if (isPlaying) {
-      const scene = allScenes[index];
-      if (scene?.audioUrl && audioRef.current) {
-        audioRef.current.src = scene.audioUrl;
-        audioRef.current.volume = isMuted ? 0 : volume / 100;
-        audioRef.current.play().catch(console.error);
-      }
+      playSceneAudio(index);
     }
   };
-  
-  // Handle audio when scene changes during playback
-  useEffect(() => {
-    if (isPlaying && allScenes[currentSceneIndex]?.audioUrl) {
-      const scene = allScenes[currentSceneIndex];
-      if (audioRef.current && scene.audioUrl) {
-        // Only change source if it's different
-        if (audioRef.current.src !== window.location.origin + scene.audioUrl) {
-          audioRef.current.src = scene.audioUrl;
-          audioRef.current.volume = isMuted ? 0 : volume / 100;
-          audioRef.current.play().catch(console.error);
-        }
-      }
-    }
-  }, [currentSceneIndex, isPlaying]);
   
   // Update audio volume when volume/mute changes
   useEffect(() => {
