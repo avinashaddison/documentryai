@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { ensureDbConnected } from "./db";
 import { insertProjectSchema } from "@shared/schema";
@@ -655,26 +656,66 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No chapters found" });
       }
 
+      const assets = await storage.getGeneratedAssetsByProject(projectId);
+      
+      const imageAssets: Record<string, string> = {};
+      const audioAssets: Record<string, string> = {};
+      
+      for (const asset of assets) {
+        const key = `ch${asset.chapterNumber}_sc${asset.sceneNumber}`;
+        if (asset.assetType === "image") {
+          imageAssets[key] = asset.assetUrl;
+        } else if (asset.assetType === "audio") {
+          audioAssets[key] = asset.assetUrl;
+        }
+      }
+
+      if (Object.keys(imageAssets).length === 0) {
+        return res.status(400).json({ error: "No generated images found. Please generate images first." });
+      }
+
       await storage.createGenerationLog({
         projectId,
         step: "video_assembly",
         status: "started",
-        message: `Assembling video from ${chapters.length} chapters...`
+        message: `Assembling video from ${chapters.length} chapters with ${Object.keys(imageAssets).length} images...`
       });
 
       const outputPath = `generated_videos/project_${projectId}_documentary.mp4`;
       
+      const getKenBurnsEffect = (n: number) => {
+        const effects = ["zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"];
+        return effects[(n - 1) % effects.length];
+      };
+      
       const chaptersData = chapters.map(ch => {
         const content = JSON.parse(ch.content || "{}");
+        const scenes = content.scenes || [];
+        
         return {
           chapter_number: ch.chapterNumber,
-          scenes: content.scenes?.map((s: any) => ({
-            image_path: `generated_assets/images/${projectId}_ch${ch.chapterNumber}_sc${s.sceneNumber}.webp`,
-            duration: s.duration || 5,
-            prompt: s.imagePrompt,
-          })) || [],
+          title: content.title || `Chapter ${ch.chapterNumber}`,
+          audio_path: audioAssets[`ch${ch.chapterNumber}_sc1`]?.replace(/^\//, "") || undefined,
+          scenes: scenes.map((s: any) => {
+            const key = `ch${ch.chapterNumber}_sc${s.sceneNumber}`;
+            const imagePath = imageAssets[key]?.replace(/^\//, "");
+            const audioPath = audioAssets[key]?.replace(/^\//, "");
+            
+            return {
+              scene_number: s.sceneNumber,
+              image_path: imagePath ? path.join(process.cwd(), imagePath) : undefined,
+              audio_path: audioPath ? path.join(process.cwd(), audioPath) : undefined,
+              duration: s.duration || 5,
+              narration: s.narrationSegment,
+              ken_burns_effect: getKenBurnsEffect(s.sceneNumber),
+            };
+          }).filter((s: any) => s.image_path),
         };
-      });
+      }).filter(ch => ch.scenes.length > 0);
+
+      if (chaptersData.length === 0) {
+        return res.status(400).json({ error: "No valid scenes with images found." });
+      }
 
       const result = await videoService.assembleFullVideo(
         {
@@ -691,10 +732,23 @@ export async function registerRoutes(
           status: "completed",
           message: `Video assembled: ${outputPath}`
         });
+        
+        res.json({ 
+          success: true, 
+          videoUrl: `/${outputPath}`,
+          outputPath 
+        });
+      } else {
+        await storage.createGenerationLog({
+          projectId,
+          step: "video_assembly",
+          status: "failed",
+          message: result.error || "Video assembly failed"
+        });
+        res.status(500).json({ error: result.error || "Video assembly failed" });
       }
-
-      res.json({ ...result, outputPath });
     } catch (error: any) {
+      console.error("Video assembly error:", error);
       res.status(500).json({ error: error.message });
     }
   });
