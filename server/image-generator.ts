@@ -66,6 +66,8 @@ export interface ImageGenerationResult {
   prompt?: string;
 }
 
+export type ImageStyle = "color" | "black-and-white";
+
 export async function generateImage(
   prompt: string,
   options: {
@@ -74,6 +76,7 @@ export async function generateImage(
     outputFormat?: "webp" | "png" | "jpg";
     projectId?: number;
     sceneId?: string;
+    imageStyle?: ImageStyle;
   } = {}
 ): Promise<ImageGenerationResult> {
   const {
@@ -82,6 +85,7 @@ export async function generateImage(
     outputFormat = "webp",
     projectId,
     sceneId,
+    imageStyle = "color",
   } = options;
 
   if (!projectId || !sceneId) {
@@ -109,7 +113,11 @@ export async function generateImage(
     let output: any;
     let modelId: `${string}/${string}`;
 
-    const cinematicPrompt = `${prompt}, cinematic photography, professional lighting, 8K ultra HD quality, dramatic atmosphere, documentary style, photorealistic`;
+    const styleModifier = imageStyle === "black-and-white" 
+      ? "vintage black and white photograph, monochrome, film grain, high contrast, historical archive photo, 1920s-1940s photography style, sepia tones, aged photograph aesthetic, realistic documentary photograph"
+      : "cinematic photography, professional lighting, 8K ultra HD quality, dramatic atmosphere, documentary style, photorealistic";
+    
+    const cinematicPrompt = `${prompt}, ${styleModifier}`;
 
     if (model === "flux-1.1-pro") {
       modelId = "black-forest-labs/flux-1.1-pro" as const;
@@ -239,11 +247,12 @@ export async function generateSceneImages(
   projectId: number,
   options: {
     model?: "flux-1.1-pro" | "flux-schnell" | "ideogram-v3-turbo";
+    imageStyle?: ImageStyle;
     onProgress?: (completed: number, total: number, scene: any) => void;
   } = {}
 ): Promise<Array<ImageGenerationResult & { sceneNumber: number; chapterNumber: number }>> {
   const results: Array<ImageGenerationResult & { sceneNumber: number; chapterNumber: number }> = [];
-  const { model = "flux-1.1-pro", onProgress } = options;
+  const { model = "flux-1.1-pro", imageStyle = "color", onProgress } = options;
 
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i];
@@ -254,6 +263,7 @@ export async function generateSceneImages(
       aspectRatio: "16:9",
       projectId,
       sceneId,
+      imageStyle,
     });
 
     results.push({
@@ -285,6 +295,7 @@ export async function generateChapterImages(
   projectId: number,
   options: {
     model?: "flux-1.1-pro" | "flux-schnell" | "ideogram-v3-turbo";
+    imageStyle?: ImageStyle;
     onProgress?: (completed: number, total: number, scene: any) => void;
   } = {}
 ): Promise<Array<ImageGenerationResult & { sceneNumber: number }>> {

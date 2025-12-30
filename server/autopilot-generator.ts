@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { generateChapterImages } from "./image-generator";
+import { generateChapterImages, type ImageStyle } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
 import { spawn } from "child_process";
 import path from "path";
@@ -22,6 +22,7 @@ interface AutopilotOptions {
   }>;
   voice?: string;
   imageModel?: string;
+  imageStyle?: ImageStyle;
   onProgress?: (step: string, progress: number, message: string) => void;
 }
 
@@ -35,7 +36,7 @@ interface AutopilotResult {
 }
 
 export async function runAutopilotGeneration(options: AutopilotOptions): Promise<AutopilotResult> {
-  const { projectId, chapters, voice = "neutral", imageModel = "flux-1.1-pro", onProgress } = options;
+  const { projectId, chapters, voice = "neutral", imageModel = "flux-1.1-pro", imageStyle = "color", onProgress } = options;
   
   const result: AutopilotResult = {
     success: false,
@@ -72,6 +73,7 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
         completedAudio: 0,
         voice,
         imageModel,
+        imageStyle,
         chaptersData: JSON.stringify(chapters),
       });
     }
@@ -129,7 +131,7 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
                 }],
               },
               projectId,
-              { model: imageModel as any }
+              { model: imageModel as any, imageStyle }
             );
 
             if (imageResults[0]?.success && imageResults[0]?.imageUrl) {
@@ -355,6 +357,7 @@ export async function resumeGeneration(projectId: number): Promise<AutopilotResu
     chapters,
     voice: session.voice || "neutral",
     imageModel: session.imageModel || "flux-1.1-pro",
+    imageStyle: (session.imageStyle as ImageStyle) || "color",
   });
 }
 

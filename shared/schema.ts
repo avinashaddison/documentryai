@@ -120,6 +120,7 @@ export const generationSessions = pgTable("generation_sessions", {
   completedAudio: integer("completed_audio").notNull().default(0),
   voice: text("voice").default("neutral"),
   imageModel: text("image_model").default("flux-1.1-pro"),
+  imageStyle: text("image_style").default("color"), // "color" | "black-and-white"
   errorMessage: text("error_message"),
   chaptersData: text("chapters_data"), // JSON string of full chapters payload
   createdAt: timestamp("created_at").notNull().defaultNow(),

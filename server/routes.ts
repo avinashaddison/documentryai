@@ -677,7 +677,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/autopilot", async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const { chapters, voice = "neutral", imageModel = "flux-1.1-pro" } = req.body;
+      const { chapters, voice = "neutral", imageModel = "flux-1.1-pro", imageStyle = "color" } = req.body;
 
       if (!chapters || !Array.isArray(chapters) || chapters.length === 0) {
         return res.status(400).json({ error: "Chapters array is required" });
@@ -687,7 +687,7 @@ export async function registerRoutes(
         projectId,
         step: "autopilot",
         status: "started",
-        message: "Starting autopilot generation: images → audio → video assembly..."
+        message: `Starting autopilot generation (${imageStyle} images): images → audio → video assembly...`
       });
 
       const result = await runAutopilotGeneration({
@@ -695,6 +695,7 @@ export async function registerRoutes(
         chapters,
         voice,
         imageModel,
+        imageStyle,
       });
 
       if (result.success) {

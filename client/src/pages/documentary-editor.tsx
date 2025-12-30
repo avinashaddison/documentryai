@@ -110,6 +110,7 @@ export default function DocumentaryEditor() {
   const [generationStatus, setGenerationStatus] = useState("");
   const [canResume, setCanResume] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [imageStyle, setImageStyle] = useState<"color" | "black-and-white">("color");
   const previewRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -301,6 +302,7 @@ export default function DocumentaryEditor() {
           chapters: chaptersPayload,
           voice: "neutral",
           imageModel: "flux-1.1-pro",
+          imageStyle,
         }),
       });
 
@@ -441,6 +443,17 @@ export default function DocumentaryEditor() {
             {documentaryData.chapters.length} chapters • {allScenes.length} scenes • {formatTime(totalDuration)}
           </p>
         </div>
+
+        <select
+          value={imageStyle}
+          onChange={(e) => setImageStyle(e.target.value as "color" | "black-and-white")}
+          disabled={isGenerating || isExporting}
+          className="h-9 px-3 rounded-md border border-[#2a3441] bg-[#1a1f26] text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary"
+          data-testid="select-image-style"
+        >
+          <option value="color">Color Images</option>
+          <option value="black-and-white">Black & White (Vintage)</option>
+        </select>
 
         {canResume && sessionInfo ? (
           <Button
