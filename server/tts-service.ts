@@ -95,7 +95,7 @@ export async function generateChapterVoiceover(
   narration: string,
   voice: string = "neutral"
 ): Promise<string> {
-  const objectPath = `audio/project_${projectId}/chapter_${chapterNumber}.wav`;
+  const objectPath = `public/audio/project_${projectId}/chapter_${chapterNumber}.wav`;
   return generateSpeechToStorage(narration, objectPath, { voice });
 }
 
@@ -106,7 +106,7 @@ export async function generateSceneVoiceover(
   narration: string,
   voice: string = "neutral"
 ): Promise<string> {
-  const objectPath = `audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.wav`;
+  const objectPath = `public/audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.wav`;
   return generateSpeechToStorage(narration, objectPath, { voice });
 }
 
