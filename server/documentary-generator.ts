@@ -55,7 +55,15 @@ export async function generateDocumentaryFramework(
     ? `~${Math.round(numChapters * 3)} minutes` 
     : (durations[storyLength] || durations.medium);
 
-  const prompt = `You are a professional documentary scriptwriter specializing in compelling historical narratives similar to channels like "Grand Manors" or "Old Money Dynasty".
+  const prompt = `You are a professional documentary scriptwriter for premium historical documentary channels like "Grand Manors", "Old Money Dynasty", and "Dark Estate".
+
+Your style is characterized by:
+- Deep, authoritative narration with measured pacing and dramatic pauses
+- Revealing hidden secrets, untold stories, and dark truths behind wealth and power
+- Building tension through rhetorical questions and unexpected revelations
+- Using specific dates, numbers, names, and historical facts to establish authority
+- Creating emotional resonance through human drama - tragedy, ambition, downfall, survival
+- Clean, cinematic presentation without on-screen text overlays
 
 Create a documentary framework for: "${title}"
 
@@ -64,15 +72,15 @@ Number of chapters: ${numChapters}
 
 Generate a compelling documentary framework in JSON format:
 {
-  "title": "The refined, dramatic documentary title",
+  "title": "A dramatic, evocative documentary title that hints at secrets or revelations (example: 'The Dark Secrets of...', 'The Untold Story Behind...', 'The Hidden Truth of...')",
   "genres": ["Documentary", "History", "one more relevant genre"],
-  "premise": "A 2-3 sentence premise that captures the essence of this documentary",
-  "openingHook": "A 150-word dramatic opening hook that would grab viewers in the first 30 seconds. Use vivid imagery, suspense, and hint at revelations to come. Write in present tense, documentary narration style.",
+  "premise": "A 2-3 sentence premise that sets up the central mystery or revelation - what secret will be uncovered, what hidden truth revealed?",
+  "openingHook": "A 150-word dramatic opening hook written for a deep, authoritative narrator voice. Start with a striking visual or fact. Build tension. Use short, punchy sentences mixed with longer descriptive passages. Hint at dark secrets to come. End with a question or revelation that demands the viewer keep watching. Write in present tense, measured documentary narration style with natural pauses.",
   "totalChapters": ${numChapters},
   "estimatedDuration": "${estimatedDuration}"
 }
 
-Write in the style of premium documentary narration - dramatic, evocative, revealing dark secrets and untold stories.
+Write like the opening of a Grand Manors video - commanding, mysterious, revealing hidden truths behind beautiful facades.
 
 Respond ONLY with valid JSON.`;
 
@@ -110,33 +118,53 @@ export async function generateChapterScript(
   totalChapters: number,
   chapterTitle?: string
 ): Promise<ChapterScript> {
-  const prompt = `You are writing Chapter ${chapterNumber} of ${totalChapters} for a documentary titled: "${documentaryTitle}"
+  const prompt = `You are writing Chapter ${chapterNumber} of ${totalChapters} for a premium historical documentary titled: "${documentaryTitle}"
 
 Premise: ${premise}
 
 ${chapterTitle ? `This chapter is about: ${chapterTitle}` : ''}
 
-Generate this chapter's complete script with scene breakdowns. Each scene should be 15-30 seconds of narration with a corresponding image prompt.
+STYLE GUIDE (Match "Grand Manors" / "Old Money Dynasty" documentary channels):
+
+NARRATION STYLE:
+- Write for a deep, authoritative male narrator with measured pacing
+- Use short, punchy sentences mixed with longer descriptive passages
+- Include specific dates, numbers, names, and historical facts
+- Build tension through rhetorical questions: "But what happened next would change everything."
+- Create dramatic reveals: "Behind the gilded facade, a darker truth waited."
+- Use natural pause points: "The answer... was far more troubling than anyone imagined."
+- Present tense for immediacy, past tense for historical context
+
+IMAGE PROMPTS (for Ken Burns-style documentary):
+- Historical archival photographs and period images
+- Architectural exterior shots of mansions, buildings, estates
+- Interior details: grand staircases, ornate rooms, period furniture
+- Portraits and formal photographs of the era
+- Dramatic landscapes with atmospheric lighting
+- Document close-ups: newspapers, letters, photographs
+- All images should work with slow zoom/pan (Ken Burns effect)
+
+Generate this chapter's complete script with scene breakdowns. Each scene should be 15-25 seconds of narration.
 
 Respond in JSON format:
 {
   "chapterNumber": ${chapterNumber},
   "title": "Chapter title",
-  "narration": "The complete narration text for this chapter (2-4 minutes of speaking, ~400-600 words)",
+  "narration": "The complete narration text for this chapter (2-4 minutes of speaking, ~400-600 words). Write in measured, authoritative documentary style with natural pauses.",
   "scenes": [
     {
       "sceneNumber": 1,
-      "imagePrompt": "Detailed cinematic image prompt for Flux/Ideogram. Include: subject, composition, lighting, mood, style (photorealistic, historical, cinematic). Example: 'A grand Victorian mansion at twilight, dramatic gothic architecture, warm lights glowing from ornate windows, misty atmosphere, cinematic photography, 8K quality'",
-      "duration": 20,
-      "narrationSegment": "The portion of narration that plays over this image",
-      "mood": "mysterious/dramatic/revelatory/somber/triumphant",
-      "shotType": "wide establishing shot / close-up detail / portrait / aerial view / interior"
+      "imagePrompt": "Detailed cinematic image prompt optimized for Ken Burns effect. Describe: main subject centered for zoom capability, historical/archival photograph style, dramatic lighting, rich details that reward close inspection. Example: 'Grand Gilded Age mansion facade, ornate limestone exterior, towering columns, dramatic storm clouds gathering, late afternoon golden light, historical photograph circa 1890, high detail architectural photography'",
+      "duration": 18,
+      "narrationSegment": "The portion of narration that plays over this image. Write with natural pauses.",
+      "mood": "mysterious/dramatic/revelatory/somber/triumphant/ominous/contemplative",
+      "shotType": "wide establishing / architectural detail / portrait / interior grand / document closeup / landscape atmospheric"
     }
   ],
   "estimatedDuration": 180
 }
 
-Create 6-10 scenes for this chapter. Write in premium documentary narration style - dramatic, evocative, revealing. Image prompts should be highly detailed for AI image generation.
+Create 8-12 scenes for this chapter. Image prompts should describe scenes that work beautifully with slow zoom and pan effects.
 
 Respond ONLY with valid JSON.`;
 
@@ -172,11 +200,17 @@ export async function generateChapterOutline(
     ? '"Chapter 1: [Complete title for the single chapter]"'
     : `"Chapter 1: [Title that hooks the viewer]"${totalChapters > 1 ? ',\n    "Chapter 2: [Title that deepens the mystery]"' : ''}${totalChapters > 2 ? ',\n    ...' : ''}`;
     
-  const prompt = `Create a chapter outline for a documentary titled: "${documentaryTitle}"
+  const prompt = `Create a chapter outline for a premium documentary titled: "${documentaryTitle}"
 
 Premise: ${premise}
 
 Opening Hook: ${openingHook}
+
+STYLE: Match "Grand Manors" / "Old Money Dynasty" documentary chapter structure:
+- Each chapter reveals a new layer of the story
+- Titles hint at secrets, mysteries, or dramatic turns
+- Build from origins → rise → complications → dark truths → resolution/legacy
+- Use evocative phrases: "The Price of...", "Behind the...", "The Dark Truth of...", "What Really Happened..."
 
 IMPORTANT: Generate EXACTLY ${totalChapters} chapter title${totalChapters === 1 ? '' : 's'}. No more, no less.
 
@@ -187,9 +221,7 @@ Respond in JSON format:
   ]
 }
 
-${totalChapters === 1 ? 'This is a single-chapter documentary. Create one comprehensive chapter title.' : 'Each chapter should build on the previous, with revelations, twists, and dramatic progression.'}
-
-The titles should be evocative and hint at the content without spoiling it. Use the style of premium documentary series.
+${totalChapters === 1 ? 'This is a single-chapter documentary. Create one comprehensive chapter title.' : 'Each chapter should build dramatic tension. Early chapters establish, middle chapters reveal complications and dark truths, final chapters deliver resolutions or lasting mysteries.'}
 
 Respond ONLY with valid JSON with exactly ${totalChapters} chapter${totalChapters === 1 ? '' : 's'}.`;
 

@@ -113,10 +113,11 @@ export async function generateImage(
     let output: any;
     let modelId: `${string}/${string}`;
 
-    // For black & white, put style at START of prompt for stronger effect
+    // Documentary-grade image styling for Ken Burns effect compatibility
+    // Images should have rich detail, centered subjects, work well with slow zoom/pan
     const styleModifier = imageStyle === "black-and-white" 
-      ? "IMPORTANT: Generate in BLACK AND WHITE ONLY, no color. Vintage 1920s-1940s black and white photograph, monochrome grayscale only, heavy film grain texture, high contrast shadows, historical archive photo style, sepia or pure grayscale tones, aged and weathered photograph aesthetic, realistic documentary photograph from early 20th century"
-      : "cinematic photography, professional lighting, 8K ultra HD quality, dramatic atmosphere, documentary style, photorealistic";
+      ? "CRITICAL: Generate in BLACK AND WHITE ONLY, absolutely no color. Authentic vintage archival photograph from 1880s-1940s era, monochrome grayscale, authentic film grain texture, high contrast shadows, historical documentary archive photo, sepia or pure grayscale tones, aged photograph with period-accurate details, museum-quality historical image, sharp focus on central subject for Ken Burns zoom effect"
+      : "Premium documentary cinematography, National Geographic quality, dramatic cinematic lighting, 8K ultra HD resolution, rich shadow detail, atmospheric depth, subject centered in frame for Ken Burns zoom effect, historical documentary aesthetic, museum-quality archival photograph style, sharp focus throughout, professional color grading";
     
     // Put style modifier FIRST for black & white to ensure it takes priority
     const cinematicPrompt = imageStyle === "black-and-white"
