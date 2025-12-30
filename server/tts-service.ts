@@ -9,6 +9,7 @@ export interface TTSOptions {
 }
 
 const VOICE_MODELS: Record<string, string> = {
+  "narrator": "aura-2-mars-en",
   "male-deep": "aura-2-zeus-en",
   "male-warm": "aura-2-arcas-en", 
   "female-soft": "aura-2-athena-en",
@@ -112,6 +113,7 @@ export async function generateSceneVoiceover(
 
 export function getAvailableVoices(): Array<{ id: string; name: string; description: string }> {
   return [
+    { id: "narrator", name: "Mars - Narrator Voice", description: "Smooth, patient, trustworthy baritone for narration" },
     { id: "male-deep", name: "Zeus - Deep & Trustworthy", description: "Deep, trustworthy, smooth male voice" },
     { id: "male-warm", name: "Arcas - Natural & Smooth", description: "Natural, smooth, clear, comfortable male voice" },
     { id: "female-soft", name: "Athena - Calm & Professional", description: "Calm, smooth, professional female voice for storytelling" },
