@@ -93,6 +93,63 @@ def merge_videos(video_paths: List[str], output_path: str, transition_duration: 
         return False
 
 
+def apply_ken_burns_effect(
+    img_array: np.ndarray,
+    duration: float,
+    fps: int = 30,
+    effect_type: str = "zoom_in"
+) -> ImageClip:
+    """
+    Apply Ken Burns effect (zoom/pan) to an image for cinematic feel.
+    
+    effect_type: "zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"
+    """
+    h, w = img_array.shape[:2]
+    
+    def make_frame(t):
+        progress = t / duration
+        
+        if effect_type == "zoom_in":
+            scale = 1.0 + 0.15 * progress
+            new_w, new_h = int(w / scale), int(h / scale)
+            x1 = (w - new_w) // 2
+            y1 = (h - new_h) // 2
+            crop = img_array[y1:y1+new_h, x1:x1+new_w]
+            
+        elif effect_type == "zoom_out":
+            scale = 1.15 - 0.15 * progress
+            new_w, new_h = int(w / scale), int(h / scale)
+            x1 = (w - new_w) // 2
+            y1 = (h - new_h) // 2
+            crop = img_array[y1:y1+new_h, x1:x1+new_w]
+            
+        elif effect_type == "pan_left":
+            offset = int(w * 0.1 * (1 - progress))
+            crop = img_array[:, offset:offset + int(w * 0.9)]
+            
+        elif effect_type == "pan_right":
+            offset = int(w * 0.1 * progress)
+            crop = img_array[:, offset:offset + int(w * 0.9)]
+            
+        elif effect_type == "pan_up":
+            offset = int(h * 0.1 * (1 - progress))
+            crop = img_array[offset:offset + int(h * 0.9), :]
+            
+        elif effect_type == "pan_down":
+            offset = int(h * 0.1 * progress)
+            crop = img_array[offset:offset + int(h * 0.9), :]
+        else:
+            crop = img_array
+        
+        resized = Image.fromarray(crop).resize((w, h), Image.Resampling.LANCZOS)
+        return np.array(resized)
+    
+    from moviepy import VideoClip
+    clip = VideoClip(make_frame, duration=duration)
+    clip = clip.with_fps(fps)
+    return clip
+
+
 def images_to_video(
     image_paths: List[str],
     output_path: str,
@@ -100,7 +157,8 @@ def images_to_video(
     fps: int = 30,
     resolution: Tuple[int, int] = (1920, 1080),
     audio_path: Optional[str] = None,
-    captions: Optional[List[Dict]] = None
+    captions: Optional[List[Dict]] = None,
+    ken_burns: bool = True
 ) -> bool:
     """
     Convert a sequence of images to video with optional audio and captions.
@@ -110,6 +168,8 @@ def images_to_video(
         ensure_dirs()
         clips = []
         
+        effect_types = ["zoom_in", "zoom_out", "pan_left", "pan_right"]
+        
         for i, img_path in enumerate(image_paths):
             if not os.path.exists(img_path):
                 continue
@@ -118,7 +178,11 @@ def images_to_video(
             img = img.resize(resolution, Image.Resampling.LANCZOS)
             img_array = np.array(img)
             
-            clip = ImageClip(img_array, duration=duration_per_image)
+            if ken_burns:
+                effect = effect_types[i % len(effect_types)]
+                clip = apply_ken_burns_effect(img_array, duration_per_image, fps, effect)
+            else:
+                clip = ImageClip(img_array, duration=duration_per_image)
             
             clips.append(clip)
         
@@ -130,7 +194,8 @@ def images_to_video(
         if audio_path and os.path.exists(audio_path):
             audio = AudioFileClip(audio_path)
             if audio.duration < final_clip.duration:
-                audio = audio.with_effects([afx.AudioLoop(duration=final_clip.duration)])
+                from moviepy.audio.fx import AudioLoop
+                audio = audio.with_effects([AudioLoop(duration=final_clip.duration)])
             else:
                 audio = audio.subclipped(0, final_clip.duration)
             final_clip = final_clip.with_audio(audio)
@@ -271,10 +336,11 @@ def auto_cut_on_beats(
 
 def assemble_chapter_video(
     chapter_data: Dict,
-    output_path: str
+    output_path: str,
+    ken_burns: bool = True
 ) -> bool:
     """
-    Assemble a complete chapter video from scenes.
+    Assemble a complete chapter video from scenes with Ken Burns effects.
     
     chapter_data format:
     {
@@ -295,14 +361,23 @@ def assemble_chapter_video(
         audio_path = chapter_data.get("audio_path")
         captions = chapter_data.get("captions", [])
         
+        effect_types = ["zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"]
         clips = []
-        for img_path, duration in zip(image_paths, durations):
+        
+        for i, (img_path, duration) in enumerate(zip(image_paths, durations)):
             if not os.path.exists(img_path):
                 continue
             
             img = Image.open(img_path)
             img = img.resize((1920, 1080), Image.Resampling.LANCZOS)
-            clip = ImageClip(np.array(img), duration=duration)
+            img_array = np.array(img)
+            
+            if ken_burns:
+                effect = effect_types[i % len(effect_types)]
+                clip = apply_ken_burns_effect(img_array, duration, 30, effect)
+            else:
+                clip = ImageClip(img_array, duration=duration)
+            
             clips.append(clip)
         
         if not clips:

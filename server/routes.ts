@@ -11,6 +11,7 @@ import {
   generateChapterScript, 
   generateChapterOutline 
 } from "./documentary-generator";
+import { generateImage, generateChapterImages } from "./image-generator";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -443,6 +444,140 @@ export async function registerRoutes(
       });
 
       res.json({ chapter, savedChapter });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/generate-image", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { prompt, model = "flux-1.1-pro", sceneId } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `image_${sceneId || "single"}`,
+        status: "started",
+        message: `Generating image...`
+      });
+
+      const result = await generateImage(prompt, {
+        model,
+        aspectRatio: "16:9",
+        projectId,
+        sceneId,
+      });
+
+      if (result.success) {
+        await storage.createGenerationLog({
+          projectId,
+          step: `image_${sceneId || "single"}`,
+          status: "completed",
+          message: `Image generated: ${result.imageUrl}`
+        });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/generate-chapter-images", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { chapterNumber, scenes, model = "flux-1.1-pro" } = req.body;
+      
+      if (!scenes || !Array.isArray(scenes)) {
+        return res.status(400).json({ error: "Scenes array is required" });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_images`,
+        status: "started",
+        message: `Generating ${scenes.length} images for Chapter ${chapterNumber}...`
+      });
+
+      const results = await generateChapterImages(
+        { chapterNumber, scenes },
+        projectId,
+        { model }
+      );
+
+      const successCount = results.filter(r => r.success).length;
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: `chapter_${chapterNumber}_images`,
+        status: "completed",
+        message: `Generated ${successCount}/${scenes.length} images for Chapter ${chapterNumber}`
+      });
+
+      res.json({ results, successCount, totalScenes: scenes.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/assemble-video", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const chapters = await storage.getChaptersByProject(projectId);
+      
+      if (!chapters.length) {
+        return res.status(400).json({ error: "No chapters found" });
+      }
+
+      await storage.createGenerationLog({
+        projectId,
+        step: "video_assembly",
+        status: "started",
+        message: `Assembling video from ${chapters.length} chapters...`
+      });
+
+      const outputPath = `generated_videos/project_${projectId}_documentary.mp4`;
+      
+      const chaptersData = chapters.map(ch => {
+        const content = JSON.parse(ch.content || "{}");
+        return {
+          chapter_number: ch.chapterNumber,
+          scenes: content.scenes?.map((s: any) => ({
+            image_path: `generated_assets/images/${projectId}_ch${ch.chapterNumber}_sc${s.sceneNumber}.webp`,
+            duration: s.duration || 5,
+            prompt: s.imagePrompt,
+          })) || [],
+        };
+      });
+
+      const result = await videoService.assembleFullVideo(
+        {
+          title: project.title,
+          chapters: chaptersData,
+        },
+        outputPath
+      );
+
+      if (result.success) {
+        await storage.createGenerationLog({
+          projectId,
+          step: "video_assembly",
+          status: "completed",
+          message: `Video assembled: ${outputPath}`
+        });
+      }
+
+      res.json({ ...result, outputPath });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

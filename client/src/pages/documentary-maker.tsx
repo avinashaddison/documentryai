@@ -186,6 +186,26 @@ export default function DocumentaryMaker() {
     setCurrentStep("idle");
   };
 
+  const generateImagesMutation = useMutation({
+    mutationFn: async ({ id, chapterNumber, scenes, model }: { 
+      id: number; 
+      chapterNumber: number; 
+      scenes: Array<{ sceneNumber: number; imagePrompt: string }>;
+      model: string;
+    }) => {
+      const res = await fetch(`/api/projects/${id}/generate-chapter-images`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapterNumber, scenes, model }),
+      });
+      if (!res.ok) throw new Error("Failed to generate images");
+      return res.json();
+    },
+  });
+
+  const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
+  const [currentImageScene, setCurrentImageScene] = useState("");
+
   const handleGenerateAllChapters = async () => {
     if (!projectId || chapters.length === 0) return;
     
@@ -193,7 +213,7 @@ export default function DocumentaryMaker() {
     const generated: ChapterScript[] = [];
     
     for (let i = 0; i < chapters.length; i++) {
-      const chapterProgress = 25 + ((i + 1) / chapters.length) * 50;
+      const chapterProgress = 25 + ((i + 1) / chapters.length) * 25;
       setProgress(chapterProgress);
       
       const result = await generateChapterMutation.mutateAsync({
@@ -207,8 +227,44 @@ export default function DocumentaryMaker() {
       setGeneratedChapters([...generated]);
     }
     
-    setProgress(75);
+    setProgress(50);
+    setCurrentStep("images");
+    
+    for (let i = 0; i < generated.length; i++) {
+      const chapter = generated[i];
+      const imageProgress = 50 + ((i + 1) / generated.length) * 35;
+      
+      setCurrentImageScene(`Chapter ${chapter.chapterNumber}: Generating ${chapter.scenes.length} images...`);
+      
+      try {
+        const imageResult = await generateImagesMutation.mutateAsync({
+          id: projectId,
+          chapterNumber: chapter.chapterNumber,
+          scenes: chapter.scenes.map(s => ({
+            sceneNumber: s.sceneNumber,
+            imagePrompt: s.imagePrompt,
+          })),
+          model: config.hookImageModel,
+        });
+        
+        imageResult.results.forEach((r: any) => {
+          if (r.success && r.imageUrl) {
+            setGeneratedImages(prev => ({
+              ...prev,
+              [`ch${chapter.chapterNumber}_sc${r.sceneNumber}`]: r.imageUrl,
+            }));
+          }
+        });
+      } catch (error) {
+        console.error(`Failed to generate images for chapter ${i + 1}:`, error);
+      }
+      
+      setProgress(imageProgress);
+    }
+    
+    setProgress(85);
     setCurrentStep("complete");
+    setCurrentImageScene("");
   };
 
   const handleContinueToEditor = () => {
@@ -301,10 +357,10 @@ export default function DocumentaryMaker() {
               {currentStep === "framework" && "Generating documentary framework with Claude..."}
               {currentStep === "outline" && "Creating chapter outline..."}
               {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
-              {currentStep === "images" && "Generating scene images..."}
+              {currentStep === "images" && (currentImageScene || "Generating scene images...")}
               {currentStep === "voiceover" && "Creating AI voiceover..."}
               {currentStep === "assembly" && "Assembling final video..."}
-              {currentStep === "complete" && "Generation complete!"}
+              {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
             </p>
           </div>
         )}
@@ -621,6 +677,32 @@ export default function DocumentaryMaker() {
                   <p className="text-sm text-white/70 line-clamp-3">
                     {chapter.narration.substring(0, 300)}...
                   </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Generated Images Gallery */}
+        {Object.keys(generatedImages).length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              Generated Scene Images ({Object.keys(generatedImages).length})
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto">
+              {Object.entries(generatedImages).map(([key, url]) => (
+                <div key={key} className="relative group rounded-lg overflow-hidden border border-border">
+                  <img 
+                    src={url} 
+                    alt={key}
+                    className="w-full aspect-video object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <span className="text-xs text-white/80 font-mono">{key}</span>
+                  </div>
                 </div>
               ))}
             </div>
