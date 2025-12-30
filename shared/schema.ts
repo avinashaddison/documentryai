@@ -93,6 +93,55 @@ export type Scene = typeof scenes.$inferSelect;
 export type InsertGenerationLog = z.infer<typeof insertGenerationLogSchema>;
 export type GenerationLog = typeof generationLogs.$inferSelect;
 
+export const generatedAssets = pgTable("generated_assets", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  chapterNumber: integer("chapter_number").notNull(),
+  sceneNumber: integer("scene_number").notNull(),
+  assetType: text("asset_type").notNull(), // "image" | "audio"
+  assetUrl: text("asset_url").notNull(),
+  prompt: text("prompt"),
+  narration: text("narration"),
+  duration: integer("duration"),
+  status: text("status").notNull().default("completed"), // "pending" | "generating" | "completed" | "failed"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const generationSessions = pgTable("generation_sessions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("in_progress"), // "in_progress" | "completed" | "failed" | "paused"
+  currentChapter: integer("current_chapter").notNull().default(1),
+  currentScene: integer("current_scene").notNull().default(1),
+  currentStep: text("current_step").notNull().default("images"), // "images" | "audio" | "video"
+  totalChapters: integer("total_chapters").notNull(),
+  totalScenes: integer("total_scenes").notNull(),
+  completedImages: integer("completed_images").notNull().default(0),
+  completedAudio: integer("completed_audio").notNull().default(0),
+  voice: text("voice").default("neutral"),
+  imageModel: text("image_model").default("flux-1.1-pro"),
+  errorMessage: text("error_message"),
+  chaptersData: text("chapters_data"), // JSON string of full chapters payload
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertGeneratedAssetSchema = createInsertSchema(generatedAssets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGenerationSessionSchema = createInsertSchema(generationSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGeneratedAsset = z.infer<typeof insertGeneratedAssetSchema>;
+export type GeneratedAsset = typeof generatedAssets.$inferSelect;
+export type InsertGenerationSession = z.infer<typeof insertGenerationSessionSchema>;
+export type GenerationSession = typeof generationSessions.$inferSelect;
+
 export const storyFrameworks = pgTable("story_frameworks", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),

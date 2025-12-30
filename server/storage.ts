@@ -11,15 +11,21 @@ import {
   type InsertGenerationLog,
   type StoryFramework,
   type InsertStoryFramework,
+  type GeneratedAsset,
+  type InsertGeneratedAsset,
+  type GenerationSession,
+  type InsertGenerationSession,
   users,
   projects,
   chapters,
   scenes,
   generationLogs,
-  storyFrameworks
+  storyFrameworks,
+  generatedAssets,
+  generationSessions
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -44,6 +50,18 @@ export interface IStorage {
   createStoryFramework(framework: InsertStoryFramework): Promise<StoryFramework>;
   getStoryFrameworkByProject(projectId: number): Promise<StoryFramework | undefined>;
   updateStoryFramework(id: number, updates: Partial<StoryFramework>): Promise<StoryFramework | undefined>;
+  
+  // Generated Assets
+  saveGeneratedAsset(asset: InsertGeneratedAsset): Promise<GeneratedAsset>;
+  getGeneratedAssetsByProject(projectId: number): Promise<GeneratedAsset[]>;
+  getGeneratedAsset(projectId: number, chapterNumber: number, sceneNumber: number, assetType: string): Promise<GeneratedAsset | undefined>;
+  deleteGeneratedAssetsByProject(projectId: number): Promise<void>;
+  
+  // Generation Sessions
+  createGenerationSession(session: InsertGenerationSession): Promise<GenerationSession>;
+  getActiveGenerationSession(projectId: number): Promise<GenerationSession | undefined>;
+  updateGenerationSession(id: number, updates: Partial<GenerationSession>): Promise<GenerationSession | undefined>;
+  deleteGenerationSession(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -133,6 +151,92 @@ export class DatabaseStorage implements IStorage {
       .where(eq(storyFrameworks.id, id))
       .returning();
     return result[0];
+  }
+
+  // Generated Assets
+  async saveGeneratedAsset(asset: InsertGeneratedAsset): Promise<GeneratedAsset> {
+    // Check if asset already exists, update if so
+    const existing = await this.getGeneratedAsset(
+      asset.projectId,
+      asset.chapterNumber,
+      asset.sceneNumber,
+      asset.assetType
+    );
+    if (existing) {
+      const result = await db
+        .update(generatedAssets)
+        .set(asset)
+        .where(eq(generatedAssets.id, existing.id))
+        .returning();
+      return result[0];
+    }
+    const result = await db.insert(generatedAssets).values(asset).returning();
+    return result[0];
+  }
+
+  async getGeneratedAssetsByProject(projectId: number): Promise<GeneratedAsset[]> {
+    return await db
+      .select()
+      .from(generatedAssets)
+      .where(eq(generatedAssets.projectId, projectId));
+  }
+
+  async getGeneratedAsset(
+    projectId: number,
+    chapterNumber: number,
+    sceneNumber: number,
+    assetType: string
+  ): Promise<GeneratedAsset | undefined> {
+    const result = await db
+      .select()
+      .from(generatedAssets)
+      .where(
+        and(
+          eq(generatedAssets.projectId, projectId),
+          eq(generatedAssets.chapterNumber, chapterNumber),
+          eq(generatedAssets.sceneNumber, sceneNumber),
+          eq(generatedAssets.assetType, assetType)
+        )
+      );
+    return result[0];
+  }
+
+  async deleteGeneratedAssetsByProject(projectId: number): Promise<void> {
+    await db.delete(generatedAssets).where(eq(generatedAssets.projectId, projectId));
+  }
+
+  // Generation Sessions
+  async createGenerationSession(session: InsertGenerationSession): Promise<GenerationSession> {
+    const result = await db.insert(generationSessions).values(session).returning();
+    return result[0];
+  }
+
+  async getActiveGenerationSession(projectId: number): Promise<GenerationSession | undefined> {
+    const result = await db
+      .select()
+      .from(generationSessions)
+      .where(
+        and(
+          eq(generationSessions.projectId, projectId),
+          eq(generationSessions.status, "in_progress")
+        )
+      )
+      .orderBy(desc(generationSessions.createdAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateGenerationSession(id: number, updates: Partial<GenerationSession>): Promise<GenerationSession | undefined> {
+    const result = await db
+      .update(generationSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(generationSessions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGenerationSession(id: number): Promise<void> {
+    await db.delete(generationSessions).where(eq(generationSessions.id, id));
   }
 }
 
