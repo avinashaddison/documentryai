@@ -89,6 +89,7 @@ export default function DocumentaryMaker() {
     hookImageCount: 3,
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
+    imageStyle: "color" as "color" | "black-and-white",
   });
 
   const storyLengthToChapters: Record<string, number> = {
@@ -192,16 +193,17 @@ export default function DocumentaryMaker() {
   };
 
   const generateImagesMutation = useMutation({
-    mutationFn: async ({ id, chapterNumber, scenes, model }: { 
+    mutationFn: async ({ id, chapterNumber, scenes, model, imageStyle }: { 
       id: number; 
       chapterNumber: number; 
       scenes: Array<{ sceneNumber: number; imagePrompt: string }>;
       model: string;
+      imageStyle: "color" | "black-and-white";
     }) => {
       const res = await fetch(`/api/projects/${id}/generate-chapter-images`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapterNumber, scenes, model }),
+        body: JSON.stringify({ chapterNumber, scenes, model, imageStyle }),
       });
       if (!res.ok) throw new Error("Failed to generate images");
       return res.json();
@@ -209,7 +211,26 @@ export default function DocumentaryMaker() {
   });
 
   const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
+  const [generatedAudio, setGeneratedAudio] = useState<Record<string, string>>({});
   const [currentImageScene, setCurrentImageScene] = useState("");
+
+  const generateVoiceoverMutation = useMutation({
+    mutationFn: async ({ id, chapterNumber, sceneNumber, narration, voice }: { 
+      id: number; 
+      chapterNumber: number;
+      sceneNumber: number;
+      narration: string;
+      voice: string;
+    }) => {
+      const res = await fetch(`/api/projects/${id}/generate-scene-voiceover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapterNumber, sceneNumber, narration, voice }),
+      });
+      if (!res.ok) throw new Error("Failed to generate voiceover");
+      return res.json();
+    },
+  });
 
   const handleGenerateAllChapters = async () => {
     if (!projectId || chapters.length === 0) return;
@@ -250,6 +271,7 @@ export default function DocumentaryMaker() {
             imagePrompt: s.imagePrompt,
           })),
           model: config.hookImageModel,
+          imageStyle: config.imageStyle,
         });
         
         imageResult.results.forEach((r: any) => {
@@ -267,6 +289,48 @@ export default function DocumentaryMaker() {
       setProgress(imageProgress);
     }
     
+    setProgress(70);
+    setCurrentStep("voiceover");
+    
+    // Generate voiceovers for each scene
+    for (let i = 0; i < generated.length; i++) {
+      const chapter = generated[i];
+      
+      for (let j = 0; j < chapter.scenes.length; j++) {
+        const scene = chapter.scenes[j];
+        const voiceoverProgress = 70 + ((i * chapter.scenes.length + j + 1) / (generated.length * chapter.scenes.length)) * 15;
+        
+        setCurrentImageScene(`Chapter ${chapter.chapterNumber}: Generating voiceover for scene ${scene.sceneNumber}...`);
+        
+        const narrationText = scene.narrationSegment || "";
+        if (!narrationText.trim()) {
+          console.warn(`Skipping voiceover for chapter ${chapter.chapterNumber} scene ${scene.sceneNumber}: no narration`);
+          continue;
+        }
+        
+        try {
+          const audioResult = await generateVoiceoverMutation.mutateAsync({
+            id: projectId,
+            chapterNumber: chapter.chapterNumber,
+            sceneNumber: scene.sceneNumber,
+            narration: narrationText,
+            voice: config.narratorVoice,
+          });
+          
+          if (audioResult.audioUrl) {
+            setGeneratedAudio(prev => ({
+              ...prev,
+              [`ch${chapter.chapterNumber}_sc${scene.sceneNumber}`]: audioResult.audioUrl,
+            }));
+          }
+        } catch (error) {
+          console.error(`Failed to generate voiceover for chapter ${chapter.chapterNumber} scene ${scene.sceneNumber}:`, error);
+        }
+        
+        setProgress(voiceoverProgress);
+      }
+    }
+    
     setProgress(85);
     setCurrentStep("complete");
     setCurrentImageScene("");
@@ -279,6 +343,7 @@ export default function DocumentaryMaker() {
         title: framework.generatedTitle || title,
         chapters: generatedChapters,
         generatedImages,
+        generatedAudio,
       };
       sessionStorage.setItem("documentaryEditorData", JSON.stringify(editorData));
       navigate("/documentary-editor");
@@ -793,6 +858,25 @@ export default function DocumentaryMaker() {
                         {option.label}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium text-white">Image Style</Label>
+                </div>
+                <Select
+                  value={config.imageStyle}
+                  onValueChange={(value) => setConfig({ ...config, imageStyle: value as "color" | "black-and-white" })}
+                >
+                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-style">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="color">Color Images</SelectItem>
+                    <SelectItem value="black-and-white">Black & White (Vintage)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

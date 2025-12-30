@@ -493,7 +493,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/generate-chapter-images", async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const { chapterNumber, scenes, model = "flux-1.1-pro" } = req.body;
+      const { chapterNumber, scenes, model = "flux-1.1-pro", imageStyle = "color" } = req.body;
       
       if (!scenes || !Array.isArray(scenes)) {
         return res.status(400).json({ error: "Scenes array is required" });
@@ -509,7 +509,7 @@ export async function registerRoutes(
       const results = await generateChapterImages(
         { chapterNumber, scenes },
         projectId,
-        { model }
+        { model, imageStyle }
       );
 
       const successCount = results.filter(r => r.success).length;
