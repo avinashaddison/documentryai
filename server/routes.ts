@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { ensureDbConnected } from "./db";
 import { insertProjectSchema } from "@shared/schema";
@@ -16,6 +17,53 @@ import { generateImage, generateChapterImages } from "./image-generator";
 import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+
+async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
+  try {
+    if (!objectPath.startsWith("/objects/public/")) {
+      return false;
+    }
+    
+    const publicSearchPaths = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",").map(p => p.trim()).filter(Boolean);
+    if (publicSearchPaths.length === 0) {
+      console.error("No public object search paths configured");
+      return false;
+    }
+    
+    const relativePath = objectPath.replace("/objects/public/", "");
+    
+    for (const searchPath of publicSearchPaths) {
+      try {
+        const fullObjectPath = `${searchPath}/${relativePath}`;
+        const pathParts = fullObjectPath.split("/").filter(Boolean);
+        const bucketName = pathParts[0];
+        const objectName = pathParts.slice(1).join("/");
+        
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        
+        if (exists) {
+          const dir = path.dirname(localPath);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          
+          await file.download({ destination: localPath });
+          return true;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error downloading audio from storage: ${error}`);
+    return false;
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -678,8 +726,27 @@ export async function registerRoutes(
         projectId,
         step: "video_assembly",
         status: "started",
-        message: `Assembling video from ${chapters.length} chapters with ${Object.keys(imageAssets).length} images...`
+        message: `Assembling video from ${chapters.length} chapters with ${Object.keys(imageAssets).length} images and ${Object.keys(audioAssets).length} audio files...`
       });
+
+      const tempAudioDir = path.join(process.cwd(), "temp_audio", `project_${projectId}`);
+      if (!fs.existsSync(tempAudioDir)) {
+        fs.mkdirSync(tempAudioDir, { recursive: true });
+      }
+      
+      const localAudioPaths: Record<string, string> = {};
+      for (const [key, audioUrl] of Object.entries(audioAssets)) {
+        if (audioUrl.startsWith("/objects/public/")) {
+          const localPath = path.join(tempAudioDir, `${key}.wav`);
+          const downloaded = await downloadAudioFromStorage(audioUrl, localPath);
+          if (downloaded) {
+            localAudioPaths[key] = localPath;
+            console.log(`Downloaded audio ${key} to ${localPath}`);
+          } else {
+            console.warn(`Failed to download audio ${key} from ${audioUrl}`);
+          }
+        }
+      }
 
       const outputPath = `generated_videos/project_${projectId}_documentary.mp4`;
       
@@ -695,16 +762,15 @@ export async function registerRoutes(
         return {
           chapter_number: ch.chapterNumber,
           title: content.title || `Chapter ${ch.chapterNumber}`,
-          audio_path: audioAssets[`ch${ch.chapterNumber}_sc1`]?.replace(/^\//, "") || undefined,
           scenes: scenes.map((s: any) => {
             const key = `ch${ch.chapterNumber}_sc${s.sceneNumber}`;
             const imagePath = imageAssets[key]?.replace(/^\//, "");
-            const audioPath = audioAssets[key]?.replace(/^\//, "");
+            const audioPath = localAudioPaths[key] || undefined;
             
             return {
               scene_number: s.sceneNumber,
               image_path: imagePath ? path.join(process.cwd(), imagePath) : undefined,
-              audio_path: audioPath ? path.join(process.cwd(), audioPath) : undefined,
+              audio_path: audioPath,
               duration: s.duration || 5,
               narration: s.narrationSegment,
               ken_burns_effect: getKenBurnsEffect(s.sceneNumber),
@@ -725,12 +791,18 @@ export async function registerRoutes(
         outputPath
       );
 
+      try {
+        fs.rmSync(tempAudioDir, { recursive: true, force: true });
+      } catch (e) {
+        console.warn("Could not clean up temp audio directory:", e);
+      }
+
       if (result.success) {
         await storage.createGenerationLog({
           projectId,
           step: "video_assembly",
           status: "completed",
-          message: `Video assembled: ${outputPath}`
+          message: `Video assembled with audio: ${outputPath}`
         });
         
         res.json({ 
