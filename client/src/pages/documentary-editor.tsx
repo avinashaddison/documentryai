@@ -627,10 +627,85 @@ export default function DocumentaryEditor() {
             </div>
           </div>
 
+          {/* Timeline Tracks */}
+          <div className="h-32 bg-[#0d1117] border-t border-[#2a3441] overflow-x-auto">
+            <div className="min-w-full" style={{ width: `${Math.max(100, zoom)}%` }}>
+              {/* Image Track */}
+              <div className="flex items-center h-12 border-b border-[#2a3441]">
+                <div className="w-20 flex-shrink-0 px-2 flex items-center gap-1 bg-[#1a1f26] h-full border-r border-[#2a3441]">
+                  <ImageIcon className="h-3 w-3 text-blue-400" />
+                  <span className="text-[10px] text-muted-foreground">Images</span>
+                </div>
+                <div className="flex-1 flex h-full">
+                  {allScenes.map((scene, index) => (
+                    <div
+                      key={`img-${index}`}
+                      onClick={() => handleSceneClick(index)}
+                      className={cn(
+                        "h-full flex-shrink-0 border-r border-[#2a3441] cursor-pointer transition-all relative",
+                        index === currentSceneIndex ? "bg-blue-500/30" : "bg-blue-500/10 hover:bg-blue-500/20"
+                      )}
+                      style={{ width: `${(scene.duration / totalDuration) * 100}%`, minWidth: '40px' }}
+                    >
+                      {scene.imageUrl ? (
+                        <img src={scene.imageUrl} alt="" className="w-full h-full object-cover opacity-60" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-0.5 left-1 text-[8px] text-white/70 bg-black/50 px-1 rounded">
+                        {scene.sceneNumber}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Audio Track */}
+              <div className="flex items-center h-10 border-b border-[#2a3441]">
+                <div className="w-20 flex-shrink-0 px-2 flex items-center gap-1 bg-[#1a1f26] h-full border-r border-[#2a3441]">
+                  <Volume2 className="h-3 w-3 text-green-400" />
+                  <span className="text-[10px] text-muted-foreground">Audio</span>
+                </div>
+                <div className="flex-1 flex h-full">
+                  {allScenes.map((scene, index) => (
+                    <div
+                      key={`aud-${index}`}
+                      onClick={() => handleSceneClick(index)}
+                      className={cn(
+                        "h-full flex-shrink-0 border-r border-[#2a3441] cursor-pointer transition-all flex items-center justify-center",
+                        index === currentSceneIndex ? "bg-green-500/30" : scene.audioUrl ? "bg-green-500/20 hover:bg-green-500/30" : "bg-[#1a1f26]"
+                      )}
+                      style={{ width: `${(scene.duration / totalDuration) * 100}%`, minWidth: '40px' }}
+                    >
+                      {scene.audioUrl ? (
+                        <div className="w-full h-6 mx-1 bg-green-500/40 rounded flex items-center justify-center gap-0.5">
+                          {[1,2,3,4,5,3,4,2,3,5,4,3,2,4,5].map((h, i) => (
+                            <div key={i} className="w-0.5 bg-green-400 rounded-full" style={{ height: `${h * 3}px` }} />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[8px] text-muted-foreground/50">No audio</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Playhead indicator */}
+              <div 
+                className="absolute top-0 w-0.5 bg-red-500 pointer-events-none z-10"
+                style={{ 
+                  left: `calc(80px + ${(currentTime / totalDuration) * 100}%)`,
+                  height: '88px'
+                }}
+              />
+            </div>
+          </div>
+
           {/* Playback Controls */}
-          <div className="h-24 bg-[#1a1f26] border-t border-[#2a3441] p-4">
+          <div className="h-20 bg-[#1a1f26] border-t border-[#2a3441] p-3">
             {/* Progress Bar */}
-            <div className="mb-3">
+            <div className="mb-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <span>{formatTime(currentTime)}</span>
                 <div className="flex-1">
