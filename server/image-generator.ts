@@ -113,11 +113,15 @@ export async function generateImage(
     let output: any;
     let modelId: `${string}/${string}`;
 
+    // For black & white, put style at START of prompt for stronger effect
     const styleModifier = imageStyle === "black-and-white" 
-      ? "vintage black and white photograph, monochrome, film grain, high contrast, historical archive photo, 1920s-1940s photography style, sepia tones, aged photograph aesthetic, realistic documentary photograph"
+      ? "IMPORTANT: Generate in BLACK AND WHITE ONLY, no color. Vintage 1920s-1940s black and white photograph, monochrome grayscale only, heavy film grain texture, high contrast shadows, historical archive photo style, sepia or pure grayscale tones, aged and weathered photograph aesthetic, realistic documentary photograph from early 20th century"
       : "cinematic photography, professional lighting, 8K ultra HD quality, dramatic atmosphere, documentary style, photorealistic";
     
-    const cinematicPrompt = `${prompt}, ${styleModifier}`;
+    // Put style modifier FIRST for black & white to ensure it takes priority
+    const cinematicPrompt = imageStyle === "black-and-white"
+      ? `${styleModifier}. Scene: ${prompt}`
+      : `${prompt}, ${styleModifier}`;
 
     if (model === "flux-1.1-pro") {
       modelId = "black-forest-labs/flux-1.1-pro" as const;

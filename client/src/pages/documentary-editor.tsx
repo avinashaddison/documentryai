@@ -75,6 +75,7 @@ interface DocumentaryData {
   title: string;
   chapters: Chapter[];
   generatedImages: Record<string, string>;
+  generatedAudio?: Record<string, string>;
 }
 
 const KEN_BURNS_EFFECTS = ["zoom_in", "zoom_out", "pan_left", "pan_right", "pan_up", "pan_down"];
@@ -143,6 +144,7 @@ export default function DocumentaryEditor() {
                   setDocumentaryData(prev => prev ? {
                     ...prev,
                     generatedImages: { ...prev.generatedImages, ...assetsData.images },
+                    generatedAudio: { ...(prev.generatedAudio || {}), ...assetsData.audio },
                   } : prev);
                 }
               }
@@ -174,6 +176,7 @@ export default function DocumentaryEditor() {
       chapterTitle: ch.title,
       globalIndex: chIdx * 100 + scIdx,
       imageUrl: documentaryData.generatedImages[`ch${ch.chapterNumber}_sc${scene.sceneNumber}`] || null,
+      audioUrl: documentaryData.generatedAudio?.[`ch${ch.chapterNumber}_sc${scene.sceneNumber}`] || null,
       kenBurnsEffect: KEN_BURNS_EFFECTS[(chIdx + scIdx) % KEN_BURNS_EFFECTS.length],
     }))
   ) || [];

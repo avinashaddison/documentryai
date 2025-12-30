@@ -514,6 +514,19 @@ export async function registerRoutes(
 
       const successCount = results.filter(r => r.success).length;
       
+      // Save successful image assets to database for persistence
+      for (const result of results) {
+        if (result.success && result.imageUrl) {
+          await storage.saveGeneratedAsset({
+            projectId,
+            chapterNumber,
+            sceneNumber: result.sceneNumber,
+            assetType: "image",
+            assetUrl: result.imageUrl,
+          });
+        }
+      }
+      
       await storage.createGenerationLog({
         projectId,
         step: `chapter_${chapterNumber}_images`,
@@ -600,6 +613,15 @@ export async function registerRoutes(
         narration,
         voice
       );
+
+      // Save the audio asset to database for persistence
+      await storage.saveGeneratedAsset({
+        projectId,
+        chapterNumber,
+        sceneNumber,
+        assetType: "audio",
+        assetUrl: audioUrl,
+      });
 
       await storage.createGenerationLog({
         projectId,
