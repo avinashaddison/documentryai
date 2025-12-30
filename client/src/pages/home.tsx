@@ -63,7 +63,7 @@ export default function Home() {
   const handleCreate = () => {
     if (topic.trim()) {
       sessionStorage.setItem("documentaryTopic", topic.trim());
-      navigate("/create");
+      navigate("/autopilot");
     }
   };
 
@@ -91,7 +91,7 @@ export default function Home() {
               <a href="#examples" className="hover:text-white transition-colors">Examples</a>
             </nav>
             <Button 
-              onClick={() => navigate("/create")}
+              onClick={() => navigate("/autopilot")}
               variant="outline" 
               size="sm"
               className="border-white/10 hover:bg-white/5"
