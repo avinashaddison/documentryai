@@ -136,11 +136,14 @@ export async function generateImage(
       });
     } else {
       modelId = "ideogram-ai/ideogram-v2-turbo" as const;
+      // Use valid Ideogram V2 resolutions - 1280x768 for landscape, 768x1280 for portrait
+      const ideogramResolution = aspectRatio === "16:9" ? "1280x768" 
+        : aspectRatio === "9:16" ? "768x1280" 
+        : "1024x1024";
       output = await replicate.run(modelId, {
         input: {
           prompt: cinematicPrompt,
-          aspect_ratio: aspectRatio === "16:9" ? "16:9" : aspectRatio === "9:16" ? "9:16" : "1:1",
-          resolution: "1024x576",
+          resolution: ideogramResolution,
         },
       });
     }
