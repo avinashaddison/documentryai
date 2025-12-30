@@ -14,6 +14,7 @@ import {
 import { generateImage, generateChapterImages } from "./image-generator";
 import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -21,6 +22,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   await ensureDbConnected();
+  
+  registerObjectStorageRoutes(app);
 
   app.get("/api/projects", async (_req, res) => {
     try {

@@ -1,6 +1,5 @@
 import { createClient } from "@deepgram/sdk";
-import fs from "fs";
-import path from "path";
+import { objectStorageClient } from "./replit_integrations/object_storage";
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
@@ -17,9 +16,17 @@ const VOICE_MODELS: Record<string, string> = {
   "neutral": "aura-asteria-en",
 };
 
-export async function generateSpeech(
+function getBucketId(): string {
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) {
+    throw new Error("DEFAULT_OBJECT_STORAGE_BUCKET_ID is not set. Please set up Object Storage first.");
+  }
+  return bucketId;
+}
+
+export async function generateSpeechToStorage(
   text: string,
-  outputPath: string,
+  objectPath: string,
   options: TTSOptions = {}
 ): Promise<string> {
   if (!DEEPGRAM_API_KEY) {
@@ -50,11 +57,6 @@ export async function generateSpeech(
       throw new Error("Failed to get audio stream from Deepgram");
     }
 
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
     const chunks: Buffer[] = [];
     const reader = stream.getReader();
     
@@ -65,11 +67,22 @@ export async function generateSpeech(
     }
 
     const audioBuffer = Buffer.concat(chunks);
-    fs.writeFileSync(outputPath, audioBuffer);
-
-    console.log(`[TTS] Audio saved to: ${outputPath} (${audioBuffer.length} bytes)`);
     
-    return outputPath;
+    const bucketId = getBucketId();
+    const bucket = objectStorageClient.bucket(bucketId);
+    const file = bucket.file(objectPath);
+    
+    await file.save(audioBuffer, {
+      contentType: "audio/wav",
+      metadata: {
+        "custom:aclPolicy": JSON.stringify({ visibility: "public", owner: "system" }),
+      },
+    });
+
+    const publicUrl = `/objects/${objectPath}`;
+    console.log(`[TTS] Audio saved to object storage: ${publicUrl} (${audioBuffer.length} bytes)`);
+    
+    return publicUrl;
   } catch (error: any) {
     console.error("[TTS] Error generating speech:", error);
     throw new Error(`TTS generation failed: ${error.message}`);
@@ -82,12 +95,8 @@ export async function generateChapterVoiceover(
   narration: string,
   voice: string = "neutral"
 ): Promise<string> {
-  const outputDir = path.join(process.cwd(), "generated_assets", "audio", `project_${projectId}`);
-  const outputPath = path.join(outputDir, `chapter_${chapterNumber}.wav`);
-
-  await generateSpeech(narration, outputPath, { voice });
-
-  return `/generated_assets/audio/project_${projectId}/chapter_${chapterNumber}.wav`;
+  const objectPath = `audio/project_${projectId}/chapter_${chapterNumber}.wav`;
+  return generateSpeechToStorage(narration, objectPath, { voice });
 }
 
 export async function generateSceneVoiceover(
@@ -97,12 +106,8 @@ export async function generateSceneVoiceover(
   narration: string,
   voice: string = "neutral"
 ): Promise<string> {
-  const outputDir = path.join(process.cwd(), "generated_assets", "audio", `project_${projectId}`);
-  const outputPath = path.join(outputDir, `ch${chapterNumber}_sc${sceneNumber}.wav`);
-
-  await generateSpeech(narration, outputPath, { voice });
-
-  return `/generated_assets/audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.wav`;
+  const objectPath = `audio/project_${projectId}/ch${chapterNumber}_sc${sceneNumber}.wav`;
+  return generateSpeechToStorage(narration, objectPath, { voice });
 }
 
 export function getAvailableVoices(): Array<{ id: string; name: string; description: string }> {
