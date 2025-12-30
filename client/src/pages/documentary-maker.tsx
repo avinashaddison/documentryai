@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,16 @@ export default function DocumentaryMaker() {
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
   });
+  
+  const [generationLogs, setGenerationLogs] = useState<Array<{
+    id: number;
+    step: string;
+    status: string;
+    message: string | null;
+    createdAt: string;
+  }>>([]);
+  const [showLogs, setShowLogs] = useState(true);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   const storyLengthToChapters: Record<string, number> = {
     short: 3,
@@ -263,6 +273,7 @@ export default function DocumentaryMaker() {
       setCurrentImageScene(`Chapter ${chapter.chapterNumber}: Generating ${chapter.scenes.length} images...`);
       
       try {
+        console.log(`[Generation] Chapter ${chapter.chapterNumber}: Starting image generation (${config.imageStyle} style)`);
         const imageResult = await generateImagesMutation.mutateAsync({
           id: projectId,
           chapterNumber: chapter.chapterNumber,
@@ -276,10 +287,13 @@ export default function DocumentaryMaker() {
         
         imageResult.results.forEach((r: any) => {
           if (r.success && r.imageUrl) {
+            console.log(`[Generation] Chapter ${chapter.chapterNumber} Scene ${r.sceneNumber}: Image generated`);
             setGeneratedImages(prev => ({
               ...prev,
               [`ch${chapter.chapterNumber}_sc${r.sceneNumber}`]: r.imageUrl,
             }));
+          } else {
+            console.warn(`[Generation] Chapter ${chapter.chapterNumber} Scene ${r.sceneNumber}: Image failed - ${r.error}`);
           }
         });
       } catch (error) {
@@ -304,11 +318,12 @@ export default function DocumentaryMaker() {
         
         const narrationText = scene.narrationSegment || "";
         if (!narrationText.trim()) {
-          console.warn(`Skipping voiceover for chapter ${chapter.chapterNumber} scene ${scene.sceneNumber}: no narration`);
+          console.warn(`[Voiceover] Skipping Ch${chapter.chapterNumber} Sc${scene.sceneNumber}: no narration text`);
           continue;
         }
         
         try {
+          console.log(`[Voiceover] Ch${chapter.chapterNumber} Sc${scene.sceneNumber}: Starting TTS (${narrationText.length} chars)`);
           const audioResult = await generateVoiceoverMutation.mutateAsync({
             id: projectId,
             chapterNumber: chapter.chapterNumber,
@@ -318,13 +333,14 @@ export default function DocumentaryMaker() {
           });
           
           if (audioResult.audioUrl) {
+            console.log(`[Voiceover] Ch${chapter.chapterNumber} Sc${scene.sceneNumber}: Audio generated - ${audioResult.audioUrl}`);
             setGeneratedAudio(prev => ({
               ...prev,
               [`ch${chapter.chapterNumber}_sc${scene.sceneNumber}`]: audioResult.audioUrl,
             }));
           }
-        } catch (error) {
-          console.error(`Failed to generate voiceover for chapter ${chapter.chapterNumber} scene ${scene.sceneNumber}:`, error);
+        } catch (error: any) {
+          console.error(`[Voiceover] Ch${chapter.chapterNumber} Sc${scene.sceneNumber}: FAILED - ${error.message}`);
         }
         
         setProgress(voiceoverProgress);
@@ -396,6 +412,34 @@ export default function DocumentaryMaker() {
       sessionStorage.removeItem("documentaryTopic");
     }
   }, []);
+
+  // Poll for logs when generating
+  useEffect(() => {
+    if (!projectId || currentStep === "idle" || currentStep === "complete") return;
+    
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/progress`);
+        if (res.ok) {
+          const data = await res.json();
+          setGenerationLogs(data.logs || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch logs:", error);
+      }
+    };
+
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 2000);
+    return () => clearInterval(interval);
+  }, [projectId, currentStep]);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [generationLogs]);
 
   return (
     <div className="min-h-screen bg-[#0a0d14] text-white">
@@ -477,6 +521,44 @@ export default function DocumentaryMaker() {
               {currentStep === "assembly" && "Assembling final video..."}
               {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
             </p>
+            
+            {/* Real-time Logs Panel */}
+            {generationLogs.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Generation Logs</h4>
+                  <button
+                    onClick={() => setShowLogs(!showLogs)}
+                    className="text-xs text-primary hover:underline"
+                    data-testid="button-toggle-logs"
+                  >
+                    {showLogs ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {showLogs && (
+                  <div className="bg-black/50 rounded-lg p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1" data-testid="logs-panel">
+                    {generationLogs.map((log) => (
+                      <div key={log.id} className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0">
+                          {new Date(log.createdAt).toLocaleTimeString()}
+                        </span>
+                        <span className={cn(
+                          "shrink-0 px-1 rounded",
+                          log.status === "started" ? "bg-blue-500/20 text-blue-400" :
+                          log.status === "completed" ? "bg-green-500/20 text-green-400" :
+                          log.status === "failed" ? "bg-red-500/20 text-red-400" :
+                          "bg-yellow-500/20 text-yellow-400"
+                        )}>
+                          [{log.status}]
+                        </span>
+                        <span className="text-white break-all">{log.message}</span>
+                      </div>
+                    ))}
+                    <div ref={logsEndRef} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
