@@ -15,6 +15,8 @@ import {
   type InsertGeneratedAsset,
   type GenerationSession,
   type InsertGenerationSession,
+  type CreationSession,
+  type InsertCreationSession,
   users,
   projects,
   chapters,
@@ -22,7 +24,8 @@ import {
   generationLogs,
   storyFrameworks,
   generatedAssets,
-  generationSessions
+  generationSessions,
+  creationSessions
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -62,6 +65,11 @@ export interface IStorage {
   getActiveGenerationSession(projectId: number): Promise<GenerationSession | undefined>;
   updateGenerationSession(id: number, updates: Partial<GenerationSession>): Promise<GenerationSession | undefined>;
   deleteGenerationSession(id: number): Promise<void>;
+  
+  // Creation Sessions (for /create page persistence)
+  getCreationSession(sessionKey: string): Promise<CreationSession | undefined>;
+  upsertCreationSession(session: InsertCreationSession): Promise<CreationSession>;
+  deleteCreationSession(sessionKey: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,6 +253,33 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGenerationSession(id: number): Promise<void> {
     await db.delete(generationSessions).where(eq(generationSessions.id, id));
+  }
+
+  // Creation Sessions
+  async getCreationSession(sessionKey: string): Promise<CreationSession | undefined> {
+    const result = await db
+      .select()
+      .from(creationSessions)
+      .where(eq(creationSessions.sessionKey, sessionKey));
+    return result[0];
+  }
+
+  async upsertCreationSession(session: InsertCreationSession): Promise<CreationSession> {
+    const existing = await this.getCreationSession(session.sessionKey);
+    if (existing) {
+      const result = await db
+        .update(creationSessions)
+        .set({ ...session, updatedAt: new Date() })
+        .where(eq(creationSessions.sessionKey, session.sessionKey))
+        .returning();
+      return result[0];
+    }
+    const result = await db.insert(creationSessions).values(session).returning();
+    return result[0];
+  }
+
+  async deleteCreationSession(sessionKey: string): Promise<void> {
+    await db.delete(creationSessions).where(eq(creationSessions.sessionKey, sessionKey));
   }
 }
 

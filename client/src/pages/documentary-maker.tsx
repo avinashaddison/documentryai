@@ -69,8 +69,21 @@ interface ChapterScript {
 
 type GenerationStep = "idle" | "framework" | "outline" | "chapters" | "images" | "voiceover" | "assembly" | "complete";
 
+const SESSION_KEY_STORAGE = "petr_ai_session_key";
+
+function getOrCreateSessionKey(): string {
+  let key = localStorage.getItem(SESSION_KEY_STORAGE);
+  if (!key) {
+    key = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(SESSION_KEY_STORAGE, key);
+  }
+  return key;
+}
+
 export default function DocumentaryMaker() {
   const [, navigate] = useLocation();
+  const [sessionKey] = useState(() => getOrCreateSessionKey());
+  const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<number | null>(null);
   const [framework, setFramework] = useState<StoryFramework | null>(null);
@@ -101,6 +114,7 @@ export default function DocumentaryMaker() {
   }>>([]);
   const [showLogs, setShowLogs] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const storyLengthToChapters: Record<string, number> = {
     short: 3,
@@ -406,13 +420,80 @@ export default function DocumentaryMaker() {
     { id: "assembly", label: "Assembly", icon: Film },
   ];
 
+  // Load session on mount
   useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch(`/api/creation-session/${sessionKey}`);
+        if (res.ok) {
+          const session = await res.json();
+          if (session.topic) setTitle(session.topic);
+          if (session.projectId) setProjectId(session.projectId);
+          if (session.chapterCount) setTotalChapters(session.chapterCount);
+          if (session.framework) setFramework(JSON.parse(session.framework));
+          if (session.chapters) setChapters(JSON.parse(session.chapters));
+          if (session.generatedChapters) setGeneratedChapters(JSON.parse(session.generatedChapters));
+          if (session.generatedImages) setGeneratedImages(JSON.parse(session.generatedImages));
+          if (session.generatedAudio) setGeneratedAudio(JSON.parse(session.generatedAudio));
+          if (session.config) setConfig(JSON.parse(session.config));
+          if (session.currentStep) setCurrentStep(session.currentStep as GenerationStep);
+          if (session.progress) setProgress(session.progress);
+        }
+      } catch (error) {
+        console.log("No existing session found");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSession();
+    
     const savedTopic = sessionStorage.getItem("documentaryTopic");
     if (savedTopic) {
       setTitle(savedTopic);
       sessionStorage.removeItem("documentaryTopic");
     }
-  }, []);
+  }, [sessionKey]);
+
+  // Save session on state changes (debounced)
+  useEffect(() => {
+    if (isLoading) return;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await fetch("/api/creation-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionKey,
+            projectId,
+            phase: currentStep === "complete" ? "complete" : currentStep === "idle" ? "setup" : "generating",
+            topic: title,
+            chapterCount: totalChapters,
+            framework: framework ? JSON.stringify(framework) : null,
+            chapters: chapters.length > 0 ? JSON.stringify(chapters) : null,
+            generatedChapters: generatedChapters.length > 0 ? JSON.stringify(generatedChapters) : null,
+            generatedImages: Object.keys(generatedImages).length > 0 ? JSON.stringify(generatedImages) : null,
+            generatedAudio: Object.keys(generatedAudio).length > 0 ? JSON.stringify(generatedAudio) : null,
+            config: JSON.stringify(config),
+            currentStep,
+            progress,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to save session:", error);
+      }
+    }, 500);
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [sessionKey, isLoading, title, projectId, totalChapters, framework, chapters, generatedChapters, generatedImages, generatedAudio, config, currentStep, progress]);
 
   // Poll for logs when generating
   useEffect(() => {
@@ -442,6 +523,27 @@ export default function DocumentaryMaker() {
     }
   }, [generationLogs]);
 
+  const handleNewSession = async () => {
+    try {
+      await fetch(`/api/creation-session/${sessionKey}`, { method: "DELETE" });
+      localStorage.removeItem(SESSION_KEY_STORAGE);
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to clear session:", error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto" />
+          <p className="text-muted-foreground">Loading your session...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-white relative overflow-hidden">
       {/* Animated background effects */}
@@ -466,7 +568,15 @@ export default function DocumentaryMaker() {
               </div>
               <span className="font-bold text-xl tracking-tight gradient-text">Petr AI</span>
             </div>
-            <div className="w-16" />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleNewSession}
+              className="text-muted-foreground hover:text-orange-400 border-orange-500/30"
+              data-testid="button-new-session"
+            >
+              New Session
+            </Button>
           </div>
         </div>
       </header>

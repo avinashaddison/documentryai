@@ -968,5 +968,42 @@ export async function registerRoutes(
     }
   });
 
+  // Creation Session endpoints - for /create page persistence
+  app.get("/api/creation-session/:sessionKey", async (req, res) => {
+    try {
+      const { sessionKey } = req.params;
+      const session = await storage.getCreationSession(sessionKey);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json(session);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/creation-session", async (req, res) => {
+    try {
+      const sessionData = req.body;
+      if (!sessionData.sessionKey) {
+        return res.status(400).json({ error: "sessionKey is required" });
+      }
+      const session = await storage.upsertCreationSession(sessionData);
+      res.json(session);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/creation-session/:sessionKey", async (req, res) => {
+    try {
+      const { sessionKey } = req.params;
+      await storage.deleteCreationSession(sessionKey);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
