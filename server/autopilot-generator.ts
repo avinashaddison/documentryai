@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import type { GenerationSession, GeneratedAsset } from "@shared/schema";
+import { wsService } from "./websocket-service";
 
 interface AutopilotOptions {
   projectId: number;
@@ -121,6 +122,8 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
           try {
             log("images", calculateProgress(session, "images", totalScenes),
               `Generating image for Ch${chapter.chapterNumber} Sc${scene.sceneNumber}...`);
+            
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "generating", "image");
 
             const imageResults = await generateChapterImages(
               {
@@ -136,6 +139,8 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
 
             if (imageResults[0]?.success && imageResults[0]?.imageUrl) {
               result.generatedImages[key] = imageResults[0].imageUrl;
+              
+              wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "completed", "image", imageResults[0].imageUrl);
               
               // Save to database
               await storage.saveGeneratedAsset({
@@ -157,9 +162,11 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
             } else {
               const error = imageResults[0]?.error || "Unknown image generation error";
               result.errors.push(`Image ${key}: ${error}`);
+              wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "error", "image");
             }
           } catch (error: any) {
             result.errors.push(`Image ${key}: ${error.message}`);
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "error", "image");
             // Continue to next scene even if one fails
           }
         }
@@ -191,6 +198,8 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
           try {
             log("audio", calculateProgress(session, "audio", totalScenes),
               `Generating audio for Ch${chapter.chapterNumber} Sc${scene.sceneNumber}...`);
+            
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "generating", "voice");
 
             const audioUrl = await generateSceneVoiceover(
               projectId,
@@ -201,6 +210,8 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
             );
 
             result.generatedAudio[key] = audioUrl;
+            
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "completed", "voice", audioUrl);
 
             // Save to database
             await storage.saveGeneratedAsset({
@@ -223,6 +234,7 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
 
           } catch (error: any) {
             result.errors.push(`Audio ${key}: ${error.message}`);
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "error", "voice");
           }
         }
       }
@@ -236,6 +248,12 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
     // Phase 3: Assemble video
     if (session.currentStep === "video") {
       log("assembly", 80, "Assembling final video...");
+      
+      for (const chapter of chapters) {
+        for (const scene of chapter.scenes) {
+          wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "generating", "video");
+        }
+      }
 
       await storage.createGenerationLog({
         projectId,
@@ -253,6 +271,12 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
         result.success = true;
         result.videoPath = `/${outputPath}`;
         
+        for (const chapter of chapters) {
+          for (const scene of chapter.scenes) {
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "completed", "video");
+          }
+        }
+        
         // Mark session complete
         await storage.updateGenerationSession(session.id, {
           status: "completed",
@@ -268,6 +292,12 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
         log("complete", 100, "Video generation complete!");
       } else {
         result.errors.push("Video assembly failed");
+        
+        for (const chapter of chapters) {
+          for (const scene of chapter.scenes) {
+            wsService.sendSceneUpdate(projectId, chapter.chapterNumber, scene.sceneNumber, "error", "video");
+          }
+        }
         
         await storage.updateGenerationSession(session.id, {
           status: "failed",

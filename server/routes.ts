@@ -18,6 +18,7 @@ import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } 
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+import { wsService } from "./websocket-service";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -71,6 +72,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   await ensureDbConnected();
+  
+  wsService.init(httpServer);
   
   registerObjectStorageRoutes(app);
 
@@ -841,30 +844,41 @@ export async function registerRoutes(
         message: `Starting autopilot generation (${imageStyle} images): images → audio → video assembly...`
       });
 
-      const result = await runAutopilotGeneration({
+      wsService.sendStepChange(projectId, "init", "Starting autopilot generation...");
+
+      res.json({ success: true, message: "Autopilot started", projectId });
+
+      runAutopilotGeneration({
         projectId,
         chapters,
         voice,
         imageModel,
         imageStyle,
+        onProgress: (step, progress, message) => {
+          wsService.sendProgress(projectId, step, progress, message);
+        },
+      }).then(async (result) => {
+        if (result.success) {
+          wsService.sendComplete(projectId, "Video generation complete!", result.videoPath);
+          await storage.createGenerationLog({
+            projectId,
+            step: "autopilot",
+            status: "completed",
+            message: `Autopilot completed. Video: ${result.videoPath}`
+          });
+        } else {
+          wsService.sendError(projectId, `Generation failed: ${result.errors.join(", ")}`);
+          await storage.createGenerationLog({
+            projectId,
+            step: "autopilot",
+            status: "failed",
+            message: `Autopilot failed: ${result.errors.join(", ")}`
+          });
+        }
+      }).catch((error) => {
+        console.error("Autopilot error:", error);
+        wsService.sendError(projectId, error.message);
       });
-
-      if (result.success) {
-        res.json({
-          success: true,
-          videoPath: result.videoPath,
-          generatedImages: result.generatedImages,
-          generatedAudio: result.generatedAudio,
-          errors: result.errors,
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          errors: result.errors,
-          generatedImages: result.generatedImages,
-          generatedAudio: result.generatedAudio,
-        });
-      }
     } catch (error: any) {
       console.error("Autopilot error:", error);
       res.status(500).json({ error: error.message });
