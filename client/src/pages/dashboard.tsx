@@ -282,7 +282,8 @@ export default function Dashboard() {
         }),
       });
       if (res.ok) {
-        const chapter = await res.json();
+        const data = await res.json();
+        const chapter = data.chapter || data;
         generated.push(chapter);
         setGeneratedChapters([...generated]);
         
