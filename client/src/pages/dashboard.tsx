@@ -253,7 +253,7 @@ export default function Dashboard() {
       id: project.id, 
       numChapters: lengthConfig.chapters 
     });
-    setFramework(fw);
+    setFramework(fw.storedFramework || fw);
     setAgentStatuses(prev => ({ ...prev, script: "done" }));
     setAutopilotPhase("review");
   };
