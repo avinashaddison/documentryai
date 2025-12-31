@@ -1,39 +1,32 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { 
-  Home,
-  Image as ImageIcon,
-  Mic,
-  Film,
-  History,
   Play,
-  Settings,
   Sparkles,
   Loader2,
   Check,
   X,
   Download,
-  ChevronRight,
   Clock,
-  Layers,
-  Volume2,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Mic,
+  Image as ImageIcon,
+  Film,
+  History,
+  Settings,
+  ChevronRight,
+  Pencil,
+  Eye,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SidebarView = "home" | "images" | "voice" | "video" | "history";
+type SidebarView = "create" | "history" | "settings";
 type AutopilotPhase = "setup" | "review" | "generating" | "complete";
 
 interface StoryFramework {
@@ -91,19 +84,26 @@ function getOrCreateSessionKey(): string {
   return key;
 }
 
-const sidebarItems = [
-  { id: "home" as SidebarView, label: "Home", icon: Home },
-  { id: "images" as SidebarView, label: "Images", icon: ImageIcon },
-  { id: "voice" as SidebarView, label: "Voice", icon: Mic },
-  { id: "video" as SidebarView, label: "Video", icon: Film },
-  { id: "history" as SidebarView, label: "History", icon: History },
+const lengthOptions = [
+  { id: "short", label: "3-5 min", chapters: 3, desc: "Quick & engaging" },
+  { id: "medium", label: "8-10 min", chapters: 5, desc: "Standard length" },
+  { id: "long", label: "15-18 min", chapters: 8, desc: "In-depth content" },
+  { id: "feature", label: "25-30 min", chapters: 12, desc: "Documentary style" },
+];
+
+const aiTeam = [
+  { id: "script", label: "Script Writer", icon: FileText, color: "from-violet-500 to-purple-600" },
+  { id: "voice", label: "Voice Actor", icon: Mic, color: "from-blue-500 to-cyan-600" },
+  { id: "images", label: "Image Generator", icon: ImageIcon, color: "from-emerald-500 to-teal-600" },
+  { id: "video", label: "Video Editor", icon: Film, color: "from-orange-500 to-amber-600" },
 ];
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const [activeView, setActiveView] = useState<SidebarView>("home");
+  const [activeView, setActiveView] = useState<SidebarView>("create");
   const [sessionKey] = useState(() => getOrCreateSessionKey());
-  const [title, setTitle] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [selectedLength, setSelectedLength] = useState("medium");
   const [projectId, setProjectId] = useState<number | null>(null);
   const [framework, setFramework] = useState<StoryFramework | null>(null);
   const [generatedChapters, setGeneratedChapters] = useState<ChapterScript[]>([]);
@@ -113,16 +113,13 @@ export default function Dashboard() {
   const [wsMessages, setWsMessages] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [totalChapters, setTotalChapters] = useState(5);
-  const [storyLength, setStoryLength] = useState("medium");
+  const [agentStatuses, setAgentStatuses] = useState<Record<string, "idle" | "working" | "done">>({
+    script: "idle",
+    voice: "idle",
+    images: "idle",
+    video: "idle",
+  });
   const wsRef = useRef<WebSocket | null>(null);
-
-  const storyLengthToChapters: Record<string, number> = {
-    short: 3,
-    medium: 5,
-    long: 8,
-    feature: 12,
-  };
 
   const { data: projects } = useQuery({
     queryKey: ["/api/projects"],
@@ -158,7 +155,7 @@ export default function Dashboard() {
       const res = await fetch(`/api/projects/${id}/documentary/generate-framework`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyLength, totalChapters: numChapters }),
+        body: JSON.stringify({ storyLength: selectedLength, totalChapters: numChapters }),
       });
       if (!res.ok) throw new Error("Failed to generate framework");
       return res.json();
@@ -171,7 +168,7 @@ export default function Dashboard() {
     
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "subscribe", projectId: projId }));
-      setWsMessages(prev => [...prev, "[CONNECTED] Real-time updates active"]);
+      setWsMessages(prev => [...prev, "Connected to generation server"]);
     };
 
     ws.onmessage = (event) => {
@@ -181,7 +178,19 @@ export default function Dashboard() {
         if (msg.type === "progress") {
           setProgress(msg.progress || 0);
           if (msg.message) {
-            setWsMessages(prev => [...prev, `[PROGRESS] ${msg.message}`]);
+            setWsMessages(prev => [...prev, msg.message!]);
+            if (msg.message.includes("script") || msg.message.includes("chapter")) {
+              setAgentStatuses(prev => ({ ...prev, script: "working" }));
+            }
+            if (msg.message.includes("voice") || msg.message.includes("audio")) {
+              setAgentStatuses(prev => ({ ...prev, script: "done", voice: "working" }));
+            }
+            if (msg.message.includes("image")) {
+              setAgentStatuses(prev => ({ ...prev, voice: "done", images: "working" }));
+            }
+            if (msg.message.includes("video") || msg.message.includes("assembl")) {
+              setAgentStatuses(prev => ({ ...prev, images: "done", video: "working" }));
+            }
           }
         } else if (msg.type === "scene_update") {
           const { chapterIndex, sceneIndex, phase, status, imageUrl, audioUrl } = msg.data || {};
@@ -197,12 +206,13 @@ export default function Dashboard() {
           }));
         } else if (msg.type === "complete") {
           setAutopilotPhase("complete");
+          setAgentStatuses({ script: "done", voice: "done", images: "done", video: "done" });
           if (msg.data?.videoUrl) {
             setVideoUrl(msg.data.videoUrl);
           }
-          setWsMessages(prev => [...prev, `[COMPLETE] ${msg.message}`]);
+          setWsMessages(prev => [...prev, "Video generation complete!"]);
         } else if (msg.type === "error") {
-          setWsMessages(prev => [...prev, `[ERROR] ${msg.message}`]);
+          setWsMessages(prev => [...prev, `Error: ${msg.message}`]);
           setProgress(0);
           setGenerationError(msg.message || "Generation failed");
           setSceneStatuses(prev => {
@@ -228,45 +238,47 @@ export default function Dashboard() {
   };
 
   const handleStartGeneration = async () => {
-    if (!title.trim()) return;
+    if (!prompt.trim()) return;
     
-    const numChapters = storyLengthToChapters[storyLength];
-    setTotalChapters(numChapters);
+    const lengthConfig = lengthOptions.find(l => l.id === selectedLength) || lengthOptions[1];
+    setAgentStatuses({ script: "working", voice: "idle", images: "idle", video: "idle" });
     
     const project = await createProjectMutation.mutateAsync({ 
-      projectTitle: title, 
-      chapterCount: numChapters 
+      projectTitle: prompt, 
+      chapterCount: lengthConfig.chapters 
     });
     setProjectId(project.id);
     
     const fw = await generateFrameworkMutation.mutateAsync({ 
       id: project.id, 
-      numChapters 
+      numChapters: lengthConfig.chapters 
     });
     setFramework(fw);
+    setAgentStatuses(prev => ({ ...prev, script: "done" }));
     setAutopilotPhase("review");
   };
 
   const handleApproveAndStart = async () => {
     if (!projectId) return;
     
+    const lengthConfig = lengthOptions.find(l => l.id === selectedLength) || lengthOptions[1];
+    
     setAutopilotPhase("generating");
     setGenerationError(null);
     setSceneStatuses({});
     setWsMessages([]);
+    setAgentStatuses({ script: "done", voice: "working", images: "idle", video: "idle" });
     connectWebSocket(projectId);
     
-    setWsMessages(prev => [...prev, "[STEP] Generating chapter scripts..."]);
-    
     const generated: ChapterScript[] = [];
-    for (let i = 0; i < totalChapters; i++) {
+    for (let i = 0; i < lengthConfig.chapters; i++) {
       const res = await fetch(`/api/projects/${projectId}/documentary/generate-chapter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           chapterNumber: i + 1,
-          storyLength,
-          totalChapters,
+          storyLength: selectedLength,
+          totalChapters: lengthConfig.chapters,
         }),
       });
       if (res.ok) {
@@ -294,431 +306,422 @@ export default function Dashboard() {
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": return "bg-emerald-500";
-      case "generating": return "bg-amber-500 animate-pulse";
-      case "error": return "bg-red-500";
-      default: return "bg-zinc-600";
-    }
+  const resetToStart = () => {
+    setAutopilotPhase("setup");
+    setPrompt("");
+    setProjectId(null);
+    setFramework(null);
+    setGeneratedChapters([]);
+    setSceneStatuses({});
+    setWsMessages([]);
+    setVideoUrl(null);
+    setGenerationError(null);
+    setAgentStatuses({ script: "idle", voice: "idle", images: "idle", video: "idle" });
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed": return <Check className="h-3 w-3" />;
-      case "generating": return <Loader2 className="h-3 w-3 animate-spin" />;
-      case "error": return <X className="h-3 w-3" />;
-      default: return <Clock className="h-3 w-3" />;
-    }
-  };
-
-  const renderHomeView = () => (
-    <div className="space-y-8">
-      {autopilotPhase === "setup" && (
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">
-              Create Your Documentary
-            </h2>
-            <p className="text-zinc-400">Enter a topic and let AI generate a complete documentary</p>
-          </div>
-
-          <div className="glass-panel rounded-2xl p-6 space-y-6">
-            <div className="space-y-2">
-              <Label className="text-zinc-300">Documentary Topic</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., The History of Ancient Rome"
-                className="bg-zinc-800/50 border-zinc-700 text-white h-12 text-lg"
-                data-testid="input-topic"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-zinc-300">Documentary Length</Label>
-              <Select value={storyLength} onValueChange={setStoryLength}>
-                <SelectTrigger className="bg-zinc-800/50 border-zinc-700 text-white" data-testid="select-length">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="short">Short (3 chapters)</SelectItem>
-                  <SelectItem value="medium">Medium (5 chapters)</SelectItem>
-                  <SelectItem value="long">Long (8 chapters)</SelectItem>
-                  <SelectItem value="feature">Feature (12 chapters)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              onClick={handleStartGeneration}
-              disabled={!title.trim() || createProjectMutation.isPending || generateFrameworkMutation.isPending}
-              className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white font-semibold"
-              data-testid="button-start"
-            >
-              {createProjectMutation.isPending || generateFrameworkMutation.isPending ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Generating Framework...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Generate Documentary
-                </>
-              )}
-            </Button>
-          </div>
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex">
+      {/* Minimal Sidebar */}
+      <aside className="w-16 bg-[#12121a] border-r border-white/5 flex flex-col items-center py-6 gap-6">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <Zap className="h-5 w-5 text-white" />
         </div>
-      )}
+        
+        <nav className="flex-1 flex flex-col gap-2">
+          <button
+            onClick={() => setActiveView("create")}
+            className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+              activeView === "create" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+            )}
+            data-testid="nav-create"
+          >
+            <Sparkles className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setActiveView("history")}
+            className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+              activeView === "history" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
+            )}
+            data-testid="nav-history"
+          >
+            <History className="h-5 w-5" />
+          </button>
+        </nav>
 
-      {autopilotPhase === "review" && framework && (
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="text-center space-y-2">
-            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
-              Review Your Documentary
-            </Badge>
-            <h2 className="text-2xl font-bold text-white">{framework.generatedTitle}</h2>
-          </div>
+        <button
+          onClick={() => setActiveView("settings")}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 transition-all"
+          data-testid="nav-settings"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
+      </aside>
 
-          <div className="glass-panel rounded-2xl p-6 space-y-4">
-            <div>
-              <Label className="text-zinc-400 text-sm">Opening Hook</Label>
-              <p className="text-white mt-1">{framework.openingHook}</p>
-            </div>
-            <div>
-              <Label className="text-zinc-400 text-sm">Premise</Label>
-              <p className="text-zinc-300 mt-1">{framework.premise}</p>
-            </div>
-            {framework.genres && (
-              <div className="flex gap-2">
-                {framework.genres.map((genre, i) => (
-                  <Badge key={i} variant="outline" className="border-orange-500/30 text-orange-400">
-                    {genre}
-                  </Badge>
-                ))}
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        {activeView === "create" && (
+          <div className="max-w-5xl mx-auto px-6 py-12">
+            {/* Setup Phase */}
+            {autopilotPhase === "setup" && (
+              <div className="space-y-12">
+                <div className="text-center space-y-4">
+                  <h1 className="text-4xl md:text-5xl font-bold">
+                    <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">
+                      Transform your ideas into videos
+                    </span>
+                  </h1>
+                  <p className="text-lg text-white/50 max-w-2xl mx-auto">
+                    Enter a topic and our AI team will research, write & edit it into a documentary
+                  </p>
+                </div>
+
+                {/* Input Section */}
+                <div className="max-w-3xl mx-auto space-y-6">
+                  <div className="relative">
+                    <Input
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Create a documentary about..."
+                      className="h-16 text-lg bg-[#16161f] border-white/10 rounded-2xl pl-6 pr-32 placeholder:text-white/30"
+                      data-testid="input-prompt"
+                    />
+                    <Button
+                      onClick={handleStartGeneration}
+                      disabled={!prompt.trim() || createProjectMutation.isPending || generateFrameworkMutation.isPending}
+                      className="absolute right-2 top-2 h-12 px-6 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 rounded-xl"
+                      data-testid="button-generate"
+                    >
+                      {createProjectMutation.isPending || generateFrameworkMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          Generate
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Length Options */}
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {lengthOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setSelectedLength(option.id)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl border transition-all",
+                          selectedLength === option.id
+                            ? "bg-violet-500/20 border-violet-500/50 text-white"
+                            : "bg-white/5 border-white/10 text-white/60 hover:border-white/20"
+                        )}
+                        data-testid={`length-${option.id}`}
+                      >
+                        <div className="text-sm font-medium">{option.label}</div>
+                        <div className="text-xs opacity-60">{option.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Team Preview */}
+                <div className="max-w-4xl mx-auto">
+                  <p className="text-center text-white/40 text-sm mb-6">Your AI production team</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {aiTeam.map((agent) => (
+                      <div
+                        key={agent.id}
+                        className="bg-[#16161f] rounded-2xl p-4 border border-white/5"
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center mb-3",
+                          agent.color
+                        )}>
+                          <agent.icon className="h-5 w-5 text-white" />
+                        </div>
+                        <p className="text-sm font-medium text-white/80">{agent.label}</p>
+                        <p className="text-xs text-white/40">Ready</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
-          </div>
 
-          <Button
-            onClick={handleApproveAndStart}
-            className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700"
-            data-testid="button-approve"
-          >
-            <Play className="h-5 w-5 mr-2" />
-            Approve & Start Generation
-          </Button>
-        </div>
-      )}
+            {/* Review Phase */}
+            {autopilotPhase === "review" && framework && (
+              <div className="space-y-8">
+                <div className="text-center space-y-2">
+                  <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Review Script
+                  </Badge>
+                  <h2 className="text-3xl font-bold text-white">{framework.generatedTitle}</h2>
+                </div>
 
-      {autopilotPhase === "generating" && (
-        <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse">
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              Generating Documentary
-            </Badge>
-            <h2 className="text-2xl font-bold text-white">Live Generation Progress</h2>
-          </div>
+                <div className="max-w-3xl mx-auto space-y-4">
+                  <div className="bg-[#16161f] rounded-2xl p-6 border border-white/5 space-y-4">
+                    <div>
+                      <p className="text-sm text-white/40 mb-1">Opening Hook</p>
+                      <p className="text-white text-lg">{framework.openingHook}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-white/40 mb-1">Premise</p>
+                      <p className="text-white/70">{framework.premise}</p>
+                    </div>
+                    {framework.genres && (
+                      <div className="flex gap-2 pt-2">
+                        {framework.genres.map((genre, i) => (
+                          <Badge key={i} variant="outline" className="border-white/10 text-white/60">
+                            {genre}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-          <div className="glass-panel rounded-2xl p-4">
-            <Progress value={progress} className="h-2" />
-            <p className="text-center text-sm text-zinc-400 mt-2">{progress}% Complete</p>
-          </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={resetToStart}
+                      className="flex-1 h-12 border-white/10 text-white/60 hover:bg-white/5"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={handleApproveAndStart}
+                      className="flex-1 h-12 bg-gradient-to-r from-violet-500 to-purple-600"
+                      data-testid="button-approve"
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Accept & Generate Video
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {/* Scene Timeline */}
-          <div className="glass-panel rounded-2xl p-6 space-y-4 max-h-96 overflow-y-auto">
-            {generatedChapters.map((chapter, chapterIdx) => (
-              <div key={chapterIdx} className="space-y-2">
-                <h4 className="font-medium text-white flex items-center gap-2">
-                  <span className="text-orange-400">Ch {chapter.chapterNumber}:</span>
-                  {chapter.title}
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                  {chapter.scenes?.map((scene, sceneIdx) => {
-                    const key = `${chapterIdx}-${sceneIdx}`;
-                    const status = sceneStatuses[key] || { image: "pending", voice: "pending", video: "pending" };
+            {/* Generating Phase */}
+            {autopilotPhase === "generating" && (
+              <div className="space-y-8">
+                <div className="text-center space-y-2">
+                  <Badge className="bg-violet-500/20 text-violet-400 border-violet-500/30 animate-pulse">
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Generating Video
+                  </Badge>
+                  <h2 className="text-2xl font-bold text-white">Your AI team is working</h2>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-[#16161f] rounded-2xl p-4 border border-white/5">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-white/60">Progress</span>
+                      <span className="text-white">{progress}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                </div>
+
+                {/* AI Team Status */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                  {aiTeam.map((agent) => {
+                    const status = agentStatuses[agent.id];
                     return (
-                      <div key={sceneIdx} className="bg-zinc-800/50 rounded-lg p-2 space-y-1">
-                        <p className="text-xs text-zinc-400">Scene {scene.sceneNumber}</p>
-                        <div className="flex gap-1">
-                          <div className={cn("w-5 h-5 rounded flex items-center justify-center", getStatusColor(status.image))} title="Image">
-                            <ImageIcon className="h-3 w-3 text-white" />
+                      <div
+                        key={agent.id}
+                        className={cn(
+                          "rounded-2xl p-4 border transition-all",
+                          status === "working" 
+                            ? "bg-violet-500/10 border-violet-500/30" 
+                            : status === "done"
+                            ? "bg-emerald-500/10 border-emerald-500/30"
+                            : "bg-[#16161f] border-white/5"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center",
+                            agent.color
+                          )}>
+                            <agent.icon className="h-5 w-5 text-white" />
                           </div>
-                          <div className={cn("w-5 h-5 rounded flex items-center justify-center", getStatusColor(status.voice))} title="Voice">
-                            <Mic className="h-3 w-3 text-white" />
-                          </div>
-                          <div className={cn("w-5 h-5 rounded flex items-center justify-center", getStatusColor(status.video))} title="Video">
-                            <Film className="h-3 w-3 text-white" />
-                          </div>
+                          {status === "working" && <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />}
+                          {status === "done" && <Check className="h-4 w-4 text-emerald-400" />}
                         </div>
+                        <p className="text-sm font-medium text-white/80">{agent.label}</p>
+                        <p className={cn(
+                          "text-xs",
+                          status === "working" ? "text-violet-400" : 
+                          status === "done" ? "text-emerald-400" : "text-white/40"
+                        )}>
+                          {status === "working" ? "Working..." : status === "done" ? "Complete" : "Waiting"}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Live Logs */}
-          {wsMessages.length > 0 && (
-            <div className="glass-panel rounded-2xl p-4 max-h-32 overflow-y-auto font-mono text-xs">
-              {wsMessages.slice(-8).map((msg, i) => (
-                <div key={i} className={cn(
-                  "text-zinc-400",
-                  msg.includes("[ERROR]") && "text-red-400",
-                  msg.includes("[COMPLETE]") && "text-emerald-400"
-                )}>{msg}</div>
+                {/* Timeline Strip */}
+                {generatedChapters.length > 0 && (
+                  <div className="bg-[#16161f] rounded-2xl p-4 border border-white/5">
+                    <p className="text-sm text-white/40 mb-4">Scene Timeline</p>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {generatedChapters.flatMap((chapter, chapterIdx) =>
+                        chapter.scenes?.map((scene, sceneIdx) => {
+                          const key = `${chapterIdx}-${sceneIdx}`;
+                          const status = sceneStatuses[key] || { image: "pending", voice: "pending", video: "pending" };
+                          return (
+                            <div
+                              key={key}
+                              className={cn(
+                                "shrink-0 w-24 h-16 rounded-lg border overflow-hidden relative",
+                                status.image === "completed" && status.imageUrl
+                                  ? "border-emerald-500/30"
+                                  : status.image === "generating"
+                                  ? "border-violet-500/30 animate-pulse"
+                                  : "border-white/10 bg-white/5"
+                              )}
+                            >
+                              {status.imageUrl ? (
+                                <img src={status.imageUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  {status.image === "generating" ? (
+                                    <Loader2 className="h-4 w-4 text-violet-400 animate-spin" />
+                                  ) : (
+                                    <span className="text-[10px] text-white/30">{chapterIdx + 1}.{sceneIdx + 1}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Logs */}
+                {wsMessages.length > 0 && (
+                  <div className="bg-[#16161f] rounded-2xl p-4 border border-white/5 max-h-32 overflow-y-auto">
+                    <div className="space-y-1 font-mono text-xs">
+                      {wsMessages.slice(-6).map((msg, i) => (
+                        <div key={i} className={cn(
+                          "text-white/40",
+                          msg.includes("Error") && "text-red-400",
+                          msg.includes("complete") && "text-emerald-400"
+                        )}>{msg}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Error */}
+                {generationError && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center space-y-4">
+                    <p className="text-red-400 font-medium">Generation Error</p>
+                    <p className="text-sm text-white/60">{generationError}</p>
+                    <Button
+                      onClick={handleApproveAndStart}
+                      className="bg-gradient-to-r from-violet-500 to-purple-600"
+                      data-testid="button-retry"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Complete Phase */}
+            {autopilotPhase === "complete" && (
+              <div className="space-y-8 text-center">
+                <div className="space-y-2">
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                    <Check className="h-3 w-3 mr-1" />
+                    Video Complete
+                  </Badge>
+                  <h2 className="text-3xl font-bold text-white">Your documentary is ready!</h2>
+                </div>
+
+                {videoUrl && (
+                  <div className="max-w-3xl mx-auto">
+                    <div className="bg-[#16161f] rounded-2xl p-4 border border-white/5 space-y-4">
+                      <video
+                        src={videoUrl}
+                        controls
+                        className="w-full rounded-xl"
+                        data-testid="video-preview"
+                      />
+                      <Button
+                        asChild
+                        className="w-full h-12 bg-gradient-to-r from-violet-500 to-purple-600"
+                      >
+                        <a href={videoUrl} download data-testid="button-download">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Video
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  onClick={resetToStart}
+                  className="border-white/10 text-white/60 hover:bg-white/5"
+                  data-testid="button-new"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Create New Video
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeView === "history" && (
+          <div className="max-w-4xl mx-auto px-6 py-12">
+            <h2 className="text-2xl font-bold text-white mb-6">Project History</h2>
+            <div className="space-y-3">
+              {projects?.map((project: any) => (
+                <div key={project.id} className="bg-[#16161f] rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">{project.title}</p>
+                    <p className="text-xs text-white/40">{project.chapterCount} chapters</p>
+                  </div>
+                  <Badge className={cn(
+                    project.status === "completed" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                    project.status === "generating" ? "bg-violet-500/20 text-violet-400 border-violet-500/30" :
+                    "bg-white/10 text-white/60 border-white/10"
+                  )}>
+                    {project.status}
+                  </Badge>
+                </div>
               ))}
-            </div>
-          )}
-
-          {/* Error with Retry */}
-          {generationError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center space-y-3">
-              <p className="text-red-400 font-medium">Generation Error</p>
-              <p className="text-sm text-zinc-400">{generationError}</p>
-              <Button
-                onClick={handleApproveAndStart}
-                className="bg-gradient-to-r from-orange-500 to-amber-600"
-                data-testid="button-retry"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry Generation
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {autopilotPhase === "complete" && (
-        <div className="max-w-2xl mx-auto text-center space-y-6">
-          <div className="space-y-2">
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-              <Check className="h-3 w-3 mr-1" />
-              Documentary Complete
-            </Badge>
-            <h2 className="text-2xl font-bold text-white">Your Documentary is Ready!</h2>
-          </div>
-
-          {videoUrl && (
-            <div className="glass-panel rounded-2xl p-6 space-y-4">
-              <video
-                src={videoUrl}
-                controls
-                className="w-full rounded-lg"
-                data-testid="video-preview"
-              />
-              <Button
-                asChild
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-600"
-              >
-                <a href={videoUrl} download data-testid="button-download">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Video
-                </a>
-              </Button>
-            </div>
-          )}
-
-          <Button
-            variant="outline"
-            onClick={() => {
-              setAutopilotPhase("setup");
-              setTitle("");
-              setProjectId(null);
-              setFramework(null);
-              setGeneratedChapters([]);
-              setSceneStatuses({});
-              setWsMessages([]);
-              setVideoUrl(null);
-            }}
-            className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
-            data-testid="button-new"
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            Create New Documentary
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderImagesView = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Generated Images</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Object.entries(sceneStatuses)
-          .filter(([_, status]) => status.imageUrl)
-          .map(([key, status]) => (
-            <div key={key} className="glass-panel rounded-xl overflow-hidden">
-              <img
-                src={status.imageUrl}
-                alt={`Scene ${key}`}
-                className="w-full aspect-video object-cover"
-              />
-              <div className="p-2">
-                <p className="text-xs text-zinc-400">Scene {key.replace("-", ".")}</p>
-              </div>
-            </div>
-          ))}
-        {Object.values(sceneStatuses).filter(s => s.imageUrl).length === 0 && (
-          <div className="col-span-full text-center py-12 text-zinc-500">
-            <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No images generated yet</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderVoiceView = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Generated Voiceovers</h2>
-      <div className="space-y-3">
-        {Object.entries(sceneStatuses)
-          .filter(([_, status]) => status.audioUrl)
-          .map(([key, status]) => (
-            <div key={key} className="glass-panel rounded-xl p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
-                <Volume2 className="h-5 w-5 text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-medium">Scene {key.replace("-", ".")}</p>
-                <audio src={status.audioUrl} controls className="w-full mt-2" />
-              </div>
-            </div>
-          ))}
-        {Object.values(sceneStatuses).filter(s => s.audioUrl).length === 0 && (
-          <div className="text-center py-12 text-zinc-500">
-            <Mic className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No voiceovers generated yet</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderVideoView = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Generated Video</h2>
-      {videoUrl ? (
-        <div className="glass-panel rounded-2xl p-6 space-y-4">
-          <video
-            src={videoUrl}
-            controls
-            className="w-full rounded-lg"
-          />
-          <Button
-            asChild
-            className="w-full bg-gradient-to-r from-orange-500 to-amber-600"
-          >
-            <a href={videoUrl} download>
-              <Download className="h-4 w-4 mr-2" />
-              Download Video
-            </a>
-          </Button>
-        </div>
-      ) : (
-        <div className="text-center py-12 text-zinc-500">
-          <Film className="h-12 w-12 mx-auto mb-2 opacity-50" />
-          <p>No video generated yet</p>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderHistoryView = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Project History</h2>
-      <div className="space-y-3">
-        {projects?.map((project: any) => (
-          <div key={project.id} className="glass-panel rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium">{project.title}</p>
-              <p className="text-xs text-zinc-500">
-                {project.chapterCount} chapters • {project.status}
-              </p>
-            </div>
-            <Badge className={cn(
-              project.status === "completed" ? "bg-emerald-500/20 text-emerald-400" :
-              project.status === "generating" ? "bg-amber-500/20 text-amber-400" :
-              "bg-zinc-500/20 text-zinc-400"
-            )}>
-              {project.status}
-            </Badge>
-          </div>
-        ))}
-        {(!projects || projects.length === 0) && (
-          <div className="text-center py-12 text-zinc-500">
-            <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No projects yet</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-zinc-950 flex">
-      {/* Sidebar */}
-      <aside className="w-20 lg:w-64 bg-gradient-to-b from-orange-600 to-amber-700 flex flex-col items-center lg:items-stretch py-6 px-2 lg:px-4 shrink-0">
-        <div className="flex items-center justify-center lg:justify-start gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <Film className="h-6 w-6 text-white" />
-          </div>
-          <span className="hidden lg:block text-xl font-bold text-white">Petr AI</span>
-        </div>
-
-        <nav className="flex-1 space-y-2 w-full">
-          {sidebarItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveView(item.id)}
-              className={cn(
-                "w-full flex items-center justify-center lg:justify-start gap-3 px-3 py-3 rounded-xl transition-all",
-                activeView === item.id
-                  ? "bg-white/20 text-white shadow-lg"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              {(!projects || projects.length === 0) && (
+                <div className="text-center py-12 text-white/40">
+                  <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No projects yet</p>
+                </div>
               )}
-              data-testid={`nav-${item.id}`}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              <span className="hidden lg:block font-medium">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+            </div>
+          </div>
+        )}
 
-        <div className="mt-auto pt-4 border-t border-white/20 w-full">
-          <button
-            className="w-full flex items-center justify-center lg:justify-start gap-3 px-3 py-3 rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all"
-            data-testid="nav-settings"
-          >
-            <Settings className="h-5 w-5 shrink-0" />
-            <span className="hidden lg:block font-medium">Settings</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-        <div className="max-w-6xl mx-auto">
-          {activeView === "home" && renderHomeView()}
-          {activeView === "images" && renderImagesView()}
-          {activeView === "voice" && renderVoiceView()}
-          {activeView === "video" && renderVideoView()}
-          {activeView === "history" && renderHistoryView()}
-        </div>
+        {activeView === "settings" && (
+          <div className="max-w-4xl mx-auto px-6 py-12">
+            <h2 className="text-2xl font-bold text-white mb-6">Settings</h2>
+            <div className="bg-[#16161f] rounded-2xl p-6 border border-white/5">
+              <p className="text-white/40">Settings coming soon...</p>
+            </div>
+          </div>
+        )}
       </main>
-
-      <style>{`
-        .glass-panel {
-          background: rgba(39, 39, 42, 0.5);
-          backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-      `}</style>
     </div>
   );
 }
