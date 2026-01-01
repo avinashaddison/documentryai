@@ -168,33 +168,4 @@ export const insertStoryFrameworkSchema = createInsertSchema(storyFrameworks).om
 export type InsertStoryFramework = z.infer<typeof insertStoryFrameworkSchema>;
 export type StoryFramework = typeof storyFrameworks.$inferSelect;
 
-export const creationSessions = pgTable("creation_sessions", {
-  id: serial("id").primaryKey(),
-  sessionKey: text("session_key").notNull().unique(),
-  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
-  phase: text("phase").notNull().default("setup"), // "setup" | "review" | "approved" | "generating" | "complete"
-  topic: text("topic"),
-  chapterCount: integer("chapter_count").default(5),
-  framework: text("framework"), // JSON string of StoryFramework
-  chapters: text("chapters"), // JSON string of chapter titles array
-  generatedChapters: text("generated_chapters"), // JSON string of ChapterScript[]
-  generatedImages: text("generated_images"), // JSON of image URLs
-  generatedAudio: text("generated_audio"), // JSON of audio URLs
-  config: text("config"), // JSON of config settings
-  currentStep: text("current_step").default("idle"),
-  progress: integer("progress").default(0),
-  logs: text("logs"), // JSON array of logs
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-export const insertCreationSessionSchema = createInsertSchema(creationSessions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertCreationSession = z.infer<typeof insertCreationSessionSchema>;
-export type CreationSession = typeof creationSessions.$inferSelect;
-
 export * from "./models/chat";

@@ -67,41 +67,10 @@ interface ChapterScript {
   estimatedDuration: number;
 }
 
-type GenerationStep = "idle" | "framework" | "outline" | "review" | "chapters" | "images" | "voiceover" | "assembly" | "complete";
-type AutopilotPhase = "setup" | "review" | "generating" | "complete";
-
-interface SceneStatus {
-  image: "pending" | "generating" | "completed" | "error";
-  voice: "pending" | "generating" | "completed" | "error";
-  video: "pending" | "generating" | "completed" | "error";
-  imageUrl?: string;
-  audioUrl?: string;
-}
-
-interface WsMessage {
-  type: "connected" | "progress" | "step" | "complete" | "error" | "scene_update";
-  projectId: number;
-  step?: string;
-  progress?: number;
-  message?: string;
-  data?: any;
-}
-
-const SESSION_KEY_STORAGE = "petr_ai_session_key";
-
-function getOrCreateSessionKey(): string {
-  let key = localStorage.getItem(SESSION_KEY_STORAGE);
-  if (!key) {
-    key = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem(SESSION_KEY_STORAGE, key);
-  }
-  return key;
-}
+type GenerationStep = "idle" | "framework" | "outline" | "chapters" | "images" | "voiceover" | "assembly" | "complete";
 
 export default function DocumentaryMaker() {
   const [, navigate] = useLocation();
-  const [sessionKey] = useState(() => getOrCreateSessionKey());
-  const [isLoading, setIsLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<number | null>(null);
   const [framework, setFramework] = useState<StoryFramework | null>(null);
@@ -132,14 +101,6 @@ export default function DocumentaryMaker() {
   }>>([]);
   const [showLogs, setShowLogs] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const [autopilotPhase, setAutopilotPhase] = useState<AutopilotPhase>("setup");
-  const [sceneStatuses, setSceneStatuses] = useState<Record<string, SceneStatus>>({});
-  const [wsMessages, setWsMessages] = useState<string[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
 
   const storyLengthToChapters: Record<string, number> = {
     short: 3,
@@ -238,131 +199,7 @@ export default function DocumentaryMaker() {
     });
     setChapters(outlineResult.chapters);
     setProgress(25);
-    setCurrentStep("review");
-    setAutopilotPhase("review");
-  };
-
-  const connectWebSocket = (id: number) => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/generation?projectId=${id}`);
-    
-    ws.onmessage = (event) => {
-      try {
-        const msg: WsMessage = JSON.parse(event.data);
-        
-        if (msg.type === "progress") {
-          setProgress(msg.progress || 0);
-          if (msg.message) {
-            setWsMessages(prev => [...prev.slice(-50), `[${msg.step}] ${msg.message}`]);
-          }
-          if (msg.step === "images") setCurrentStep("images");
-          else if (msg.step === "audio") setCurrentStep("voiceover");
-          else if (msg.step === "assembly") setCurrentStep("assembly");
-        } else if (msg.type === "step") {
-          setWsMessages(prev => [...prev.slice(-50), `[STEP] ${msg.message}`]);
-        } else if (msg.type === "scene_update") {
-          const { chapterNumber, sceneNumber, status, assetType, url } = msg.data;
-          const key = `ch${chapterNumber}_sc${sceneNumber}`;
-          const defaultStatus: SceneStatus = { image: "pending", voice: "pending", video: "pending" };
-          setSceneStatuses(prev => ({
-            ...prev,
-            [key]: {
-              ...defaultStatus,
-              ...prev[key],
-              [assetType]: status,
-              ...(assetType === "image" && url ? { imageUrl: url } : {}),
-              ...(assetType === "voice" && url ? { audioUrl: url } : {}),
-            }
-          }));
-          if (assetType === "image" && url) {
-            setGeneratedImages(prev => ({ ...prev, [key]: url }));
-          }
-          if (assetType === "voice" && url) {
-            setGeneratedAudio(prev => ({ ...prev, [key]: url }));
-          }
-        } else if (msg.type === "complete") {
-          setCurrentStep("complete");
-          setAutopilotPhase("complete");
-          setProgress(100);
-          if (msg.data?.videoUrl) {
-            setVideoUrl(msg.data.videoUrl);
-          }
-          setWsMessages(prev => [...prev, `[COMPLETE] ${msg.message}`]);
-        } else if (msg.type === "error") {
-          setWsMessages(prev => [...prev, `[ERROR] ${msg.message}`]);
-          setProgress(0);
-          setGenerationError(msg.message || "Generation failed");
-          setSceneStatuses(prev => {
-            const reset: Record<string, SceneStatus> = {};
-            Object.keys(prev).forEach(key => {
-              reset[key] = { 
-                image: prev[key].image === "generating" ? "error" : prev[key].image, 
-                voice: prev[key].voice === "generating" ? "error" : prev[key].voice, 
-                video: prev[key].video === "generating" ? "error" : prev[key].video,
-                imageUrl: prev[key].imageUrl,
-                audioUrl: prev[key].audioUrl,
-              };
-            });
-            return reset;
-          });
-        }
-      } catch (e) {
-        console.error("WS parse error:", e);
-      }
-    };
-    
-    ws.onclose = () => {
-      console.log("WebSocket closed");
-    };
-    
-    wsRef.current = ws;
-  };
-
-  const handleApproveAndStart = async () => {
-    if (!projectId) return;
-    
-    setAutopilotPhase("generating");
-    setCurrentStep("chapters");
-    setGenerationError(null);
-    setSceneStatuses({});
-    connectWebSocket(projectId);
-    
-    setWsMessages(prev => [...prev, "[STEP] Generating chapter scripts..."]);
-    
-    const generated: ChapterScript[] = [];
-    for (let i = 0; i < chapters.length; i++) {
-      const chapterProgress = 25 + ((i + 1) / chapters.length) * 25;
-      setProgress(chapterProgress);
-      setWsMessages(prev => [...prev, `[chapters] Generating chapter ${i + 1}/${chapters.length}...`]);
-      
-      const result = await generateChapterMutation.mutateAsync({
-        id: projectId,
-        chapterNumber: i + 1,
-        numChapters: chapters.length,
-        chapterTitle: chapters[i],
-      });
-      
-      generated.push(result.chapter);
-      setGeneratedChapters([...generated]);
-    }
-    
-    setWsMessages(prev => [...prev, "[STEP] Starting image and voiceover generation..."]);
-    setCurrentStep("images");
-    
-    await fetch(`/api/projects/${projectId}/autopilot`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chapters: generated.map(ch => ({
-          chapterNumber: ch.chapterNumber,
-          title: ch.title,
-          scenes: ch.scenes,
-        })),
-        voice: config.narratorVoice,
-        imageModel: config.hookImageModel,
-        imageStyle: config.imageStyle,
-      }),
-    });
+    setCurrentStep("idle");
   };
 
   const generateImagesMutation = useMutation({
@@ -569,80 +406,13 @@ export default function DocumentaryMaker() {
     { id: "assembly", label: "Assembly", icon: Film },
   ];
 
-  // Load session on mount
   useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const res = await fetch(`/api/creation-session/${sessionKey}`);
-        if (res.ok) {
-          const session = await res.json();
-          if (session.topic) setTitle(session.topic);
-          if (session.projectId) setProjectId(session.projectId);
-          if (session.chapterCount) setTotalChapters(session.chapterCount);
-          if (session.framework) setFramework(JSON.parse(session.framework));
-          if (session.chapters) setChapters(JSON.parse(session.chapters));
-          if (session.generatedChapters) setGeneratedChapters(JSON.parse(session.generatedChapters));
-          if (session.generatedImages) setGeneratedImages(JSON.parse(session.generatedImages));
-          if (session.generatedAudio) setGeneratedAudio(JSON.parse(session.generatedAudio));
-          if (session.config) setConfig(JSON.parse(session.config));
-          if (session.currentStep) setCurrentStep(session.currentStep as GenerationStep);
-          if (session.progress) setProgress(session.progress);
-        }
-      } catch (error) {
-        console.log("No existing session found");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadSession();
-    
     const savedTopic = sessionStorage.getItem("documentaryTopic");
     if (savedTopic) {
       setTitle(savedTopic);
       sessionStorage.removeItem("documentaryTopic");
     }
-  }, [sessionKey]);
-
-  // Save session on state changes (debounced)
-  useEffect(() => {
-    if (isLoading) return;
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await fetch("/api/creation-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionKey,
-            projectId,
-            phase: currentStep === "complete" ? "complete" : currentStep === "idle" ? "setup" : "generating",
-            topic: title,
-            chapterCount: totalChapters,
-            framework: framework ? JSON.stringify(framework) : null,
-            chapters: chapters.length > 0 ? JSON.stringify(chapters) : null,
-            generatedChapters: generatedChapters.length > 0 ? JSON.stringify(generatedChapters) : null,
-            generatedImages: Object.keys(generatedImages).length > 0 ? JSON.stringify(generatedImages) : null,
-            generatedAudio: Object.keys(generatedAudio).length > 0 ? JSON.stringify(generatedAudio) : null,
-            config: JSON.stringify(config),
-            currentStep,
-            progress,
-          }),
-        });
-      } catch (error) {
-        console.error("Failed to save session:", error);
-      }
-    }, 500);
-    
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [sessionKey, isLoading, title, projectId, totalChapters, framework, chapters, generatedChapters, generatedImages, generatedAudio, config, currentStep, progress]);
+  }, []);
 
   // Poll for logs when generating
   useEffect(() => {
@@ -672,27 +442,6 @@ export default function DocumentaryMaker() {
     }
   }, [generationLogs]);
 
-  const handleNewSession = async () => {
-    try {
-      await fetch(`/api/creation-session/${sessionKey}`, { method: "DELETE" });
-      localStorage.removeItem(SESSION_KEY_STORAGE);
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to clear session:", error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto" />
-          <p className="text-muted-foreground">Loading your session...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-white relative overflow-hidden">
       {/* Animated background effects */}
@@ -717,15 +466,7 @@ export default function DocumentaryMaker() {
               </div>
               <span className="font-bold text-xl tracking-tight gradient-text">Petr AI</span>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleNewSession}
-              className="text-muted-foreground hover:text-orange-400 border-orange-500/30"
-              data-testid="button-new-session"
-            >
-              New Session
-            </Button>
+            <div className="w-16" />
           </div>
         </div>
       </header>
@@ -986,149 +727,11 @@ export default function DocumentaryMaker() {
                 </p>
               </div>
             </div>
-
-            {autopilotPhase === "review" && (
-              <div className="pt-4 border-t border-border/50">
-                <Button
-                  onClick={handleApproveAndStart}
-                  size="lg"
-                  className="w-full h-14 text-lg font-bold gap-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 neon-glow"
-                  data-testid="button-approve-start"
-                >
-                  <Check className="h-6 w-6" />
-                  Approve & Start Full Generation
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-                <p className="text-center text-xs text-muted-foreground mt-2">
-                  This will generate all chapters, images, voiceovers, and assemble the final video
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Live Generation Timeline */}
-        {autopilotPhase === "generating" && (
-          <div className="glass-panel-glow rounded-2xl p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center neon-glow">
-                <Film className="h-5 w-5 text-white animate-pulse" />
-              </div>
-              <h2 className="text-xl font-display font-bold gradient-text">Live Generation</h2>
-              <Badge variant="outline" className="ml-auto bg-blue-500/10 text-blue-400 border-blue-500/30">
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                In Progress
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              {generatedChapters.map((chapter) => (
-                <div key={chapter.chapterNumber} className="bg-card/50 rounded-lg p-4 border border-border/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-bold text-orange-400">Chapter {chapter.chapterNumber}</span>
-                    <span className="text-xs text-muted-foreground">{chapter.title}</span>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {chapter.scenes.map((scene) => {
-                      const key = `ch${chapter.chapterNumber}_sc${scene.sceneNumber}`;
-                      const status = sceneStatuses[key] || { image: "pending", voice: "pending", video: "pending" };
-                      const hasImage = generatedImages[key];
-                      const hasAudio = generatedAudio[key];
-                      
-                      return (
-                        <div 
-                          key={scene.sceneNumber}
-                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-background/50 border border-border/50"
-                          title={`Scene ${scene.sceneNumber}: Image ${hasImage ? "done" : status.image}, Voice ${hasAudio ? "done" : status.voice}, Video ${status.video}`}
-                        >
-                          <span className="text-xs text-muted-foreground">S{scene.sceneNumber}</span>
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            hasImage ? "bg-green-500" : status.image === "generating" ? "bg-yellow-500 animate-pulse" : "bg-gray-500"
-                          )} title="Image" />
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            hasAudio ? "bg-green-500" : status.voice === "generating" ? "bg-yellow-500 animate-pulse" : "bg-gray-500"
-                          )} title="Voice" />
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            status.video === "completed" ? "bg-green-500" : status.video === "generating" ? "bg-blue-500 animate-pulse" : status.video === "error" ? "bg-red-500" : "bg-gray-500"
-                          )} title="Video" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Live logs */}
-            {wsMessages.length > 0 && (
-              <div className="bg-background/50 rounded-lg p-4 border border-border/50 max-h-40 overflow-y-auto font-mono text-xs">
-                {wsMessages.slice(-10).map((msg, i) => (
-                  <div key={i} className={cn(
-                    "text-muted-foreground",
-                    msg.includes("[ERROR]") && "text-red-400"
-                  )}>{msg}</div>
-                ))}
-              </div>
-            )}
-
-            {/* Error with Retry */}
-            {generationError && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-center space-y-3">
-                <p className="text-red-400 font-medium">Generation Error</p>
-                <p className="text-sm text-muted-foreground">{generationError}</p>
-                <Button
-                  onClick={handleApproveAndStart}
-                  className="gap-2 bg-gradient-to-r from-orange-500 to-amber-600"
-                  data-testid="button-retry-generation"
-                >
-                  <Play className="h-4 w-4" />
-                  Retry Generation
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Completion UI */}
-        {autopilotPhase === "complete" && (
-          <div className="glass-panel-glow rounded-2xl p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center neon-glow">
-              <Check className="h-10 w-10 text-white" />
-            </div>
-            <h2 className="text-3xl font-display font-bold text-green-400">Task Completed!</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Your documentary has been generated successfully. All images, voiceovers, and video assembly are complete.
-            </p>
-            {videoUrl && (
-              <div className="space-y-3">
-                <a 
-                  href={videoUrl}
-                  download
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl font-bold text-white hover:from-orange-400 hover:to-amber-500 transition-all neon-glow"
-                  data-testid="link-download-video"
-                >
-                  <Film className="h-5 w-5" />
-                  Download Video
-                </a>
-                <p className="text-xs text-muted-foreground">{videoUrl}</p>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              onClick={handleNewSession}
-              className="mt-4"
-              data-testid="button-create-another"
-            >
-              Create Another Documentary
-            </Button>
           </div>
         )}
 
         {/* Chapter Outline */}
-        {chapters.length > 0 && autopilotPhase !== "complete" && (
+        {chapters.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

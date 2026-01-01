@@ -18,7 +18,6 @@ import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } 
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
-import { wsService } from "./websocket-service";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -72,8 +71,6 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   await ensureDbConnected();
-  
-  wsService.init(httpServer);
   
   registerObjectStorageRoutes(app);
 
@@ -844,41 +841,30 @@ export async function registerRoutes(
         message: `Starting autopilot generation (${imageStyle} images): images → audio → video assembly...`
       });
 
-      wsService.sendStepChange(projectId, "init", "Starting autopilot generation...");
-
-      res.json({ success: true, message: "Autopilot started", projectId });
-
-      runAutopilotGeneration({
+      const result = await runAutopilotGeneration({
         projectId,
         chapters,
         voice,
         imageModel,
         imageStyle,
-        onProgress: (step, progress, message) => {
-          wsService.sendProgress(projectId, step, progress, message);
-        },
-      }).then(async (result) => {
-        if (result.success) {
-          wsService.sendComplete(projectId, "Video generation complete!", result.videoPath);
-          await storage.createGenerationLog({
-            projectId,
-            step: "autopilot",
-            status: "completed",
-            message: `Autopilot completed. Video: ${result.videoPath}`
-          });
-        } else {
-          wsService.sendError(projectId, `Generation failed: ${result.errors.join(", ")}`);
-          await storage.createGenerationLog({
-            projectId,
-            step: "autopilot",
-            status: "failed",
-            message: `Autopilot failed: ${result.errors.join(", ")}`
-          });
-        }
-      }).catch((error) => {
-        console.error("Autopilot error:", error);
-        wsService.sendError(projectId, error.message);
       });
+
+      if (result.success) {
+        res.json({
+          success: true,
+          videoPath: result.videoPath,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+          errors: result.errors,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          errors: result.errors,
+          generatedImages: result.generatedImages,
+          generatedAudio: result.generatedAudio,
+        });
+      }
     } catch (error: any) {
       console.error("Autopilot error:", error);
       res.status(500).json({ error: error.message });
@@ -977,43 +963,6 @@ export async function registerRoutes(
       }
       
       res.json({ images, audio, assets });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Creation Session endpoints - for /create page persistence
-  app.get("/api/creation-session/:sessionKey", async (req, res) => {
-    try {
-      const { sessionKey } = req.params;
-      const session = await storage.getCreationSession(sessionKey);
-      if (!session) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-      res.json(session);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/creation-session", async (req, res) => {
-    try {
-      const sessionData = req.body;
-      if (!sessionData.sessionKey) {
-        return res.status(400).json({ error: "sessionKey is required" });
-      }
-      const session = await storage.upsertCreationSession(sessionData);
-      res.json(session);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.delete("/api/creation-session/:sessionKey", async (req, res) => {
-    try {
-      const { sessionKey } = req.params;
-      await storage.deleteCreationSession(sessionKey);
-      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

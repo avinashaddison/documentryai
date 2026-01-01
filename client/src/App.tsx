@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Settings from "@/pages/settings";
-import Dashboard from "@/pages/dashboard";
+import Home from "@/pages/home";
 import ProjectEditor from "@/pages/project-editor";
 import VideoEditorPage from "@/pages/video-editor-page";
 import FilmMaker from "@/pages/film-maker";
@@ -15,13 +15,13 @@ import DocumentaryEditor from "@/pages/documentary-editor";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/create" component={Dashboard} />
+      <Route path="/" component={Home} />
+      <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
       <Route path="/editor" component={DocumentaryEditor} />
       <Route path="/documentary-editor" component={DocumentaryEditor} />
       <Route path="/film-maker" component={FilmMaker} />
-      <Route path="/projects" component={Dashboard} />
+      <Route path="/projects" component={Home} />
       <Route path="/settings" component={Settings} />
       <Route path="/project/:id" component={ProjectEditor} />
       <Route path="/video-editor" component={VideoEditorPage} />
