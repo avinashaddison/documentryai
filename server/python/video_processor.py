@@ -79,14 +79,16 @@ def create_scene_clip_ffmpeg(
             # Default: gentle zoom in
             zoompan = f"zoompan=z='1+0.1*on/{total_frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={total_frames}:s={w}x{h}:fps={fps}"
         
-        # Build FFmpeg command
+        # Build FFmpeg command with black and white filter (hue=s=0 removes saturation)
+        bw_filter = "hue=s=0"
+        
         if audio_path and os.path.exists(audio_path):
             # With audio
             cmd = [
                 "ffmpeg", "-y",
                 "-loop", "1", "-i", image_path,
                 "-i", audio_path,
-                "-filter_complex", f"[0:v]{zoompan},format=yuv420p[v]",
+                "-filter_complex", f"[0:v]{zoompan},{bw_filter},format=yuv420p[v]",
                 "-map", "[v]", "-map", "1:a",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-c:a", "aac", "-b:a", "192k",
@@ -99,7 +101,7 @@ def create_scene_clip_ffmpeg(
             cmd = [
                 "ffmpeg", "-y",
                 "-loop", "1", "-i", image_path,
-                "-vf", f"{zoompan},format=yuv420p",
+                "-vf", f"{zoompan},{bw_filter},format=yuv420p",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
                 "-t", str(duration),
                 output_path
