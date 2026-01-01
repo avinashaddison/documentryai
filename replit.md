@@ -31,11 +31,22 @@ Preferred communication style: Simple, everyday language.
 - **Connection**: `pg` client with connection pooling
 
 ### AI Integration Pipeline
-The video generation follows a multi-step pipeline:
-1. **Story Generation**: Claude API (Anthropic) via Replit AI integration for narrative creation
-2. **Chapter Generation**: Sequential chapter content based on story framework
-3. **Image Generation**: Replicate API supporting Ideogram and Flux models
-4. **Video Processing**: Python scripts using MoviePy and PySceneDetect for assembly
+The video generation follows a research-first documentary workflow:
+1. **Research Phase**: Perplexity API for deep fact-gathering + Claude for query expansion
+2. **Framework Generation**: Claude creates documentary structure using verified research
+3. **Chapter Generation**: Scripts use research context (timeline, facts, characters) for factual narration
+4. **Image Generation**: Replicate API supporting Ideogram and Flux models for Ken Burns visuals
+5. **Audio Generation**: Deepgram TTS for professional voiceover
+6. **Video Assembly**: FFmpeg with zoompan filter for Ken Burns effects (10-20x faster than MoviePy)
+
+### State Machine
+Projects follow a 7-state workflow with resume capability:
+- CREATED → RESEARCH_DONE → SCRIPT_DONE → IMAGES_DONE → AUDIO_DONE → EDITOR_APPROVED → RENDERED
+
+### Research-First Approach
+- Research data stored in `projectResearch` table with queries, sources, and summary
+- `generateChapterScriptWithResearch` uses verified facts to prevent AI hallucination
+- Editor is read-only preview mode (no regeneration) to protect research-based content
 
 ### Key Design Patterns
 - **Shared Schema**: Database types and Zod validation schemas shared between frontend and backend
