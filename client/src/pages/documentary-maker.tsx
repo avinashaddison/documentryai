@@ -85,6 +85,19 @@ interface ResearchData {
   };
 }
 
+interface ResearchActivity {
+  phase: "initial" | "deep" | "synthesis";
+  activityType: "query_started" | "query_completed" | "source_found" | "subtopic_identified" | "fact_extracted" | "phase_complete";
+  query?: string;
+  queryIndex?: number;
+  totalQueries?: number;
+  source?: { title: string; url: string; snippet?: string };
+  subtopic?: string;
+  fact?: { claim: string; confidence: string; category: string };
+  message: string;
+  timestamp?: string;
+}
+
 export default function DocumentaryMaker() {
   const [location, navigate] = useLocation();
   const params = useParams<{ projectId?: string }>();
@@ -519,6 +532,8 @@ export default function DocumentaryMaker() {
   // Real-time updates via Server-Sent Events
   const eventSourceRef = useRef<EventSource | null>(null);
   const [liveEvents, setLiveEvents] = useState<{type: string; message: string; timestamp: string}[]>([]);
+  const [researchActivities, setResearchActivities] = useState<ResearchActivity[]>([]);
+  const researchPanelRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (!projectId) return;
@@ -604,6 +619,11 @@ export default function DocumentaryMaker() {
         }
       });
       
+      es.addEventListener("research_activity", (e) => {
+        const data = JSON.parse(e.data) as ResearchActivity;
+        setResearchActivities(prev => [...prev.slice(-49), data]);
+      });
+      
       es.onerror = () => {
         // Reconnect after a delay on error
         setTimeout(setupEventSource, 3000);
@@ -658,11 +678,19 @@ export default function DocumentaryMaker() {
       setCurrentStep("research");
       setProgress(0);
       setLiveEvents([]);
+      setResearchActivities([]);
       
     } catch (error) {
       console.error("Failed to start background generation:", error);
     }
   };
+  
+  // Auto-scroll research panel when new activities arrive
+  useEffect(() => {
+    if (researchPanelRef.current) {
+      researchPanelRef.current.scrollTop = researchPanelRef.current.scrollHeight;
+    }
+  }, [researchActivities]);
 
   const generateVoiceoverMutation = useMutation({
     mutationFn: async ({ id, chapterNumber, sceneNumber, narration, voice }: { 
@@ -1047,8 +1075,99 @@ export default function DocumentaryMaker() {
               )}
             </div>
             
+            {/* Research Activity Panel - Shows during and after research phase */}
+            {researchActivities.length > 0 && (
+              <div 
+                className="mt-4 bg-gradient-to-br from-blue-950/40 to-purple-950/30 rounded-xl p-4 border border-blue-500/20 shadow-lg shadow-blue-500/5"
+                data-testid="panel-research-activity"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm text-blue-300 font-semibold">Live Research Feed</span>
+                  </div>
+                  <div className="flex-1" />
+                  <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-400 bg-blue-500/10" data-testid="badge-sources-count">
+                    {researchActivities.filter(a => a.activityType === "source_found").length} sources
+                  </Badge>
+                  <Badge variant="outline" className="text-xs border-purple-500/30 text-purple-400 bg-purple-500/10" data-testid="badge-queries-count">
+                    {researchActivities.filter(a => a.activityType === "query_completed").length} queries
+                  </Badge>
+                </div>
+                <div 
+                  ref={researchPanelRef} 
+                  className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500/20 scrollbar-track-transparent pr-2"
+                >
+                  {researchActivities.slice(-15).map((activity, i) => (
+                    <div 
+                      key={i}
+                      className={cn(
+                        "flex items-start gap-3 text-xs p-2 rounded-lg animate-in slide-in-from-left-2 duration-300",
+                        activity.activityType === "query_started" && "bg-amber-500/10 border-l-2 border-amber-400",
+                        activity.activityType === "query_completed" && "bg-green-500/10 border-l-2 border-green-400",
+                        activity.activityType === "source_found" && "bg-blue-500/10 border-l-2 border-blue-400",
+                        activity.activityType === "subtopic_identified" && "bg-purple-500/10 border-l-2 border-purple-400",
+                        activity.activityType === "fact_extracted" && "bg-emerald-500/10 border-l-2 border-emerald-400",
+                        activity.activityType === "phase_complete" && "bg-orange-500/10 border-l-2 border-orange-400"
+                      )}
+                      style={{ animationDelay: `${i * 30}ms` }}
+                      data-testid={`item-research-activity-${i}`}
+                    >
+                      <div className="flex-shrink-0 mt-0.5">
+                        {activity.activityType === "query_started" && <Search className="h-3 w-3 text-amber-400 animate-pulse" />}
+                        {activity.activityType === "query_completed" && <Check className="h-3 w-3 text-green-400" />}
+                        {activity.activityType === "source_found" && <ExternalLink className="h-3 w-3 text-blue-400" />}
+                        {activity.activityType === "subtopic_identified" && <Layers className="h-3 w-3 text-purple-400" />}
+                        {activity.activityType === "fact_extracted" && <FileText className="h-3 w-3 text-emerald-400" />}
+                        {activity.activityType === "phase_complete" && <Sparkles className="h-3 w-3 text-orange-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "truncate",
+                          activity.activityType === "query_started" && "text-amber-300",
+                          activity.activityType === "query_completed" && "text-green-300",
+                          activity.activityType === "source_found" && "text-blue-300",
+                          activity.activityType === "subtopic_identified" && "text-purple-300",
+                          activity.activityType === "fact_extracted" && "text-emerald-300",
+                          activity.activityType === "phase_complete" && "text-orange-300 font-medium"
+                        )}>
+                          {activity.message}
+                        </p>
+                        {activity.source?.url && (
+                          <a 
+                            href={activity.source.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-400/70 hover:text-blue-300 text-[10px] truncate block"
+                            data-testid={`link-research-source-${i}`}
+                          >
+                            {activity.source.url}
+                          </a>
+                        )}
+                        {activity.fact && (
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded",
+                            activity.fact.confidence === "high" && "bg-emerald-500/20 text-emerald-400",
+                            activity.fact.confidence === "medium" && "bg-amber-500/20 text-amber-400",
+                            activity.fact.confidence === "low" && "bg-red-500/20 text-red-400"
+                          )}>
+                            {activity.fact.confidence} confidence
+                          </span>
+                        )}
+                      </div>
+                      {activity.queryIndex && activity.totalQueries && (
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                          {activity.queryIndex}/{activity.totalQueries}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* Live Events Ticker */}
-            {liveEvents.length > 0 && (
+            {liveEvents.length > 0 && researchActivities.length === 0 && (
               <div className="mt-4 bg-card/30 rounded-lg p-3 border border-white/5">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
