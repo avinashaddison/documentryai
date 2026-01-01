@@ -498,13 +498,6 @@ export default function DocumentaryMaker() {
       <header className="relative z-10 border-b border-orange-500/10 backdrop-blur-xl bg-card/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <button 
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2 text-muted-foreground hover:text-orange-400 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="text-sm">Back</span>
-            </button>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center neon-glow">
                 <Film className="h-5 w-5 text-white" />
