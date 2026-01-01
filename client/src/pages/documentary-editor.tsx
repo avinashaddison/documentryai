@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -126,7 +126,8 @@ const getKenBurnsAnimation = (effect: string, duration: number) => {
 };
 
 export default function DocumentaryEditor() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const params = useParams<{ projectId?: string }>();
   const [documentaryData, setDocumentaryData] = useState<DocumentaryData | null>(null);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -165,37 +166,80 @@ export default function DocumentaryEditor() {
 
   useEffect(() => {
     const loadData = async () => {
-      const storedData = sessionStorage.getItem("documentaryEditorData");
-      if (storedData) {
+      const projectIdFromUrl = params.projectId;
+      
+      if (projectIdFromUrl) {
         try {
-          const parsed = JSON.parse(storedData);
-          setDocumentaryData(parsed);
-          
-          if (parsed.projectId) {
-            try {
-              const assetsResponse = await fetch(`/api/projects/${parsed.projectId}/generated-assets`);
-              if (assetsResponse.ok) {
-                const assetsData = await assetsResponse.json();
-                if (Object.keys(assetsData.images).length > 0 || Object.keys(assetsData.audio).length > 0) {
-                  setDocumentaryData(prev => prev ? {
-                    ...prev,
-                    generatedImages: { ...prev.generatedImages, ...assetsData.images },
-                    generatedAudio: { ...(prev.generatedAudio || {}), ...assetsData.audio },
-                  } : prev);
-                }
-              }
-            } catch (e) {
-              console.error("Failed to load saved assets:", e);
+          const projectResponse = await fetch(`/api/projects/${projectIdFromUrl}`);
+          if (projectResponse.ok) {
+            const project = await projectResponse.json();
+            
+            const assetsResponse = await fetch(`/api/projects/${projectIdFromUrl}/generated-assets`);
+            let images: Record<string, string> = {};
+            let audio: Record<string, string> = {};
+            
+            if (assetsResponse.ok) {
+              const assetsData = await assetsResponse.json();
+              images = assetsData.images || {};
+              audio = assetsData.audio || {};
             }
+            
+            const chapters = project.scriptContent?.chapters || [];
+            
+            setDocumentaryData({
+              projectId: project.id,
+              title: project.title,
+              chapters: chapters,
+              generatedImages: images,
+              generatedAudio: audio,
+            });
+            
+            sessionStorage.setItem("documentaryEditorData", JSON.stringify({
+              projectId: project.id,
+              title: project.title,
+              chapters: chapters,
+              generatedImages: images,
+              generatedAudio: audio,
+            }));
           }
         } catch (e) {
-          console.error("Failed to parse documentary data:", e);
+          console.error("Failed to load project from URL:", e);
+        }
+      } else {
+        const storedData = sessionStorage.getItem("documentaryEditorData");
+        if (storedData) {
+          try {
+            const parsed = JSON.parse(storedData);
+            setDocumentaryData(parsed);
+            
+            if (parsed.projectId) {
+              setLocation(`/documentary-editor/${parsed.projectId}`, { replace: true });
+              
+              try {
+                const assetsResponse = await fetch(`/api/projects/${parsed.projectId}/generated-assets`);
+                if (assetsResponse.ok) {
+                  const assetsData = await assetsResponse.json();
+                  if (Object.keys(assetsData.images).length > 0 || Object.keys(assetsData.audio).length > 0) {
+                    setDocumentaryData(prev => prev ? {
+                      ...prev,
+                      generatedImages: { ...prev.generatedImages, ...assetsData.images },
+                      generatedAudio: { ...(prev.generatedAudio || {}), ...assetsData.audio },
+                    } : prev);
+                  }
+                }
+              } catch (e) {
+                console.error("Failed to load saved assets:", e);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse documentary data:", e);
+          }
         }
       }
       setIsLoading(false);
     };
     loadData();
-  }, []);
+  }, [params.projectId, setLocation]);
 
   const allScenes = documentaryData?.chapters.flatMap((ch, chIdx) =>
     ch.scenes.map((scene, scIdx) => ({
@@ -452,6 +496,15 @@ export default function DocumentaryEditor() {
     }
     return time;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0d14] text-white flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-12 w-12 text-orange-500 animate-spin" />
+        <p className="text-gray-400">Loading project...</p>
+      </div>
+    );
+  }
 
   if (!documentaryData) {
     return (

@@ -21,7 +21,9 @@ function Router() {
       <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
       <Route path="/editor" component={DocumentaryEditor} />
+      <Route path="/editor/:projectId" component={DocumentaryEditor} />
       <Route path="/documentary-editor" component={DocumentaryEditor} />
+      <Route path="/documentary-editor/:projectId" component={DocumentaryEditor} />
       <Route path="/film-maker" component={FilmMaker} />
       <Route path="/projects" component={Projects} />
       <Route path="/saved" component={SavedVideos} />
