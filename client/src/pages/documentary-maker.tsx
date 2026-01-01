@@ -579,6 +579,41 @@ export default function DocumentaryMaker() {
           }
         } else {
           setActiveJob(null);
+          
+          // Job is null - check if project was completed and load assets
+          try {
+            const progressRes = await fetch(`/api/projects/${projectId}/progress`);
+            if (progressRes.ok) {
+              const progressData = await progressRes.json();
+              if (progressData.status === "generated") {
+                // Project is complete, load assets from API
+                const assetsRes = await fetch(`/api/projects/${projectId}/generated-assets`);
+                if (assetsRes.ok) {
+                  const assetsData = await assetsRes.json();
+                  if (assetsData.images) setGeneratedImages(assetsData.images);
+                  if (assetsData.audio) setGeneratedAudio(assetsData.audio);
+                }
+                
+                // Load framework
+                const frameworkRes = await fetch(`/api/projects/${projectId}/framework`);
+                if (frameworkRes.ok) {
+                  const frameworkData = await frameworkRes.json();
+                  if (frameworkData) setFramework(frameworkData);
+                }
+                
+                setCurrentStep("complete");
+                setProgress(100);
+                
+                // Stop polling since generation is done
+                if (jobPollingRef.current) {
+                  clearInterval(jobPollingRef.current);
+                  jobPollingRef.current = null;
+                }
+              }
+            }
+          } catch (e) {
+            // Ignore errors in loading completed state
+          }
         }
       } catch (error) {
         console.error("Failed to poll job status:", error);
