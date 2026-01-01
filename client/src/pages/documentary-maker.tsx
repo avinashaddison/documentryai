@@ -294,6 +294,19 @@ export default function DocumentaryMaker() {
   const [currentImageScene, setCurrentImageScene] = useState("");
   const [researchData, setResearchData] = useState<ResearchData | null>(null);
   const [sessionRestored, setSessionRestored] = useState(false);
+  
+  // Background job state
+  const [activeJob, setActiveJob] = useState<{
+    id: number;
+    status: string;
+    progress: number;
+    currentStep: string | null;
+    completedSteps: string[];
+    elapsedFormatted: string;
+    error: string | null;
+    stateInfo: any;
+  } | null>(null);
+  const jobPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Restore session on mount - check for projectId in URL or resumeProjectId in sessionStorage
   useEffect(() => {
@@ -501,6 +514,155 @@ export default function DocumentaryMaker() {
       saveSession();
     }
   }, [projectId, currentStep, generatedImages, generatedAudio, generatedChapters]);
+
+  // Poll for active background job status
+  useEffect(() => {
+    const pollJobStatus = async () => {
+      if (!projectId) return;
+      
+      try {
+        const res = await fetch(`/api/projects/${projectId}/job`);
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        
+        if (data.job) {
+          const job = data.job;
+          setActiveJob({
+            id: job.id,
+            status: job.status,
+            progress: job.progress || 0,
+            currentStep: job.currentStep,
+            completedSteps: job.completedSteps ? JSON.parse(job.completedSteps) : [],
+            elapsedFormatted: job.elapsedFormatted || "0s",
+            error: job.error,
+            stateInfo: job.stateInfo,
+          });
+          
+          // Update progress bar based on job progress
+          if (job.status === "running") {
+            setProgress(job.progress || 0);
+            
+            // Map job step to frontend step
+            const stepMap: Record<string, GenerationStep> = {
+              research: "research",
+              framework: "framework",
+              outline: "outline",
+              chapters: "chapters",
+              images: "images",
+              audio: "voiceover",
+            };
+            if (job.currentStep && stepMap[job.currentStep]) {
+              setCurrentStep(stepMap[job.currentStep]);
+            }
+          }
+          
+          // Update local state from job state when completed
+          if (job.status === "completed" && job.stateInfo) {
+            const state = job.stateInfo;
+            if (state.outline) setChapters(state.outline);
+            if (state.chapters) setGeneratedChapters(state.chapters);
+            if (state.images) setGeneratedImages(state.images);
+            if (state.audio) setGeneratedAudio(state.audio);
+            if (state.framework) setFramework(state.framework);
+            setCurrentStep("idle");
+            setProgress(100);
+          }
+          
+          // Handle job completion or failure - stop polling
+          if (job.status === "completed" || job.status === "failed") {
+            if (jobPollingRef.current) {
+              clearInterval(jobPollingRef.current);
+              jobPollingRef.current = null;
+            }
+          }
+        } else {
+          setActiveJob(null);
+        }
+      } catch (error) {
+        console.error("Failed to poll job status:", error);
+      }
+    };
+    
+    // Initial poll
+    pollJobStatus();
+    
+    // Start polling interval
+    if (projectId && !jobPollingRef.current) {
+      jobPollingRef.current = setInterval(pollJobStatus, 2000);
+    }
+    
+    return () => {
+      if (jobPollingRef.current) {
+        clearInterval(jobPollingRef.current);
+        jobPollingRef.current = null;
+      }
+    };
+  }, [projectId]);
+
+  // Function to start background generation job
+  const startBackgroundGeneration = async () => {
+    if (!projectId) return;
+    
+    try {
+      const res = await fetch(`/api/projects/${projectId}/generate-background`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalChapters,
+          config: {
+            model: config.hookImageModel,
+            imageStyle: config.imageStyle,
+            voice: config.narratorVoice,
+          },
+        }),
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to start generation");
+      }
+      
+      const data = await res.json();
+      setActiveJob({
+        id: data.job.id,
+        status: data.job.status,
+        progress: 0,
+        currentStep: null,
+        completedSteps: [],
+        elapsedFormatted: "0s",
+        error: null,
+        stateInfo: null,
+      });
+      
+      setCurrentStep("research");
+      setProgress(0);
+      
+      // Start polling if not already
+      if (!jobPollingRef.current) {
+        jobPollingRef.current = setInterval(async () => {
+          const statusRes = await fetch(`/api/projects/${projectId}/job`);
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            if (statusData.job) {
+              setActiveJob({
+                id: statusData.job.id,
+                status: statusData.job.status,
+                progress: statusData.job.progress || 0,
+                currentStep: statusData.job.currentStep,
+                completedSteps: statusData.job.completedSteps ? JSON.parse(statusData.job.completedSteps) : [],
+                elapsedFormatted: statusData.job.elapsedFormatted || "0s",
+                error: statusData.job.error,
+                stateInfo: statusData.job.stateInfo,
+              });
+              setProgress(statusData.job.progress || 0);
+            }
+          }
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Failed to start background generation:", error);
+    }
+  };
 
   const generateVoiceoverMutation = useMutation({
     mutationFn: async ({ id, chapterNumber, sceneNumber, narration, voice }: { 
@@ -781,16 +943,29 @@ export default function DocumentaryMaker() {
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-sm text-orange-300 mt-3 text-center font-medium">
-              {currentStep === "research" && "Researching topic with Perplexity AI..."}
-              {currentStep === "framework" && "Generating documentary framework with Claude..."}
-              {currentStep === "outline" && "Creating chapter outline..."}
-              {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
-              {currentStep === "images" && (currentImageScene || "Generating scene images...")}
-              {currentStep === "voiceover" && "Creating AI voiceover..."}
-              {currentStep === "assembly" && "Assembling final video..."}
-              {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
-            </p>
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <p className="text-sm text-orange-300 font-medium">
+                {currentStep === "research" && "Researching topic with Perplexity AI..."}
+                {currentStep === "framework" && "Generating documentary framework with Claude..."}
+                {currentStep === "outline" && "Creating chapter outline..."}
+                {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
+                {currentStep === "images" && (currentImageScene || "Generating scene images...")}
+                {currentStep === "voiceover" && "Creating AI voiceover..."}
+                {currentStep === "assembly" && "Assembling final video..."}
+                {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
+              </p>
+              {activeJob && activeJob.status === "running" && (
+                <div className="flex items-center gap-2 text-sm text-amber-400 font-mono bg-card/50 px-3 py-1 rounded-lg border border-amber-500/30">
+                  <Clock className="h-4 w-4" />
+                  <span data-testid="text-elapsed-time">{activeJob.elapsedFormatted}</span>
+                </div>
+              )}
+            </div>
+            {activeJob && activeJob.error && (
+              <p className="text-sm text-red-400 mt-2 text-center">
+                Error: {activeJob.error}
+              </p>
+            )}
           </div>
         )}
 
@@ -1337,15 +1512,15 @@ export default function DocumentaryMaker() {
                 </Button>
               ) : generatedChapters.length === 0 && chapters.length > 0 ? (
                 <Button
-                  onClick={handleGenerateAllChapters}
-                  disabled={isGenerating}
+                  onClick={startBackgroundGeneration}
+                  disabled={isGenerating || (activeJob?.status === "running")}
                   className="flex-1 h-12 gap-2 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-lg font-semibold"
                   data-testid="button-start-generation"
                 >
-                  {isGenerating ? (
+                  {isGenerating || activeJob?.status === "running" ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      Generating Chapters...
+                      {activeJob ? `Generating... ${activeJob.elapsedFormatted}` : "Generating Chapters..."}
                     </>
                   ) : (
                     <>
