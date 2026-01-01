@@ -120,6 +120,296 @@ def get_effect_for_scene(scene_index: int, total_scenes: int) -> str:
     return sequence[scene_index % len(sequence)]
 
 
+# =============================================================================
+# TEXT OVERLAY AND TYPEWRITER EFFECTS - VidRush Documentary Style
+# =============================================================================
+
+# Text overlay styles for different documentary elements
+TEXT_STYLES = {
+    "year_title": {
+        "fontsize": 180,
+        "fontcolor": "beige",
+        "font": "Serif",
+        "position": "center",
+        "shadow": True,
+        "fade_in": 0.5,
+    },
+    "chapter_title": {
+        "fontsize": 72,
+        "fontcolor": "beige",
+        "font": "Serif",
+        "position": "center",
+        "shadow": True,
+        "typewriter": True,
+        "fade_in": 0.3,
+    },
+    "date_overlay": {
+        "fontsize": 48,
+        "fontcolor": "white",
+        "font": "Serif",
+        "position": "top_right",
+        "shadow": True,
+        "fade_in": 0.4,
+    },
+    "location_text": {
+        "fontsize": 36,
+        "fontcolor": "white@0.9",
+        "font": "Sans",
+        "position": "bottom_left",
+        "shadow": True,
+        "typewriter": True,
+        "fade_in": 0.3,
+    },
+    "caption": {
+        "fontsize": 32,
+        "fontcolor": "white",
+        "font": "Sans",
+        "position": "bottom_center",
+        "shadow": True,
+        "box": True,
+        "fade_in": 0.2,
+    },
+}
+
+
+def get_text_position(position: str, w: int, h: int, text_w: int = 0, text_h: int = 0) -> Tuple[str, str]:
+    """Calculate x,y position expressions for text placement."""
+    positions = {
+        "center": ("(w-text_w)/2", "(h-text_h)/2"),
+        "top_left": ("50", "50"),
+        "top_right": ("w-text_w-50", "50"),
+        "top_center": ("(w-text_w)/2", "80"),
+        "bottom_left": ("50", "h-text_h-80"),
+        "bottom_right": ("w-text_w-50", "h-text_h-80"),
+        "bottom_center": ("(w-text_w)/2", "h-text_h-80"),
+    }
+    return positions.get(position, positions["center"])
+
+
+def build_typewriter_filter(
+    text: str,
+    style: str = "chapter_title",
+    start_time: float = 0.5,
+    chars_per_second: float = 12.0,
+    duration: Optional[float] = None,
+    w: int = 1920,
+    h: int = 1080,
+    fps: int = 24
+) -> str:
+    """
+    Build FFmpeg drawtext filter with typewriter effect.
+    Text appears character by character like a typewriter.
+    """
+    style_config = TEXT_STYLES.get(style, TEXT_STYLES["chapter_title"])
+    
+    fontsize = style_config["fontsize"]
+    fontcolor = style_config["fontcolor"]
+    font = style_config["font"]
+    position = style_config["position"]
+    has_shadow = style_config.get("shadow", False)
+    
+    x_pos, y_pos = get_text_position(position, w, h)
+    
+    # Escape special characters for FFmpeg
+    escaped_text = text.replace("'", "\\'").replace(":", "\\:")
+    
+    # Calculate typewriter timing
+    text_len = len(text)
+    type_duration = text_len / chars_per_second
+    
+    # Typewriter effect: show text[:n] where n increases over time
+    # Using FFmpeg expression: if(lt(t,start),0,min(floor((t-start)*cps),len))
+    # This reveals more characters as time progresses
+    
+    # Build the filter with character-by-character reveal
+    # We use multiple drawtext filters, each showing one character at its reveal time
+    filters = []
+    
+    for i, char in enumerate(text):
+        char_start = start_time + (i / chars_per_second)
+        char_escaped = char.replace("'", "\\'").replace(":", "\\:").replace("\\", "\\\\")
+        if char == " ":
+            char_escaped = " "
+        
+        # Calculate x offset for this character (approximate)
+        char_offset = i * (fontsize * 0.55)  # Rough character width
+        
+        # For center positioning, we need to calculate the full text width first
+        if position == "center":
+            full_text_width = text_len * (fontsize * 0.55)
+            base_x = f"((w-{full_text_width})/2)"
+            char_x = f"{base_x}+{char_offset}"
+        else:
+            base_x, _ = get_text_position(position, w, h)
+            char_x = f"({base_x})+{char_offset}"
+        
+        # Each character appears at its specific time and stays
+        enable_expr = f"gte(t,{char_start:.3f})"
+        
+        shadow_filter = ""
+        if has_shadow:
+            shadow_filter = f"drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor=black@0.6:font={font}:x={char_x}+3:y={y_pos}+3:enable='{enable_expr}',"
+        
+        char_filter = f"{shadow_filter}drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor={fontcolor}:font={font}:x={char_x}:y={y_pos}:enable='{enable_expr}'"
+        filters.append(char_filter)
+    
+    return ",".join(filters)
+
+
+def build_simple_text_filter(
+    text: str,
+    style: str = "year_title",
+    start_time: float = 0.0,
+    end_time: Optional[float] = None,
+    fade_duration: float = 0.5,
+    w: int = 1920,
+    h: int = 1080
+) -> str:
+    """
+    Build simple text overlay with fade in/out.
+    For titles, dates, and static text.
+    """
+    style_config = TEXT_STYLES.get(style, TEXT_STYLES["year_title"])
+    
+    fontsize = style_config["fontsize"]
+    fontcolor = style_config["fontcolor"]
+    font = style_config["font"]
+    position = style_config["position"]
+    has_shadow = style_config.get("shadow", False)
+    has_box = style_config.get("box", False)
+    
+    x_pos, y_pos = get_text_position(position, w, h)
+    
+    # Escape text
+    escaped_text = text.replace("'", "\\'").replace(":", "\\:")
+    
+    # Build enable expression with fade
+    if end_time:
+        # Fade in and out
+        alpha_expr = f"if(lt(t,{start_time}),0,if(lt(t,{start_time + fade_duration}),(t-{start_time})/{fade_duration},if(lt(t,{end_time - fade_duration}),1,if(lt(t,{end_time}),({end_time}-t)/{fade_duration},0))))"
+        enable_expr = f"between(t,{start_time},{end_time})"
+    else:
+        # Fade in only, stay visible
+        alpha_expr = f"if(lt(t,{start_time}),0,if(lt(t,{start_time + fade_duration}),(t-{start_time})/{fade_duration},1))"
+        enable_expr = f"gte(t,{start_time})"
+    
+    filters = []
+    
+    # Shadow layer
+    if has_shadow:
+        shadow = f"drawtext=text='{escaped_text}':fontsize={fontsize}:fontcolor=black@0.6:font={font}:x={x_pos}+4:y={y_pos}+4:enable='{enable_expr}'"
+        filters.append(shadow)
+    
+    # Box background
+    box_opts = ""
+    if has_box:
+        box_opts = ":box=1:boxcolor=black@0.5:boxborderw=10"
+    
+    # Main text
+    main_text = f"drawtext=text='{escaped_text}':fontsize={fontsize}:fontcolor={fontcolor}:font={font}:x={x_pos}:y={y_pos}:enable='{enable_expr}'{box_opts}"
+    filters.append(main_text)
+    
+    return ",".join(filters)
+
+
+def generate_typewriter_sound(duration: float, chars_per_second: float = 12.0, output_path: Optional[str] = None) -> Optional[str]:
+    """
+    Generate typewriter click sound effect using FFmpeg.
+    Creates rhythmic clicking sounds synchronized with text reveal.
+    """
+    if output_path is None:
+        output_path = str(TEMP_DIR / "typewriter_sound.wav")
+    
+    # Generate clicks using FFmpeg's sine wave with decay envelope
+    # Each "click" is a short burst of white noise
+    click_interval = 1.0 / chars_per_second
+    num_clicks = int(duration * chars_per_second)
+    
+    # Create a series of short noise bursts
+    # Using aevalsrc to generate impulses at regular intervals
+    filter_expr = f"aevalsrc=exprs='random(0)*exp(-100*mod(t,{click_interval}))':s=48000:d={duration}"
+    
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", filter_expr,
+        "-af", "volume=0.3,lowpass=f=3000,highpass=f=500",
+        "-c:a", "pcm_s16le",
+        output_path
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode == 0 and os.path.exists(output_path):
+        return output_path
+    return None
+
+
+def create_title_card(
+    text: str,
+    output_path: str,
+    style: str = "year_title",
+    duration: float = 3.0,
+    background_image: Optional[str] = None,
+    background_color: str = "black",
+    typewriter: bool = False,
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create a title card with optional typewriter effect.
+    Can overlay on background image or solid color.
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        # Build text filter
+        if typewriter:
+            text_filter = build_typewriter_filter(text, style, start_time=0.3, w=w, h=h, fps=fps)
+        else:
+            text_filter = build_simple_text_filter(text, style, start_time=0.2, fade_duration=0.4, w=w, h=h)
+        
+        if background_image and os.path.exists(background_image):
+            # Use image as background with Ken Burns
+            zoompan = build_zoompan_filter("zoom_in_center", total_frames, w, h, fps)
+            bw_filter = "hue=s=0,eq=contrast=1.1:brightness=0.02"
+            
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", background_image,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", f"[0:v]{zoompan},{bw_filter},{text_filter},format=yuv420p[v]",
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            # Solid color background
+            cmd = [
+                "ffmpeg", "-y",
+                "-f", "lavfi", "-i", f"color=c={background_color}:s={w}x{h}:d={duration}:r={fps}",
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", f"[0:v]{text_filter},format=yuv420p[v]",
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Title card error: {result.stderr}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating title card: {e}", file=sys.stderr)
+        return False
+
+
 def ensure_dirs():
     """Create necessary directories."""
     OUTPUT_DIR.mkdir(exist_ok=True)
@@ -181,11 +471,18 @@ def create_scene_clip_ffmpeg(
     effect: str = "zoom_in_center",
     fps: int = 24,
     resolution: tuple = (1920, 1080),
-    quality: str = "high"
+    quality: str = "high",
+    text_overlay: Optional[Dict] = None
 ) -> bool:
     """
     Create a single scene clip with professional Ken Burns effect.
     Uses preset-based motion with smooth easing for VidRush-style quality.
+    
+    text_overlay options:
+        - text: str - The text to display
+        - style: str - Style preset (year_title, chapter_title, date_overlay, location_text, caption)
+        - typewriter: bool - Use typewriter animation
+        - start_time: float - When text appears (default 0.5)
     """
     try:
         w, h = resolution
@@ -222,7 +519,26 @@ def create_scene_clip_ffmpeg(
             preset = "fast"
             profile = ""
         
-        video_filters = f"{zoompan},{bw_filter},{contrast_filter},format=yuv420p"
+        video_filters = f"{zoompan},{bw_filter},{contrast_filter}"
+        
+        # Add text overlay if specified
+        if text_overlay and text_overlay.get("text"):
+            overlay_text = text_overlay["text"]
+            overlay_style = text_overlay.get("style", "date_overlay")
+            use_typewriter = text_overlay.get("typewriter", False)
+            text_start = text_overlay.get("start_time", 0.5)
+            
+            if use_typewriter:
+                text_filter = build_typewriter_filter(
+                    overlay_text, overlay_style, start_time=text_start, w=w, h=h, fps=fps
+                )
+            else:
+                text_filter = build_simple_text_filter(
+                    overlay_text, overlay_style, start_time=text_start, w=w, h=h
+                )
+            video_filters = f"{video_filters},{text_filter}"
+        
+        video_filters = f"{video_filters},format=yuv420p"
         
         if audio_path and os.path.exists(audio_path):
             # With audio - pad audio to match video duration for dramatic pause
@@ -433,6 +749,10 @@ def assemble_chapter_video_fast(
         scene_clips = []
         total_scenes = len(scenes)
         
+        # Check for chapter title card (first scene of chapter can have title overlay)
+        chapter_title = chapter_data.get("title", "")
+        chapter_number = chapter_data.get("chapter_number", 0)
+        
         for i, scene in enumerate(scenes):
             img_path = scene.get("image_path", "")
             audio_path = scene.get("audio_path", "")
@@ -459,6 +779,36 @@ def assemble_chapter_video_fast(
             # Ensure minimum duration for Ken Burns effect to look smooth
             duration = max(duration, 5.0)
             
+            # Build text overlay from scene metadata
+            text_overlay = None
+            
+            # Check for explicit text overlay in scene data
+            if scene.get("text_overlay"):
+                text_overlay = scene.get("text_overlay")
+            # Or use date_text/location_text fields
+            elif scene.get("date_text"):
+                text_overlay = {
+                    "text": scene.get("date_text"),
+                    "style": "date_overlay",
+                    "typewriter": False,
+                    "start_time": 0.5,
+                }
+            elif scene.get("location_text"):
+                text_overlay = {
+                    "text": scene.get("location_text"),
+                    "style": "location_text",
+                    "typewriter": True,
+                    "start_time": 0.5,
+                }
+            # First scene of chapter can show chapter title
+            elif i == 0 and chapter_title:
+                text_overlay = {
+                    "text": chapter_title,
+                    "style": "chapter_title",
+                    "typewriter": True,
+                    "start_time": 0.5,
+                }
+            
             # Create temp clip for this scene
             scene_output = str(TEMP_DIR / f"scene_{i+1}.mp4")
             
@@ -466,10 +816,12 @@ def assemble_chapter_video_fast(
                 img_path, scene_output, duration,
                 audio_path if audio_path and os.path.exists(audio_path) else None,
                 effect,
-                quality=quality
+                quality=quality,
+                text_overlay=text_overlay
             ):
                 scene_clips.append(scene_output)
-                print(f"Scene {i+1}/{total_scenes}: {effect} ({duration:.1f}s)", file=sys.stderr)
+                overlay_info = f" + '{text_overlay['text'][:20]}'" if text_overlay else ""
+                print(f"Scene {i+1}/{total_scenes}: {effect} ({duration:.1f}s){overlay_info}", file=sys.stderr)
             else:
                 print(f"Warning: Failed to create scene {i+1}", file=sys.stderr)
         
@@ -505,6 +857,7 @@ def assemble_full_video_fast(
     """
     Professional full video assembly using FFmpeg with VidRush-style quality.
     Features:
+    - Automatic year/title card generation
     - Chapter-level crossfade transitions
     - High-quality encoding
     - Optional intro/outro integration
@@ -519,6 +872,34 @@ def assemble_full_video_fast(
         
         chapter_videos = []
         total_chapters = len(chapters)
+        
+        # Create year/title intro card if specified
+        year_title = project_data.get("year_title")  # e.g. "1945"
+        project_title = project_data.get("title", "")
+        first_image = None
+        
+        # Find first available image for title card background
+        for chapter in chapters:
+            for scene in chapter.get("scenes", []):
+                if scene.get("image_path") and os.path.exists(scene.get("image_path", "")):
+                    first_image = scene.get("image_path")
+                    break
+            if first_image:
+                break
+        
+        # Generate year title card
+        if year_title and first_image:
+            year_card_path = str(TEMP_DIR / "year_title_card.mp4")
+            print(f"Creating year title card: {year_title}", file=sys.stderr)
+            if create_title_card(
+                text=year_title,
+                output_path=year_card_path,
+                style="year_title",
+                duration=3.5,
+                background_image=first_image,
+                typewriter=False
+            ):
+                chapter_videos.append(year_card_path)
         
         for i, chapter in enumerate(chapters):
             chapter_output = str(TEMP_DIR / f"chapter_{i+1}.mp4")
@@ -744,7 +1125,7 @@ def merge_videos(video_paths: List[str], output_path: str, transition_duration: 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python video_processor.py <command> [args...]")
-        print("Commands: detect_scenes, trim, merge, images_to_video, analyze_audio, assemble_chapter, assemble_full, info")
+        print("Commands: detect_scenes, trim, merge, images_to_video, analyze_audio, assemble_chapter, assemble_full, info, title_card, typewriter_sound")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -821,6 +1202,36 @@ if __name__ == "__main__":
             sys.exit(1)
         info = get_video_info(sys.argv[2])
         print(json.dumps(info, indent=2))
+    
+    elif command == "title_card":
+        if len(sys.argv) < 3:
+            print("Usage: title_card <json_config>")
+            print("Config: {text, output, style?, duration?, background_image?, background_color?, typewriter?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_title_card(
+            text=config["text"],
+            output_path=config["output"],
+            style=config.get("style", "year_title"),
+            duration=config.get("duration", 3.0),
+            background_image=config.get("background_image"),
+            background_color=config.get("background_color", "black"),
+            typewriter=config.get("typewriter", False),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "typewriter_sound":
+        if len(sys.argv) < 3:
+            print("Usage: typewriter_sound <json_config>")
+            print("Config: {duration, output?, chars_per_second?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        result = generate_typewriter_sound(
+            duration=config["duration"],
+            chars_per_second=config.get("chars_per_second", 12.0),
+            output_path=config.get("output")
+        )
+        print(json.dumps({"success": result is not None, "output": result}))
     
     else:
         print(f"Unknown command: {command}")

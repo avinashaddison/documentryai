@@ -94,6 +94,26 @@ export async function assembleFullVideo(projectData: {
   return runPythonCommand("assemble_full", [JSON.stringify({ project: projectData, output: outputPath })]);
 }
 
+export async function createTitleCard(config: {
+  text: string;
+  output: string;
+  style?: "year_title" | "chapter_title" | "date_overlay" | "location_text" | "caption";
+  duration?: number;
+  background_image?: string;
+  background_color?: string;
+  typewriter?: boolean;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("title_card", [JSON.stringify(config)]);
+}
+
+export async function generateTypewriterSound(config: {
+  duration: number;
+  output?: string;
+  chars_per_second?: number;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("typewriter_sound", [JSON.stringify(config)]);
+}
+
 export const videoService = {
   detectScenes,
   trimVideo,
@@ -103,4 +123,6 @@ export const videoService = {
   analyzeAudio,
   assembleChapterVideo,
   assembleFullVideo,
+  createTitleCard,
+  generateTypewriterSound,
 };
