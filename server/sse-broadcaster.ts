@@ -7,10 +7,22 @@ interface SSEClient {
 }
 
 interface SSEEvent {
-  type: "job_status" | "chapter_generated" | "scene_image_generated" | "audio_generated" | "progress_update" | "log_entry";
+  type: "job_status" | "chapter_generated" | "scene_image_generated" | "audio_generated" | "progress_update" | "log_entry" | "research_activity";
   projectId: number;
   jobId?: number;
   data: any;
+}
+
+interface ResearchActivity {
+  phase: "initial" | "deep" | "synthesis";
+  activityType: "query_started" | "query_completed" | "source_found" | "subtopic_identified" | "fact_extracted" | "phase_complete";
+  query?: string;
+  queryIndex?: number;
+  totalQueries?: number;
+  source?: { title: string; url: string; snippet?: string };
+  subtopic?: string;
+  fact?: { claim: string; confidence: string; category: string };
+  message: string;
 }
 
 interface ProjectState {
@@ -21,6 +33,7 @@ interface ProjectState {
   chapters?: any[];
   images?: Record<string, string>;
   audio?: Record<string, string>;
+  researchActivities?: ResearchActivity[];
 }
 
 class SSEBroadcaster {
@@ -79,6 +92,13 @@ class SSEBroadcaster {
           if (match) {
             this.sendToClient(clientId, { type: "audio_generated", projectId, data: { key, audioUrl: url, chapterNumber: parseInt(match[1]), sceneNumber: parseInt(match[2]) } });
           }
+        });
+      }
+      
+      // Send accumulated research activities if any
+      if (state.researchActivities && state.researchActivities.length > 0) {
+        state.researchActivities.forEach(activity => {
+          this.sendToClient(clientId, { type: "research_activity", projectId, data: activity });
         });
       }
     }
@@ -152,6 +172,13 @@ class SSEBroadcaster {
     } else if (event.type === "audio_generated") {
       if (!state.audio) state.audio = {};
       state.audio[event.data.key] = event.data.audioUrl;
+    } else if (event.type === "research_activity") {
+      if (!state.researchActivities) state.researchActivities = [];
+      state.researchActivities.push(event.data);
+      // Keep only recent 50 activities for memory efficiency
+      if (state.researchActivities.length > 50) {
+        state.researchActivities = state.researchActivities.slice(-50);
+      }
     }
     
     this.clients.forEach((client, clientId) => {
@@ -247,6 +274,23 @@ class SSEBroadcaster {
   clearProjectState(projectId: number) {
     this.projectStates.delete(projectId);
   }
+
+  emitResearchActivity(
+    projectId: number, 
+    jobId: number, 
+    activity: ResearchActivity
+  ) {
+    this.broadcast({
+      type: "research_activity",
+      projectId,
+      jobId,
+      data: {
+        ...activity,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
 }
 
 export const sseBroadcaster = new SSEBroadcaster();
+export type { ResearchActivity };
