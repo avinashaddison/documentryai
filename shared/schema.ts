@@ -125,6 +125,9 @@ export const generationSessions = pgTable("generation_sessions", {
   errorMessage: text("error_message"),
   chaptersData: text("chapters_data"), // JSON string of full chapters payload
   outlineData: text("outline_data"), // JSON string of chapter titles
+  configData: text("config_data"), // JSON string of story configuration
+  imagesData: text("images_data"), // JSON string of generated images map
+  audioData: text("audio_data"), // JSON string of generated audio map
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

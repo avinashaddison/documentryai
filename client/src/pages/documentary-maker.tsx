@@ -349,30 +349,76 @@ export default function DocumentaryMaker() {
             if (assets.audio) setGeneratedAudio(assets.audio);
           }
           
-          // Load session data for chapters and outline
+          // Load session data for chapters, outline, config, images, and audio
           const sessionRes = await fetch(`/api/projects/${id}/session`);
           if (sessionRes.ok) {
             const sessionData = await sessionRes.json();
-            if (sessionData.session?.chaptersData) {
-              try {
-                const chaptersFromSession = JSON.parse(sessionData.session.chaptersData);
-                if (chaptersFromSession.length > 0) {
-                  setGeneratedChapters(chaptersFromSession);
-                  const titles = chaptersFromSession.map((ch: any) => ch.title);
-                  setChapters(titles);
+            const session = sessionData.session;
+            
+            if (session) {
+              // Restore chapters
+              if (session.chaptersData) {
+                try {
+                  const chaptersFromSession = JSON.parse(session.chaptersData);
+                  if (chaptersFromSession.length > 0) {
+                    setGeneratedChapters(chaptersFromSession);
+                    const titles = chaptersFromSession.map((ch: any) => ch.title);
+                    setChapters(titles);
+                  }
+                } catch (e) {
+                  console.error("Failed to parse chapters data:", e);
                 }
-              } catch (e) {
-                console.error("Failed to parse chapters data:", e);
               }
-            }
-            if (sessionData.session?.outlineData) {
-              try {
-                const outlineFromSession = JSON.parse(sessionData.session.outlineData);
-                if (outlineFromSession.length > 0 && chapters.length === 0) {
-                  setChapters(outlineFromSession);
+              
+              // Restore outline (if chapters not available)
+              if (session.outlineData) {
+                try {
+                  const outlineFromSession = JSON.parse(session.outlineData);
+                  if (outlineFromSession.length > 0) {
+                    setChapters(prev => prev.length > 0 ? prev : outlineFromSession);
+                  }
+                } catch (e) {
+                  console.error("Failed to parse outline data:", e);
                 }
-              } catch (e) {
-                console.error("Failed to parse outline data:", e);
+              }
+              
+              // Restore config
+              if (session.configData) {
+                try {
+                  const configFromSession = JSON.parse(session.configData);
+                  setConfig(prev => ({ ...prev, ...configFromSession }));
+                } catch (e) {
+                  console.error("Failed to parse config data:", e);
+                }
+              }
+              
+              // Restore images from session (more complete than assets endpoint)
+              if (session.imagesData) {
+                try {
+                  const imagesFromSession = JSON.parse(session.imagesData);
+                  if (Object.keys(imagesFromSession).length > 0) {
+                    setGeneratedImages(imagesFromSession);
+                  }
+                } catch (e) {
+                  console.error("Failed to parse images data:", e);
+                }
+              }
+              
+              // Restore audio from session
+              if (session.audioData) {
+                try {
+                  const audioFromSession = JSON.parse(session.audioData);
+                  if (Object.keys(audioFromSession).length > 0) {
+                    setGeneratedAudio(audioFromSession);
+                  }
+                } catch (e) {
+                  console.error("Failed to parse audio data:", e);
+                }
+              }
+              
+              // Restore total chapters from session
+              if (session.totalChapters) {
+                setTotalChapters(session.totalChapters);
               }
             }
           }
@@ -443,6 +489,9 @@ export default function DocumentaryMaker() {
               imageStyle: config.imageStyle,
               chaptersData: JSON.stringify(generatedChapters),
               outlineData: JSON.stringify(chapters),
+              configData: JSON.stringify(config),
+              imagesData: JSON.stringify(generatedImages),
+              audioData: JSON.stringify(generatedAudio),
             }),
           });
         } catch (error) {
