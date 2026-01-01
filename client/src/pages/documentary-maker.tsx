@@ -32,7 +32,10 @@ import {
   Volume2,
   Layers,
   ArrowRight,
-  Settings
+  Settings,
+  Search,
+  ExternalLink,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -67,7 +70,18 @@ interface ChapterScript {
   estimatedDuration: number;
 }
 
-type GenerationStep = "idle" | "framework" | "outline" | "chapters" | "images" | "voiceover" | "assembly" | "complete";
+type GenerationStep = "idle" | "research" | "framework" | "outline" | "chapters" | "images" | "voiceover" | "assembly" | "complete";
+
+interface ResearchData {
+  status: string;
+  queries: string[];
+  sources: Array<{ title: string; url: string; snippet: string }>;
+  summary: {
+    keyFacts?: Array<{ fact: string; source: string; verified: boolean }>;
+    timeline?: Array<{ date: string; event: string; significance: string }>;
+    mainCharacters?: Array<{ name: string; role: string; significance: string }>;
+  };
+}
 
 export default function DocumentaryMaker() {
   const [, navigate] = useLocation();
@@ -178,8 +192,9 @@ export default function DocumentaryMaker() {
     setFramework(null);
     setChapters([]);
     setGeneratedChapters([]);
-    setCurrentStep("framework");
-    setProgress(5);
+    setResearchData(null);
+    setCurrentStep("research");
+    setProgress(2);
     
     const project = await createProjectMutation.mutateAsync({ 
       projectTitle: title, 
@@ -188,9 +203,37 @@ export default function DocumentaryMaker() {
     const id = project.id;
     setProjectId(id);
     
+    // Start research phase
+    try {
+      await fetch(`/api/projects/${id}/research`, { method: "POST" });
+      
+      // Poll for research completion
+      let researchComplete = false;
+      while (!researchComplete) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const researchRes = await fetch(`/api/projects/${id}/research`);
+        const researchStatus = await researchRes.json();
+        
+        if (researchStatus.status === "completed") {
+          setResearchData(researchStatus);
+          researchComplete = true;
+          setProgress(10);
+        } else if (researchStatus.status === "failed") {
+          console.error("Research failed:", researchStatus.error);
+          researchComplete = true;
+          setProgress(10);
+        }
+      }
+    } catch (error) {
+      console.error("Research error:", error);
+    }
+    
+    setCurrentStep("framework");
+    setProgress(12);
+    
     const result = await generateFrameworkMutation.mutateAsync({ id, numChapters: totalChapters });
     setFramework(result.storedFramework);
-    setProgress(15);
+    setProgress(18);
     
     setCurrentStep("outline");
     const outlineResult = await generateOutlineMutation.mutateAsync({ 
@@ -223,6 +266,7 @@ export default function DocumentaryMaker() {
   const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
   const [generatedAudio, setGeneratedAudio] = useState<Record<string, string>>({});
   const [currentImageScene, setCurrentImageScene] = useState("");
+  const [researchData, setResearchData] = useState<ResearchData | null>(null);
 
   const generateVoiceoverMutation = useMutation({
     mutationFn: async ({ id, chapterNumber, sceneNumber, narration, voice }: { 
@@ -398,9 +442,10 @@ export default function DocumentaryMaker() {
   ];
 
   const steps = [
+    { id: "research", label: "Research", icon: BookOpen },
     { id: "framework", label: "Framework", icon: FileText },
-    { id: "outline", label: "Outline", icon: BookOpen },
-    { id: "chapters", label: "Chapters", icon: Layers },
+    { id: "outline", label: "Outline", icon: Layers },
+    { id: "chapters", label: "Chapters", icon: FileText },
     { id: "images", label: "Images", icon: ImageIcon },
     { id: "voiceover", label: "Voiceover", icon: Volume2 },
     { id: "assembly", label: "Assembly", icon: Film },
@@ -523,6 +568,7 @@ export default function DocumentaryMaker() {
               />
             </div>
             <p className="text-sm text-orange-300 mt-3 text-center font-medium">
+              {currentStep === "research" && "Researching topic with Perplexity AI..."}
               {currentStep === "framework" && "Generating documentary framework with Claude..."}
               {currentStep === "outline" && "Creating chapter outline..."}
               {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
@@ -678,6 +724,91 @@ export default function DocumentaryMaker() {
             </div>
           </div>
         </div>
+
+        {/* Research Summary Display */}
+        {researchData && researchData.summary && (
+          <div className="glass-panel-glow rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                <Search className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-display font-bold gradient-text">Research Summary</h2>
+              <Badge variant="outline" className="ml-auto text-xs bg-blue-500/10 text-blue-400 border-blue-500/30 px-3 py-1">
+                {researchData.sources?.length || 0} Sources
+              </Badge>
+            </div>
+
+            {/* Key Facts */}
+            {researchData.summary.keyFacts && researchData.summary.keyFacts.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-blue-300">Key Facts</Label>
+                <div className="grid gap-2">
+                  {researchData.summary.keyFacts.slice(0, 5).map((fact, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                      <Check className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm text-white/90">{fact.fact}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Timeline */}
+            {researchData.summary.timeline && researchData.summary.timeline.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-blue-300">Timeline</Label>
+                <div className="grid gap-2">
+                  {researchData.summary.timeline.slice(0, 4).map((item, i) => (
+                    <div key={i} className="flex items-start gap-3 p-2 bg-background/50 rounded-lg border border-border">
+                      <span className="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded flex-shrink-0">
+                        {item.date}
+                      </span>
+                      <span className="text-sm text-white/80">{item.event}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Key Figures */}
+            {researchData.summary.mainCharacters && researchData.summary.mainCharacters.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-blue-300 flex items-center gap-2">
+                  <Users className="h-3 w-3" />
+                  Key Figures
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {researchData.summary.mainCharacters.slice(0, 6).map((char, i) => (
+                    <Badge key={i} className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1">
+                      {char.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sources Preview */}
+            {researchData.sources && researchData.sources.length > 0 && (
+              <div className="space-y-2 pt-4 border-t border-border/50">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Sources Used</Label>
+                <div className="flex flex-wrap gap-2">
+                  {researchData.sources.slice(0, 3).map((source, i) => (
+                    <a 
+                      key={i}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {source.title?.slice(0, 40)}...
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Generated Framework Display */}
         {framework && (
