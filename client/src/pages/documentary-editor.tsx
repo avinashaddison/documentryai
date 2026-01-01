@@ -605,7 +605,7 @@ export default function DocumentaryEditor() {
         <Button
           onClick={handleExport}
           disabled={isExporting || isGenerating}
-          className="gap-2 bg-gradient-to-r from-primary to-purple-500"
+          className="gap-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-lg shadow-orange-500/30"
           data-testid="button-export"
         >
           {isExporting ? (
@@ -676,30 +676,31 @@ export default function DocumentaryEditor() {
           <div 
             ref={videoContainerRef}
             className={cn(
-              "flex-1 bg-[#0a0e13] flex items-center justify-center p-4",
+              "flex-1 bg-gradient-to-br from-[#0a0e13] via-[#0d1117] to-[#0a0e13] flex items-center justify-center p-6",
               isFullscreen && "p-0"
             )}
           >
             <div
               className={cn(
-                "relative bg-black rounded-lg overflow-hidden shadow-2xl",
-                isFullscreen && "rounded-none w-full h-full max-w-none"
+                "relative bg-black rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10",
+                isFullscreen && "rounded-none w-full h-full max-w-none ring-0"
               )}
               style={isFullscreen ? {} : {
                 aspectRatio: "16/9",
-                maxHeight: "100%",
-                width: "min(100%, 960px)",
+                width: "100%",
+                maxWidth: "1100px",
+                maxHeight: "calc(100% - 2rem)",
               }}
               data-testid="video-preview"
             >
               {currentScene?.imageUrl ? (
-                <div className="relative w-full h-full overflow-hidden">
+                <div className="absolute inset-0 overflow-hidden">
                   <img
                     ref={imageRef}
                     key={`${currentSceneIndex}-${isPlaying}`}
                     src={currentScene.imageUrl}
                     alt={`Scene ${currentScene.sceneNumber}`}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                     style={{
                       animation: isPlaying 
                         ? getKenBurnsAnimation(currentScene.kenBurnsEffect || "zoom_in", currentScene.duration || 5)
@@ -707,12 +708,21 @@ export default function DocumentaryEditor() {
                       transform: !isPlaying ? "scale(1)" : undefined,
                     }}
                   />
+                  {/* Scene info overlay */}
+                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium text-white/90">
+                      Chapter {currentScene.chapterIndex + 1} • Scene {currentScene.sceneNumber}
+                    </span>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1f26] to-[#0d1117]">
                   <div className="text-center">
-                    <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No image for this scene</p>
+                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-sm">No image for this scene</p>
+                    <p className="text-muted-foreground/60 text-xs mt-1">Generate images to preview</p>
                   </div>
                 </div>
               )}
@@ -850,15 +860,15 @@ export default function DocumentaryEditor() {
           </div>
 
           {/* Playback Controls */}
-          <div className="h-20 bg-[#1a1f26] border-t border-[#2a3441] p-3">
+          <div className="h-20 bg-gradient-to-b from-[#1a1f26] to-[#161b22] border-t border-[#2a3441] p-3">
             {/* Progress Bar */}
             <div className="mb-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                <span>{formatTime(currentTime)}</span>
-                <div className="flex-1">
-                  <Progress value={(currentTime / totalDuration) * 100} className="h-1.5" />
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-1">
+                <span className="font-mono text-orange-400 w-12">{formatTime(currentTime)}</span>
+                <div className="flex-1 relative">
+                  <Progress value={(currentTime / totalDuration) * 100} className="h-2 bg-[#2a3441]" />
                 </div>
-                <span>{formatTime(totalDuration)}</span>
+                <span className="font-mono w-12 text-right">{formatTime(totalDuration)}</span>
               </div>
             </div>
 
@@ -881,7 +891,7 @@ export default function DocumentaryEditor() {
                 <Button
                   size="icon"
                   onClick={handlePlayPause}
-                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90"
+                  className="h-12 w-12 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-lg shadow-orange-500/30"
                   data-testid="button-play-pause"
                 >
                   {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
