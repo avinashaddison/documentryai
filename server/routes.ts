@@ -20,6 +20,7 @@ import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resum
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
 import { conductFullResearch } from "./research-service";
+import { sseBroadcaster } from "./sse-broadcaster";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -1301,6 +1302,24 @@ export async function registerRoutes(
     }
   });
   
+  // SSE stream for real-time job updates
+  app.get("/api/projects/:id/stream", (req, res) => {
+    const projectId = parseInt(req.params.id);
+    
+    if (isNaN(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    
+    const clientId = sseBroadcaster.addClient(projectId, res);
+    console.log(`[SSE] Client ${clientId} connected for project ${projectId}`);
+    
+    req.on("close", () => {
+      sseBroadcaster.removeClient(clientId);
+      console.log(`[SSE] Client ${clientId} disconnected`);
+    });
+  });
+
   // Get active generation job for a project
   app.get("/api/projects/:id/job", async (req, res) => {
     try {

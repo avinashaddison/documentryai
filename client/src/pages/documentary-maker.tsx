@@ -308,7 +308,6 @@ export default function DocumentaryMaker() {
     error: string | null;
     stateInfo: any;
   } | null>(null);
-  const jobPollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Restore session on mount - check for projectId in URL or resumeProjectId in sessionStorage
   useEffect(() => {
@@ -517,122 +516,106 @@ export default function DocumentaryMaker() {
     }
   }, [projectId, currentStep, generatedImages, generatedAudio, generatedChapters]);
 
-  // Poll for active background job status
+  // Real-time updates via Server-Sent Events
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const [liveEvents, setLiveEvents] = useState<{type: string; message: string; timestamp: string}[]>([]);
+  
   useEffect(() => {
-    const pollJobStatus = async () => {
-      if (!projectId) return;
-      
+    if (!projectId) return;
+    
+    // Initial job status check
+    const checkInitialStatus = async () => {
       try {
         const res = await fetch(`/api/projects/${projectId}/job`);
-        if (!res.ok) return;
-        
-        const data = await res.json();
-        
-        if (data.job) {
-          const job = data.job;
-          setActiveJob({
-            id: job.id,
-            status: job.status,
-            progress: job.progress || 0,
-            currentStep: job.currentStep,
-            completedSteps: job.completedSteps ? JSON.parse(job.completedSteps) : [],
-            elapsedFormatted: job.elapsedFormatted || "0s",
-            error: job.error,
-            stateInfo: job.stateInfo,
-          });
-          
-          // Update progress bar based on job progress
-          if (job.status === "running") {
-            setProgress(job.progress || 0);
-            
-            // Map job step to frontend step
-            const stepMap: Record<string, GenerationStep> = {
-              research: "research",
-              framework: "framework",
-              outline: "outline",
-              chapters: "chapters",
-              images: "images",
-              audio: "voiceover",
-            };
-            if (job.currentStep && stepMap[job.currentStep]) {
-              setCurrentStep(stepMap[job.currentStep]);
-            }
-          }
-          
-          // Update local state from job state when completed
-          if (job.status === "completed" && job.stateInfo) {
-            const state = job.stateInfo;
-            if (state.outline) setChapters(state.outline);
-            if (state.chapters) setGeneratedChapters(state.chapters);
-            if (state.images) setGeneratedImages(state.images);
-            if (state.audio) setGeneratedAudio(state.audio);
-            if (state.framework) setFramework(state.framework);
-            setCurrentStep("idle");
-            setProgress(100);
-          }
-          
-          // Handle job completion or failure - stop polling
-          if (job.status === "completed" || job.status === "failed") {
-            if (jobPollingRef.current) {
-              clearInterval(jobPollingRef.current);
-              jobPollingRef.current = null;
-            }
-          }
-        } else {
-          setActiveJob(null);
-          
-          // Job is null - check if project was completed and load assets
-          try {
-            const progressRes = await fetch(`/api/projects/${projectId}/progress`);
-            if (progressRes.ok) {
-              const progressData = await progressRes.json();
-              if (progressData.status === "generated") {
-                // Project is complete, load assets from API
-                const assetsRes = await fetch(`/api/projects/${projectId}/generated-assets`);
-                if (assetsRes.ok) {
-                  const assetsData = await assetsRes.json();
-                  if (assetsData.images) setGeneratedImages(assetsData.images);
-                  if (assetsData.audio) setGeneratedAudio(assetsData.audio);
-                }
-                
-                // Load framework
-                const frameworkRes = await fetch(`/api/projects/${projectId}/framework`);
-                if (frameworkRes.ok) {
-                  const frameworkData = await frameworkRes.json();
-                  if (frameworkData) setFramework(frameworkData);
-                }
-                
-                setCurrentStep("complete");
-                setProgress(100);
-                
-                // Stop polling since generation is done
-                if (jobPollingRef.current) {
-                  clearInterval(jobPollingRef.current);
-                  jobPollingRef.current = null;
-                }
-              }
-            }
-          } catch (e) {
-            // Ignore errors in loading completed state
+        if (res.ok) {
+          const data = await res.json();
+          if (data.job) {
+            setActiveJob({
+              id: data.job.id,
+              status: data.job.status,
+              progress: data.job.progress || 0,
+              currentStep: data.job.currentStep,
+              completedSteps: data.job.completedSteps ? JSON.parse(data.job.completedSteps) : [],
+              elapsedFormatted: data.job.elapsedFormatted || "0s",
+              error: data.job.error,
+              stateInfo: data.job.stateInfo,
+            });
           }
         }
-      } catch (error) {
-        console.error("Failed to poll job status:", error);
+      } catch (e) {}
+    };
+    checkInitialStatus();
+    
+    // Setup SSE connection for real-time updates
+    const setupEventSource = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
+      
+      const es = new EventSource(`/api/projects/${projectId}/stream`);
+      eventSourceRef.current = es;
+      
+      es.addEventListener("progress_update", (e) => {
+        const data = JSON.parse(e.data);
+        setProgress(data.progress);
+        setLiveEvents(prev => [...prev.slice(-9), { type: "progress", message: data.message, timestamp: data.timestamp }]);
+        
+        const stepMap: Record<string, GenerationStep> = {
+          research: "research",
+          framework: "framework",
+          outline: "outline",
+          chapters: "chapters",
+          images: "images",
+          audio: "voiceover",
+        };
+        if (data.step && stepMap[data.step]) {
+          setCurrentStep(stepMap[data.step]);
+        }
+      });
+      
+      es.addEventListener("chapter_generated", (e) => {
+        const data = JSON.parse(e.data);
+        setGeneratedChapters(prev => {
+          const exists = prev.some(ch => ch.chapterNumber === data.chapterNumber);
+          if (exists) return prev;
+          return [...prev, data.chapter];
+        });
+        setLiveEvents(prev => [...prev.slice(-9), { type: "chapter", message: `Chapter ${data.chapterNumber}: ${data.title}`, timestamp: new Date().toISOString() }]);
+      });
+      
+      es.addEventListener("scene_image_generated", (e) => {
+        const data = JSON.parse(e.data);
+        setGeneratedImages(prev => ({ ...prev, [data.key]: data.imageUrl }));
+        setLiveEvents(prev => [...prev.slice(-9), { type: "image", message: `Image for Ch${data.chapterNumber} Sc${data.sceneNumber}`, timestamp: new Date().toISOString() }]);
+      });
+      
+      es.addEventListener("audio_generated", (e) => {
+        const data = JSON.parse(e.data);
+        setGeneratedAudio(prev => ({ ...prev, [data.key]: data.audioUrl }));
+        setLiveEvents(prev => [...prev.slice(-9), { type: "audio", message: `Audio for Ch${data.chapterNumber} Sc${data.sceneNumber}`, timestamp: new Date().toISOString() }]);
+      });
+      
+      es.addEventListener("job_status", (e) => {
+        const data = JSON.parse(e.data);
+        if (data.status === "completed") {
+          setCurrentStep("complete");
+          setProgress(100);
+          es.close();
+        }
+      });
+      
+      es.onerror = () => {
+        // Reconnect after a delay on error
+        setTimeout(setupEventSource, 3000);
+      };
     };
     
-    // Initial poll
-    pollJobStatus();
-    
-    // Start polling interval
-    if (projectId && !jobPollingRef.current) {
-      jobPollingRef.current = setInterval(pollJobStatus, 2000);
-    }
+    setupEventSource();
     
     return () => {
-      if (jobPollingRef.current) {
-        clearInterval(jobPollingRef.current);
-        jobPollingRef.current = null;
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
     };
   }, [projectId]);
@@ -674,29 +657,8 @@ export default function DocumentaryMaker() {
       
       setCurrentStep("research");
       setProgress(0);
+      setLiveEvents([]);
       
-      // Start polling if not already
-      if (!jobPollingRef.current) {
-        jobPollingRef.current = setInterval(async () => {
-          const statusRes = await fetch(`/api/projects/${projectId}/job`);
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (statusData.job) {
-              setActiveJob({
-                id: statusData.job.id,
-                status: statusData.job.status,
-                progress: statusData.job.progress || 0,
-                currentStep: statusData.job.currentStep,
-                completedSteps: statusData.job.completedSteps ? JSON.parse(statusData.job.completedSteps) : [],
-                elapsedFormatted: statusData.job.elapsedFormatted || "0s",
-                error: statusData.job.error,
-                stateInfo: statusData.job.stateInfo,
-              });
-              setProgress(statusData.job.progress || 0);
-            }
-          }
-        }, 2000);
-      }
     } catch (error) {
       console.error("Failed to start background generation:", error);
     }
@@ -1039,6 +1001,35 @@ export default function DocumentaryMaker() {
                 </div>
               )}
             </div>
+            
+            {/* Live Events Ticker */}
+            {liveEvents.length > 0 && (
+              <div className="mt-4 bg-card/30 rounded-lg p-3 border border-white/5">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs text-green-400 font-medium uppercase tracking-wider">Live Updates</span>
+                </div>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {liveEvents.slice(-5).map((event, i) => (
+                    <div 
+                      key={i} 
+                      className="flex items-center gap-2 text-xs animate-in slide-in-from-left-2 duration-300"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        event.type === "chapter" && "bg-purple-400",
+                        event.type === "image" && "bg-blue-400",
+                        event.type === "audio" && "bg-amber-400",
+                        event.type === "progress" && "bg-orange-400"
+                      )} />
+                      <span className="text-muted-foreground">{event.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {activeJob && activeJob.error && (
               <p className="text-sm text-red-400 mt-2 text-center">
                 Error: {activeJob.error}

@@ -3,6 +3,7 @@ import { expandResearchQueries, fetchPerplexitySources, analyzeAndSummarizeResea
 import { generateDocumentaryFramework, generateChapterOutline, generateChapterScriptWithResearch } from "./documentary-generator";
 import { generateImage } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
+import { sseBroadcaster } from "./sse-broadcaster";
 import type { GenerationJob } from "@shared/schema";
 
 let isProcessing = false;
@@ -72,6 +73,12 @@ async function processJob(job: GenerationJob) {
       status: "running",
       startedAt: new Date(),
     });
+    
+    // Clear any stale cached state from previous runs before emitting new status
+    sseBroadcaster.clearProjectState(job.projectId);
+    
+    // Emit job started event via SSE
+    sseBroadcaster.emitJobStatus(job.projectId, job.id, "running", "research", 0);
     
     // Parse existing state
     let state: GenerationState = {
@@ -157,6 +164,9 @@ async function processJob(job: GenerationJob) {
       status: "generated",
     });
     
+    // Emit job completed event via SSE
+    sseBroadcaster.emitJobStatus(job.projectId, job.id, "completed", "complete", 100);
+    
     console.log(`[JobWorker] Job ${job.id} completed successfully`);
     
   } catch (error: any) {
@@ -166,6 +176,9 @@ async function processJob(job: GenerationJob) {
       status: "failed",
       errorMessage: error.message || "Unknown error",
     });
+    
+    // Emit job failed event via SSE
+    sseBroadcaster.emitJobStatus(job.projectId, job.id, "failed", "error", 0);
     
     await storage.createGenerationLog({
       projectId: job.projectId,
@@ -185,6 +198,12 @@ async function updateJobProgress(jobId: number, step: string, progress: number) 
     currentStep: step,
     progress,
   });
+  
+  // Get job to emit SSE event with project ID
+  const job = await storage.getGenerationJob(jobId);
+  if (job) {
+    sseBroadcaster.emitJobStatus(job.projectId, jobId, "running", step, progress);
+  }
 }
 
 async function saveJobState(
@@ -371,11 +390,16 @@ async function runChaptersStep(
       config.imagesPerChapter || 5
     );
     
-    chapters.push({
+    const chapter = {
       ...chapterScript,
       title: chapterTitle,
       chapterNumber: i + 1,
-    });
+    };
+    chapters.push(chapter);
+    
+    // Emit real-time chapter generated event
+    sseBroadcaster.emitChapterGenerated(projectId, processingJobId || 0, chapter);
+    sseBroadcaster.emitProgress(projectId, processingJobId || 0, "chapters", Math.round(((i + 1) / state.outline.length) * 30) + 20, `Generated Chapter ${i + 1} of ${state.outline.length}`);
   }
   
   state.chapters = chapters;
@@ -437,6 +461,12 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
               prompt: scene.imagePrompt,
               status: "completed",
             });
+            
+            // Emit real-time image generated event
+            const totalScenes = state.chapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0);
+            const completedImages = Object.keys(images).length;
+            sseBroadcaster.emitImageGenerated(projectId, processingJobId || 0, chapter.chapterNumber, scene.sceneNumber, result.imageUrl);
+            sseBroadcaster.emitProgress(projectId, processingJobId || 0, "images", Math.round((completedImages / totalScenes) * 20) + 50, `Fetched image ${completedImages} of ${totalScenes}`);
           } else {
             console.error(`[JobWorker] Stock image failed for ${key}:`, result.error);
           }
@@ -474,6 +504,12 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
             prompt: scene.imagePrompt,
             status: "completed",
           });
+          
+          // Emit real-time image generated event
+          const totalScenes = state.chapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0);
+          const completedImages = Object.keys(images).length;
+          sseBroadcaster.emitImageGenerated(projectId, processingJobId || 0, chapter.chapterNumber, scene.sceneNumber, imageResult.imageUrl);
+          sseBroadcaster.emitProgress(projectId, processingJobId || 0, "images", Math.round((completedImages / totalScenes) * 20) + 50, `Generated image ${completedImages} of ${totalScenes}`);
           
         } catch (error) {
           console.error(`[JobWorker] AI image generation failed for ${key}:`, error);
@@ -532,6 +568,12 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
           narration: scene.narration,
           status: "completed",
         });
+        
+        // Emit real-time audio generated event
+        const totalScenes = state.chapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0);
+        const completedAudio = Object.keys(audio).length;
+        sseBroadcaster.emitAudioGenerated(projectId, processingJobId || 0, chapter.chapterNumber, scene.sceneNumber, audioUrl);
+        sseBroadcaster.emitProgress(projectId, processingJobId || 0, "audio", Math.round((completedAudio / totalScenes) * 20) + 70, `Generated audio ${completedAudio} of ${totalScenes}`);
         
       } catch (error) {
         console.error(`[JobWorker] Audio generation failed for ${key}:`, error);
