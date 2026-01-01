@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,7 +85,8 @@ interface ResearchData {
 }
 
 export default function DocumentaryMaker() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const params = useParams<{ projectId?: string }>();
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<number | null>(null);
   const [framework, setFramework] = useState<StoryFramework | null>(null);
@@ -204,6 +205,9 @@ export default function DocumentaryMaker() {
     const id = project.id;
     setProjectId(id);
     
+    // Update URL with project ID so refresh preserves the session
+    navigate(`/create/${id}`, { replace: true });
+    
     // Start research phase
     try {
       await fetch(`/api/projects/${id}/research`, { method: "POST" });
@@ -270,14 +274,17 @@ export default function DocumentaryMaker() {
   const [researchData, setResearchData] = useState<ResearchData | null>(null);
   const [sessionRestored, setSessionRestored] = useState(false);
 
-  // Restore session on mount - check for resumeProjectId in sessionStorage
+  // Restore session on mount - check for projectId in URL or resumeProjectId in sessionStorage
   useEffect(() => {
+    const urlProjectId = params.projectId;
     const resumeId = sessionStorage.getItem("resumeProjectId");
-    if (resumeId && !sessionRestored) {
+    const idToLoad = urlProjectId || resumeId;
+    
+    if (idToLoad && !sessionRestored) {
       const loadSession = async () => {
         try {
-          const id = parseInt(resumeId);
-          sessionStorage.removeItem("resumeProjectId");
+          const id = parseInt(idToLoad);
+          if (resumeId) sessionStorage.removeItem("resumeProjectId");
           
           // Load project data
           const projectRes = await fetch(`/api/projects/${id}`);
@@ -286,6 +293,11 @@ export default function DocumentaryMaker() {
           
           setProjectId(id);
           setTitle(project.title || "");
+          
+          // Update URL if loaded from sessionStorage
+          if (!urlProjectId && resumeId) {
+            navigate(`/create/${id}`, { replace: true });
+          }
           
           // Load framework
           const frameworkRes = await fetch(`/api/projects/${id}/framework`);
@@ -316,6 +328,13 @@ export default function DocumentaryMaker() {
             if (assets.audio) setGeneratedAudio(assets.audio);
           }
           
+          // Load script content for chapters
+          if (project.scriptContent?.chapters) {
+            const chapterTitles = project.scriptContent.chapters.map((ch: any) => ch.title);
+            setChapters(chapterTitles);
+            setGeneratedChapters(project.scriptContent.chapters);
+          }
+          
           // Determine current step based on project status
           if (project.status === "RENDERED") {
             setCurrentStep("complete");
@@ -329,6 +348,9 @@ export default function DocumentaryMaker() {
           } else if (project.status === "SCRIPT_DONE") {
             setCurrentStep("idle");
             setProgress(50);
+          } else if (project.status === "RESEARCH_DONE") {
+            setCurrentStep("idle");
+            setProgress(25);
           }
           
           setSessionRestored(true);
@@ -338,7 +360,7 @@ export default function DocumentaryMaker() {
       };
       loadSession();
     }
-  }, [sessionRestored]);
+  }, [params.projectId, sessionRestored, navigate]);
 
   // Auto-save session when key state changes
   useEffect(() => {

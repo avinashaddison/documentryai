@@ -19,7 +19,9 @@ function Router() {
     <Switch>
       <Route path="/" component={DocumentaryMaker} />
       <Route path="/create" component={DocumentaryMaker} />
+      <Route path="/create/:projectId" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
+      <Route path="/documentary-maker/:projectId" component={DocumentaryMaker} />
       <Route path="/editor" component={DocumentaryEditor} />
       <Route path="/editor/:projectId" component={DocumentaryEditor} />
       <Route path="/documentary-editor" component={DocumentaryEditor} />
