@@ -1,14 +1,10 @@
-
 export interface StockImage {
   id: string;
   url: string;
-  thumbnailUrl: string;
-  photographer: string;
-  photographerUrl: string;
-  source: "pexels" | "unsplash";
-  alt: string;
-  width: number;
-  height: number;
+  originUrl: string;
+  source: "perplexity" | "pexels";
+  width?: number;
+  height?: number;
 }
 
 export interface StockImageSearchResult {
@@ -17,75 +13,85 @@ export interface StockImageSearchResult {
   error?: string;
 }
 
-const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 
-export async function searchPexelsImages(
+export async function searchPerplexityImages(
   query: string,
-  options: { perPage?: number; orientation?: "landscape" | "portrait" | "square" } = {}
+  options: { limit?: number } = {}
 ): Promise<StockImageSearchResult> {
-  const { perPage = 5, orientation = "landscape" } = options;
+  const { limit = 5 } = options;
   
-  if (!PEXELS_API_KEY) {
+  if (!PERPLEXITY_API_KEY) {
     return {
       success: false,
       images: [],
-      error: "PEXELS_API_KEY not configured",
+      error: "PERPLEXITY_API_KEY not configured",
     };
   }
   
   try {
-    const params = new URLSearchParams({
-      query: query,
-      per_page: perPage.toString(),
-      orientation: orientation,
-    });
-    
-    const response = await fetch(`https://api.pexels.com/v1/search?${params}`, {
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
       headers: {
-        Authorization: PEXELS_API_KEY,
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        model: "sonar",
+        return_images: true,
+        messages: [
+          {
+            role: "user",
+            content: `Find high quality images of: ${query}. Focus on documentary-style, historical, or educational images that would work well in a video documentary.`
+          }
+        ]
+      }),
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[Pexels] API error:", response.status, errorText);
+      console.error("[Perplexity] API error:", response.status, errorText);
       return {
         success: false,
         images: [],
-        error: `Pexels API error: ${response.status}`,
+        error: `Perplexity API error: ${response.status}`,
       };
     }
     
     const data = await response.json() as {
-      photos: Array<{
-        id: number;
-        src: { original: string; large2x: string; medium: string };
-        photographer: string;
-        photographer_url: string;
-        alt: string;
-        width: number;
-        height: number;
+      images?: Array<{
+        imageUrl?: string;
+        image_url?: string;
+        originUrl?: string;
+        origin_url?: string;
+        url?: string;
+        height?: number;
+        width?: number;
       }>;
     };
     
-    const images: StockImage[] = data.photos.map((photo) => ({
-      id: photo.id.toString(),
-      url: photo.src.large2x || photo.src.original,
-      thumbnailUrl: photo.src.medium,
-      photographer: photo.photographer,
-      photographerUrl: photo.photographer_url,
-      source: "pexels" as const,
-      alt: photo.alt || query,
-      width: photo.width,
-      height: photo.height,
-    }));
+    const rawImages = data.images || [];
+    
+    const images: StockImage[] = rawImages
+      .slice(0, limit)
+      .map((img, index) => ({
+        id: `perplexity_${index}_${Date.now()}`,
+        url: img.imageUrl || img.image_url || img.url || "",
+        originUrl: img.originUrl || img.origin_url || "",
+        source: "perplexity" as const,
+        width: img.width,
+        height: img.height,
+      }))
+      .filter(img => img.url);
+    
+    console.log(`[Perplexity] Found ${images.length} images for query: "${query}"`);
     
     return {
       success: true,
       images,
     };
   } catch (error: any) {
-    console.error("[Pexels] Search error:", error);
+    console.error("[Perplexity] Search error:", error);
     return {
       success: false,
       images: [],
@@ -100,23 +106,17 @@ export async function fetchStockImageForScene(
   sceneId: string
 ): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string }> {
   const keywords = extractKeywords(imagePrompt);
-  const searchQuery = keywords.slice(0, 5).join(" ");
+  const searchQuery = keywords.slice(0, 8).join(" ");
   
-  console.log(`[StockImage] Searching for: "${searchQuery}" (from prompt: ${imagePrompt.substring(0, 50)}...)`);
+  console.log(`[StockImage] Searching Perplexity for: "${searchQuery}"`);
   
-  const result = await searchPexelsImages(searchQuery, {
-    perPage: 3,
-    orientation: "landscape",
-  });
+  const result = await searchPerplexityImages(searchQuery, { limit: 3 });
   
   if (!result.success || result.images.length === 0) {
-    const fallbackQuery = keywords.slice(0, 2).join(" ");
+    const fallbackQuery = keywords.slice(0, 3).join(" ");
     console.log(`[StockImage] No results, trying fallback: "${fallbackQuery}"`);
     
-    const fallbackResult = await searchPexelsImages(fallbackQuery, {
-      perPage: 3,
-      orientation: "landscape",
-    });
+    const fallbackResult = await searchPerplexityImages(fallbackQuery, { limit: 3 });
     
     if (!fallbackResult.success || fallbackResult.images.length === 0) {
       return {
@@ -129,7 +129,7 @@ export async function fetchStockImageForScene(
     return {
       success: true,
       imageUrl: image.url,
-      attribution: `Photo by ${image.photographer} on Pexels`,
+      attribution: `Image via Perplexity Search`,
     };
   }
   
@@ -137,7 +137,7 @@ export async function fetchStockImageForScene(
   return {
     success: true,
     imageUrl: image.url,
-    attribution: `Photo by ${image.photographer} on Pexels`,
+    attribution: `Image via Perplexity Search`,
   };
 }
 
@@ -199,7 +199,7 @@ export async function generateSceneImagesFromStock(
         console.error(`[StockImage] ${sceneId}: ${result.error}`);
       }
       
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error(`[StockImage] ${sceneId}: Error -`, error);
     }
