@@ -505,7 +505,9 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
   });
   
   const audio: Record<string, string> = {};
-  const voice = config.narratorVoice || "aura-asteria-en";
+  // Frontend sends 'voice', check both for compatibility
+  const voice = config.voice || config.narratorVoice || "aura-2-mars-en";
+  console.log(`[JobWorker] Using voice model: ${voice}`);
   
   for (const chapter of state.chapters) {
     for (const scene of chapter.scenes || []) {
