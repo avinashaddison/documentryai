@@ -224,3 +224,59 @@ export type InsertGenerationJob = z.infer<typeof insertGenerationJobSchema>;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 
 export * from "./models/chat";
+
+// Timeline Editor JSON Schema - Single Source of Truth
+// This is the immutable data model for the video editor
+
+export const TimelineVideoClipSchema = z.object({
+  id: z.string(),
+  src: z.string(),
+  start: z.number(),
+  duration: z.number(),
+  effect: z.enum(["none", "kenburns", "zoom_in", "zoom_out", "pan_left", "pan_right"]).optional().default("none"),
+  fade_in: z.number().optional().default(0),
+  fade_out: z.number().optional().default(0),
+  blur: z.boolean().optional().default(false),
+});
+
+export const TimelineAudioClipSchema = z.object({
+  id: z.string(),
+  src: z.string(),
+  start: z.number(),
+  duration: z.number().optional(),
+  volume: z.number().min(0).max(2).optional().default(1.0),
+  fade_in: z.number().optional().default(0),
+  fade_out: z.number().optional().default(0),
+  ducking: z.boolean().optional().default(false),
+});
+
+export const TimelineTextClipSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  start: z.number(),
+  end: z.number(),
+  font: z.string().optional().default("Serif"),
+  size: z.number().optional().default(48),
+  color: z.string().optional().default("#FFFFFF"),
+  x: z.string().optional().default("(w-text_w)/2"),
+  y: z.string().optional().default("h-120"),
+  box: z.boolean().optional().default(false),
+  box_color: z.string().optional().default("#000000"),
+  box_opacity: z.number().min(0).max(1).optional().default(0.5),
+});
+
+export const TimelineSchema = z.object({
+  resolution: z.string().optional().default("1920x1080"),
+  fps: z.number().optional().default(30),
+  duration: z.number(),
+  tracks: z.object({
+    video: z.array(TimelineVideoClipSchema).optional().default([]),
+    audio: z.array(TimelineAudioClipSchema).optional().default([]),
+    text: z.array(TimelineTextClipSchema).optional().default([]),
+  }),
+});
+
+export type TimelineVideoClip = z.infer<typeof TimelineVideoClipSchema>;
+export type TimelineAudioClip = z.infer<typeof TimelineAudioClipSchema>;
+export type TimelineTextClip = z.infer<typeof TimelineTextClipSchema>;
+export type Timeline = z.infer<typeof TimelineSchema>;

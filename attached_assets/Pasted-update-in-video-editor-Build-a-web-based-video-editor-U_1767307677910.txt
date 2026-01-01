@@ -1,0 +1,162 @@
+update in video editor 
+
+
+Build a web-based video editor UI (drag-and-drop timeline) that connects to FFmpeg as a render engine.
+This editor will NOT generate content.
+It will only EDIT and RENDER existing assets.
+
+FFmpeg must be treated as a backend renderer ONLY.
+The timeline JSON is the single source of truth.
+
+========================
+EDITOR UI REQUIREMENTS
+========================
+
+Frontend:
+- React (preferred)
+- Timeline-based editor similar to basic Premiere/CapCut
+- Drag-and-drop support
+
+Timeline Tracks:
+1) Video Track
+   - Images or video clips
+   - Drag to reorder
+   - Resize to change duration
+   - Per-clip effects toggle:
+     - Ken Burns (zoom/pan)
+     - Fade in / fade out
+     - Blur (optional)
+
+2) Audio Tracks (multi-layer)
+   - Narration
+   - Background music
+   - Sound effects
+   - Drag audio clips
+   - Set start time
+   - Volume slider per clip
+
+3) Text / Caption Track
+   - Add text blocks
+   - Set font, size, color
+   - Position on screen
+   - Start / end time
+
+Editor Features:
+- Playhead scrubbing
+- Timeline zoom (seconds/minutes)
+- Scene preview (low-res)
+- Replace image/audio
+- Delete clip
+- Undo / redo (basic)
+
+========================
+TIMELINE DATA MODEL
+========================
+
+The editor MUST output a timeline.json file in this format:
+
+{
+  "resolution": "1920x1080",
+  "fps": 30,
+  "duration": 3600,
+  "tracks": {
+    "video": [
+      {
+        "id": "v1",
+        "src": "images/ch1_scene1.png",
+        "start": 0,
+        "duration": 6,
+        "effect": "kenburns",
+        "fade_in": 1,
+        "fade_out": 1
+      }
+    ],
+    "audio": [
+      {
+        "id": "a1",
+        "src": "audio/narration_ch1.wav",
+        "start": 0,
+        "volume": 1.0
+      },
+      {
+        "id": "a2",
+        "src": "audio/bgm.mp3",
+        "start": 0,
+        "volume": 0.25,
+        "ducking": true
+      }
+    ],
+    "text": [
+      {
+        "id": "t1",
+        "text": "The Rise of Rome",
+        "start": 2,
+        "end": 6,
+        "font": "Roboto",
+        "size": 48,
+        "color": "#FFFFFF",
+        "x": "(w-text_w)/2",
+        "y": "h-120"
+      }
+    ]
+  }
+}
+
+========================
+BACKEND (FFmpeg CONNECTOR)
+========================
+
+Backend:
+- Python (FastAPI)
+
+Responsibilities:
+- Load timeline.json
+- Translate timeline.json → FFmpeg filter graphs
+- Build dynamic FFmpeg command
+- Run FFmpeg render job
+- Return render progress + output path
+
+FFmpeg Responsibilities:
+- Image/video sequencing
+- Ken Burns effect
+- Transitions
+- Audio mixing + ducking
+- Caption burn-in
+- Final export only
+
+FFmpeg MUST NOT:
+- Decide timeline logic
+- Decide clip order
+- Generate assets
+
+========================
+RENDER FLOW
+========================
+
+Editor UI
+ → timeline.json
+ → POST /render
+ → Backend parses JSON
+ → Generates FFmpeg command
+ → FFmpeg renders video
+ → output.mp4
+
+========================
+IMPORTANT RULES
+========================
+
+- Timeline JSON is immutable truth
+- Editor never regenerates content
+- FFmpeg never touches UI logic
+- All edits happen in UI, not backend
+- Backend is stateless except render job
+
+========================
+DELIVERABLES
+========================
+
+- Drag-and-drop video editor UI
+- timeline.json generator
+- FFmpeg render endpoint
+- Sample FFmpeg command mapping
+- Render progress response

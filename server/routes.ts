@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
 import { ensureDbConnected } from "./db";
-import { insertProjectSchema } from "@shared/schema";
+import { insertProjectSchema, TimelineSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { videoService } from "./video-service";
 import { generateStoryFramework } from "./framework-generator";
@@ -21,6 +21,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
 import { conductFullResearch } from "./research-service";
 import { sseBroadcaster } from "./sse-broadcaster";
+import { renderTimeline } from "./timeline-renderer";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -1557,6 +1558,103 @@ export async function registerRoutes(
       console.error("[RenderVideo] Error:", error);
       res.status(500).json({ error: error.message || "Video rendering failed" });
     }
+  });
+
+  // Timeline-based video render endpoint - uses timeline JSON as source of truth
+  app.post("/api/timeline/render", async (req, res) => {
+    try {
+      const { timeline, outputName } = req.body;
+      
+      if (!timeline) {
+        res.status(400).json({ error: "Missing timeline data" });
+        return;
+      }
+      
+      const parseResult = TimelineSchema.safeParse(timeline);
+      if (!parseResult.success) {
+        res.status(400).json({ 
+          error: "Invalid timeline format", 
+          details: fromError(parseResult.error).message 
+        });
+        return;
+      }
+      
+      const validTimeline = parseResult.data;
+      const name = outputName || `timeline_${Date.now()}`;
+      
+      console.log(`[TimelineRender] Starting render: ${name}`);
+      console.log(`[TimelineRender] Resolution: ${validTimeline.resolution}, FPS: ${validTimeline.fps}, Duration: ${validTimeline.duration}s`);
+      console.log(`[TimelineRender] Video clips: ${validTimeline.tracks.video.length}, Audio clips: ${validTimeline.tracks.audio.length}, Text clips: ${validTimeline.tracks.text.length}`);
+      
+      const result = await renderTimeline(validTimeline, name, (progress) => {
+        console.log(`[TimelineRender] ${progress.status}: ${progress.message} (${progress.progress}%)`);
+      });
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          videoUrl: result.objectStorageUrl || `/generated_videos/${name}.mp4`,
+          objectStorageUrl: result.objectStorageUrl,
+          localPath: result.outputPath,
+          message: "Timeline rendered successfully"
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error || "Render failed" 
+        });
+      }
+    } catch (error: any) {
+      console.error("[TimelineRender] Error:", error);
+      res.status(500).json({ error: error.message || "Timeline rendering failed" });
+    }
+  });
+
+  // Get timeline JSON schema info
+  app.get("/api/timeline/schema", (_req, res) => {
+    res.json({
+      schema: {
+        resolution: "1920x1080 (default)",
+        fps: "30 (default)",
+        duration: "number (required)",
+        tracks: {
+          video: {
+            id: "string",
+            src: "string (URL or path)",
+            start: "number (seconds)",
+            duration: "number (seconds)",
+            effect: "none | kenburns | zoom_in | zoom_out | pan_left | pan_right",
+            fade_in: "number (seconds, optional)",
+            fade_out: "number (seconds, optional)",
+            blur: "boolean (optional)"
+          },
+          audio: {
+            id: "string",
+            src: "string (URL or path)",
+            start: "number (seconds)",
+            duration: "number (seconds, optional)",
+            volume: "0-2 (default: 1.0)",
+            fade_in: "number (seconds, optional)",
+            fade_out: "number (seconds, optional)",
+            ducking: "boolean (optional)"
+          },
+          text: {
+            id: "string",
+            text: "string",
+            start: "number (seconds)",
+            end: "number (seconds)",
+            font: "string (default: Serif)",
+            size: "number (default: 48)",
+            color: "string (default: #FFFFFF)",
+            x: "FFmpeg expression (default: centered)",
+            y: "FFmpeg expression (default: bottom)",
+            box: "boolean (optional)",
+            box_color: "string (default: #000000)",
+            box_opacity: "0-1 (default: 0.5)"
+          }
+        }
+      }
+    });
   });
 
   return httpServer;
