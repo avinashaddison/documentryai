@@ -1084,5 +1084,90 @@ export async function registerRoutes(
     }
   });
 
+  // Get saved videos (rendered projects)
+  app.get("/api/saved-videos", async (req, res) => {
+    try {
+      const projects = await storage.getAllProjects();
+      const renderedProjects = projects.filter(p => p.status === "RENDERED");
+      
+      const savedVideos = renderedProjects.map(p => ({
+        id: p.id,
+        projectId: p.id,
+        title: p.title,
+        videoUrl: `/generated_videos/project_${p.id}_documentary.mp4`,
+        thumbnailUrl: null,
+        duration: null,
+        size: null,
+        createdAt: p.createdAt,
+      }));
+      
+      res.json(savedVideos);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get active generation session for a project
+  app.get("/api/projects/:id/session", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const session = await storage.getActiveGenerationSession(projectId);
+      
+      if (!session) {
+        res.json({ session: null });
+        return;
+      }
+      
+      res.json({ session });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create or update generation session
+  app.put("/api/projects/:id/session", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const sessionData = req.body;
+      
+      // Check for existing session
+      const existing = await storage.getActiveGenerationSession(projectId);
+      
+      if (existing) {
+        // Update existing session
+        const updated = await storage.updateGenerationSession(existing.id, {
+          ...sessionData,
+          updatedAt: new Date()
+        });
+        res.json({ session: updated });
+      } else {
+        // Create new session
+        const created = await storage.createGenerationSession({
+          projectId,
+          ...sessionData
+        });
+        res.json({ session: created });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete generation session
+  app.delete("/api/projects/:id/session", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const session = await storage.getActiveGenerationSession(projectId);
+      
+      if (session) {
+        await storage.deleteGenerationSession(session.id);
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

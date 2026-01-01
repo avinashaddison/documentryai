@@ -53,6 +53,14 @@ Projects follow a 7-state workflow with resume capability:
 - **Storage Interface**: Abstract `IStorage` interface in `server/storage.ts` for database operations
 - **Modular Generation**: Each generation step (story, images, video) has dedicated modules
 - **Progress Tracking**: Real-time project status updates with generation logs
+- **Session Persistence**: Generation state auto-saved to `generationSessions` table for resume on page refresh
+- **Collapsible Sidebar**: WorkspaceSidebar component with navigation (Create Documentary, Video Generated, Saved Videos)
+
+### Navigation Routes
+- `/` or `/create`: DocumentaryMaker - main creation interface with sidebar
+- `/projects`: Projects list page showing all documentaries with status and resume options
+- `/saved`: Saved Videos page showing completed videos from cloud storage
+- `/documentary-editor`: Read-only preview mode for generated documentaries
 
 ### Project Structure
 ```

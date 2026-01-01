@@ -268,6 +268,118 @@ export default function DocumentaryMaker() {
   const [generatedAudio, setGeneratedAudio] = useState<Record<string, string>>({});
   const [currentImageScene, setCurrentImageScene] = useState("");
   const [researchData, setResearchData] = useState<ResearchData | null>(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
+
+  // Restore session on mount - check for resumeProjectId in sessionStorage
+  useEffect(() => {
+    const resumeId = sessionStorage.getItem("resumeProjectId");
+    if (resumeId && !sessionRestored) {
+      const loadSession = async () => {
+        try {
+          const id = parseInt(resumeId);
+          sessionStorage.removeItem("resumeProjectId");
+          
+          // Load project data
+          const projectRes = await fetch(`/api/projects/${id}`);
+          if (!projectRes.ok) return;
+          const project = await projectRes.json();
+          
+          setProjectId(id);
+          setTitle(project.title || "");
+          
+          // Load framework
+          const frameworkRes = await fetch(`/api/projects/${id}/framework`);
+          if (frameworkRes.ok) {
+            const frameworkData = await frameworkRes.json();
+            if (frameworkData.framework) {
+              setFramework(frameworkData.framework);
+              if (frameworkData.framework.storyLength) {
+                setTotalChapters(storyLengthToChapters[frameworkData.framework.storyLength] || 5);
+              }
+            }
+          }
+          
+          // Load research data
+          const researchRes = await fetch(`/api/projects/${id}/research`);
+          if (researchRes.ok) {
+            const researchStatus = await researchRes.json();
+            if (researchStatus.status === "completed") {
+              setResearchData(researchStatus);
+            }
+          }
+          
+          // Load generated assets
+          const assetsRes = await fetch(`/api/projects/${id}/generated-assets`);
+          if (assetsRes.ok) {
+            const assets = await assetsRes.json();
+            if (assets.images) setGeneratedImages(assets.images);
+            if (assets.audio) setGeneratedAudio(assets.audio);
+          }
+          
+          // Determine current step based on project status
+          if (project.status === "RENDERED") {
+            setCurrentStep("complete");
+            setProgress(100);
+          } else if (project.status === "AUDIO_DONE" || project.status === "EDITOR_APPROVED") {
+            setCurrentStep("idle");
+            setProgress(90);
+          } else if (project.status === "IMAGES_DONE") {
+            setCurrentStep("idle");
+            setProgress(85);
+          } else if (project.status === "SCRIPT_DONE") {
+            setCurrentStep("idle");
+            setProgress(50);
+          }
+          
+          setSessionRestored(true);
+        } catch (error) {
+          console.error("Failed to restore session:", error);
+        }
+      };
+      loadSession();
+    }
+  }, [sessionRestored]);
+
+  // Auto-save session when key state changes
+  useEffect(() => {
+    if (projectId && currentStep !== "idle" && currentStep !== "complete") {
+      const saveSession = async () => {
+        try {
+          const stepMapping: Record<string, string> = {
+            research: "images",
+            framework: "images",
+            outline: "images",
+            chapters: "images",
+            images: "images",
+            voiceover: "audio",
+            assembly: "video"
+          };
+          
+          await fetch(`/api/projects/${projectId}/session`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "in_progress",
+              currentStep: stepMapping[currentStep] || "images",
+              currentChapter: 1,
+              currentScene: 1,
+              totalChapters,
+              totalScenes: Math.max(1, generatedChapters.reduce((sum, ch) => sum + ch.scenes.length, 0)),
+              completedImages: Object.keys(generatedImages).length,
+              completedAudio: Object.keys(generatedAudio).length,
+              voice: config.narratorVoice,
+              imageModel: config.hookImageModel,
+              imageStyle: config.imageStyle,
+              chaptersData: JSON.stringify(generatedChapters),
+            }),
+          });
+        } catch (error) {
+          console.error("Failed to save session:", error);
+        }
+      };
+      saveSession();
+    }
+  }, [projectId, currentStep, generatedImages, generatedAudio, generatedChapters]);
 
   const generateVoiceoverMutation = useMutation({
     mutationFn: async ({ id, chapterNumber, sceneNumber, narration, voice }: { 

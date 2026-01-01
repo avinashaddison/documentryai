@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Settings from "@/pages/settings";
 import Home from "@/pages/home";
+import Projects from "@/pages/projects";
+import SavedVideos from "@/pages/saved-videos";
 import ProjectEditor from "@/pages/project-editor";
 import VideoEditorPage from "@/pages/video-editor-page";
 import FilmMaker from "@/pages/film-maker";
@@ -21,7 +23,9 @@ function Router() {
       <Route path="/editor" component={DocumentaryEditor} />
       <Route path="/documentary-editor" component={DocumentaryEditor} />
       <Route path="/film-maker" component={FilmMaker} />
-      <Route path="/projects" component={Home} />
+      <Route path="/projects" component={Projects} />
+      <Route path="/saved" component={SavedVideos} />
+      <Route path="/home" component={Home} />
       <Route path="/settings" component={Settings} />
       <Route path="/project/:id" component={ProjectEditor} />
       <Route path="/video-editor" component={VideoEditorPage} />
