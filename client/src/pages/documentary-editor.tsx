@@ -154,6 +154,7 @@ export default function DocumentaryEditor() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const preloadedAudios = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const styleTag = document.createElement("style");
@@ -163,6 +164,37 @@ export default function DocumentaryEditor() {
       document.head.removeChild(styleTag);
     };
   }, []);
+
+  // Preload all audio files when documentary data is loaded
+  useEffect(() => {
+    if (!documentaryData) return;
+    
+    const scenes = documentaryData.chapters?.flatMap((chapter, chapterIndex) =>
+      chapter.scenes?.map((scene) => ({
+        ...scene,
+        audioUrl: documentaryData.generatedAudio?.[`ch${chapter.chapterNumber}_sc${scene.sceneNumber}`],
+      })) || []
+    ) || [];
+    
+    // Preload all audio files
+    scenes.forEach((scene, index) => {
+      if (scene.audioUrl && !preloadedAudios.current.has(scene.audioUrl)) {
+        const audio = new Audio();
+        audio.preload = "auto";
+        audio.src = scene.audioUrl;
+        preloadedAudios.current.set(scene.audioUrl, audio);
+      }
+    });
+    
+    return () => {
+      // Cleanup preloaded audios
+      preloadedAudios.current.forEach((audio) => {
+        audio.pause();
+        audio.src = "";
+      });
+      preloadedAudios.current.clear();
+    };
+  }, [documentaryData]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -315,20 +347,33 @@ export default function DocumentaryEditor() {
   }, [isPlaying, allScenes.length, totalDuration, currentSceneIndex]);
 
   useEffect(() => {
-    if (!currentScene?.audioUrl || !audioRef.current) return;
+    if (!currentScene?.audioUrl) return;
     
-    const audio = audioRef.current;
-    audio.src = currentScene.audioUrl;
+    // Stop current audio if playing
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+    }
+    
+    // Get preloaded audio or create new one
+    let audio = preloadedAudios.current.get(currentScene.audioUrl);
+    if (!audio) {
+      audio = new Audio(currentScene.audioUrl);
+      preloadedAudios.current.set(currentScene.audioUrl, audio);
+    }
+    
+    currentAudioRef.current = audio;
+    audio.currentTime = 0;
     audio.volume = isMuted ? 0 : volume / 100;
     
     if (isPlaying) {
       audio.play().catch(() => {});
-    } else {
-      audio.pause();
     }
     
     return () => {
-      audio.pause();
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+      }
     };
   }, [currentScene?.audioUrl, isPlaying, volume, isMuted]);
 
