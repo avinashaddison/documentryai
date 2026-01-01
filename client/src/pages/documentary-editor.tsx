@@ -863,9 +863,30 @@ export default function DocumentaryEditor() {
               <ResizablePanel defaultSize={35} minSize={20}>
                 <div className="h-full bg-[#12151c] flex flex-col">
                   {/* Timeline Header */}
-                  <div className="h-8 bg-[#181c26] border-b border-[#1e2330] flex items-center justify-between px-3">
+                  <div className="h-10 bg-[#181c26] border-b border-[#1e2330] flex items-center justify-between px-3">
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] font-medium text-gray-300">Timeline</span>
+                      
+                      {/* Timeline Play Controls */}
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white" onClick={() => handleSceneClick(Math.max(0, currentSceneIndex - 1))}>
+                          <SkipBack className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          onClick={handlePlayPause}
+                          className="h-7 w-7 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-md shadow-orange-500/30"
+                          data-testid="button-timeline-play"
+                        >
+                          {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white" onClick={() => handleSceneClick(Math.min(allScenes.length - 1, currentSceneIndex + 1))}>
+                          <SkipForward className="h-3 w-3" />
+                        </Button>
+                      </div>
+
+                      <div className="w-px h-4 bg-[#2a3040] mx-1" />
+
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-500 hover:text-orange-400" onClick={() => setMarkers(prev => [...prev, { time: currentTime, label: `M${prev.length + 1}`, color: "#f97316" }])}>
                           <Flag className="h-3 w-3" />
@@ -873,6 +894,15 @@ export default function DocumentaryEditor() {
                         <Button variant="ghost" size="icon" className="h-5 w-5 text-gray-500 hover:text-white">
                           <Bookmark className="h-3 w-3" />
                         </Button>
+                      </div>
+
+                      <div className="w-px h-4 bg-[#2a3040] mx-1" />
+
+                      {/* Timecode in Timeline */}
+                      <div className="flex items-center gap-1 text-[10px] font-mono">
+                        <span className="text-orange-400">{formatTimecode(currentTime)}</span>
+                        <span className="text-gray-600">/</span>
+                        <span className="text-gray-500">{formatTimecode(totalDuration)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
