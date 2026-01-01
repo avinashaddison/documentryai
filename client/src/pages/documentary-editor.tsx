@@ -790,6 +790,22 @@ export default function DocumentaryEditor() {
                       <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm rounded px-2 py-1">
                         <span className="text-[11px] font-mono text-green-400">{formatTimecode(currentTime)}</span>
                       </div>
+
+                      {/* Large Center Play Button Overlay */}
+                      <div 
+                        className={cn(
+                          "absolute inset-0 flex items-center justify-center transition-opacity duration-300 cursor-pointer",
+                          isPlaying ? "opacity-0 pointer-events-none" : "opacity-100"
+                        )}
+                        onClick={handlePlayPause}
+                      >
+                        <button
+                          className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-2xl shadow-orange-500/40 hover:scale-110 hover:shadow-orange-500/60 transition-all duration-200 border-4 border-white/20"
+                          data-testid="button-play-overlay"
+                        >
+                          <Play className="h-10 w-10 text-white ml-1" fill="white" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
