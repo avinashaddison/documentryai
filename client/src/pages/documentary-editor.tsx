@@ -184,7 +184,18 @@ export default function DocumentaryEditor() {
               audio = assetsData.audio || {};
             }
             
-            const chapters = project.scriptContent?.chapters || [];
+            // Get chapters from generated-chapters endpoint (from job state)
+            let chapters: any[] = [];
+            const chaptersResponse = await fetch(`/api/projects/${projectIdFromUrl}/generated-chapters`);
+            if (chaptersResponse.ok) {
+              const chaptersData = await chaptersResponse.json();
+              chapters = chaptersData.chapters || [];
+            }
+            
+            // Fallback to scriptContent if no generated chapters
+            if (chapters.length === 0) {
+              chapters = project.scriptContent?.chapters || [];
+            }
             
             setDocumentaryData({
               projectId: project.id,

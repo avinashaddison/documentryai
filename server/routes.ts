@@ -1084,6 +1084,26 @@ export async function registerRoutes(
     }
   });
 
+  // Get generated chapters with scenes (from completed job state)
+  app.get("/api/projects/:id/generated-chapters", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Get the most recent completed job for this project using storage
+      const job = await storage.getCompletedGenerationJob(projectId);
+      
+      if (!job || !job.stateData) {
+        res.json({ chapters: [] });
+        return;
+      }
+      
+      const state = JSON.parse(job.stateData);
+      res.json({ chapters: state.chapters || [] });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get saved videos (rendered projects)
   app.get("/api/saved-videos", async (req, res) => {
     try {

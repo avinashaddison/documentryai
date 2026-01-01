@@ -80,6 +80,7 @@ export interface IStorage {
   getActiveGenerationJob(projectId: number): Promise<GenerationJob | undefined>;
   updateGenerationJob(id: number, updates: Partial<GenerationJob>): Promise<GenerationJob | undefined>;
   getQueuedJobs(): Promise<GenerationJob[]>;
+  getCompletedGenerationJob(projectId: number): Promise<GenerationJob | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,6 +344,21 @@ export class DatabaseStorage implements IStorage {
       .from(generationJobs)
       .where(eq(generationJobs.status, "queued"))
       .orderBy(generationJobs.createdAt);
+  }
+
+  async getCompletedGenerationJob(projectId: number): Promise<GenerationJob | undefined> {
+    const result = await db
+      .select()
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.projectId, projectId),
+          eq(generationJobs.status, "completed")
+        )
+      )
+      .orderBy(desc(generationJobs.createdAt))
+      .limit(1);
+    return result[0];
   }
 }
 
