@@ -66,9 +66,8 @@ async function downloadAsset(url: string, localPath: string): Promise<boolean> {
   }
 }
 
-function generateKenBurnsFilter(clip: TimelineVideoClip, index: number, fps: number): string {
-  const d = clip.duration * fps;
-  const effect = clip.effect || "none";
+function generateKenBurnsFilter(effect: string, duration: number, index: number, fps: number): string {
+  const d = Math.ceil(duration * fps);
   
   const effects: Record<string, string> = {
     zoom_in: `zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
@@ -76,15 +75,14 @@ function generateKenBurnsFilter(clip: TimelineVideoClip, index: number, fps: num
     pan_left: `zoompan=z='1.2':x='iw*0.2*(1-on/${d})':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     pan_right: `zoompan=z='1.2':x='iw*0.2*(on/${d})':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     kenburns: `zoompan=z='if(mod(${index},2),min(zoom+0.001,1.3),if(lte(zoom,1.0),1.3,max(1.0,zoom-0.001)))':x='iw/2-(iw/zoom/2)+sin(on*0.01)*50':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
-    none: `scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=${fps}`,
+    none: `scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1`,
   };
   
   return effects[effect] || effects.none;
 }
 
-function generateTextFilter(clip: TimelineTextClip, index: number): string {
+function generateTextFilter(clip: TimelineTextClip): string {
   const escapedText = clip.text.replace(/'/g, "'\\''").replace(/:/g, "\\:");
-  const font = clip.font || "Serif";
   const size = clip.size || 48;
   const color = clip.color || "white";
   const x = clip.x || "(w-text_w)/2";
@@ -124,44 +122,51 @@ export async function renderTimeline(
     
     reportProgress({ status: "downloading", progress: 5, message: "Downloading assets..." });
     
-    const [width, height] = (timeline.resolution || "1920x1080").split("x").map(Number);
     const fps = timeline.fps || 30;
+    const totalDuration = timeline.duration;
     
-    const localVideoClips: { clip: TimelineVideoClip; localPath: string }[] = [];
-    const localAudioClips: { clip: TimelineAudioClip; localPath: string }[] = [];
+    const sortedVideoClips = [...timeline.tracks.video].sort((a, b) => a.start - b.start);
+    const sortedAudioClips = [...timeline.tracks.audio].sort((a, b) => a.start - b.start);
     
-    for (let i = 0; i < timeline.tracks.video.length; i++) {
-      const clip = timeline.tracks.video[i];
+    const localVideoClips: { clip: TimelineVideoClip; localPath: string; index: number }[] = [];
+    const localAudioClips: { clip: TimelineAudioClip; localPath: string; index: number }[] = [];
+    
+    for (let i = 0; i < sortedVideoClips.length; i++) {
+      const clip = sortedVideoClips[i];
       const ext = clip.src.includes(".") ? path.extname(clip.src) : ".jpg";
       const localPath = path.join(assetsDir, `video_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
       if (downloaded) {
-        localVideoClips.push({ clip, localPath });
+        localVideoClips.push({ clip, localPath, index: i });
       }
       
       reportProgress({ 
         status: "downloading", 
-        progress: 5 + Math.floor((i / timeline.tracks.video.length) * 25), 
-        message: `Downloaded video asset ${i + 1}/${timeline.tracks.video.length}` 
+        progress: 5 + Math.floor((i / sortedVideoClips.length) * 25), 
+        message: `Downloaded video asset ${i + 1}/${sortedVideoClips.length}` 
       });
     }
     
-    for (let i = 0; i < timeline.tracks.audio.length; i++) {
-      const clip = timeline.tracks.audio[i];
+    for (let i = 0; i < sortedAudioClips.length; i++) {
+      const clip = sortedAudioClips[i];
       const ext = clip.src.includes(".") ? path.extname(clip.src) : ".wav";
       const localPath = path.join(assetsDir, `audio_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
       if (downloaded) {
-        localAudioClips.push({ clip, localPath });
+        localAudioClips.push({ clip, localPath, index: i });
       }
       
       reportProgress({ 
         status: "downloading", 
-        progress: 30 + Math.floor((i / Math.max(1, timeline.tracks.audio.length)) * 10), 
-        message: `Downloaded audio asset ${i + 1}/${timeline.tracks.audio.length}` 
+        progress: 30 + Math.floor((i / Math.max(1, sortedAudioClips.length)) * 10), 
+        message: `Downloaded audio asset ${i + 1}/${sortedAudioClips.length}` 
       });
+    }
+    
+    if (localVideoClips.length === 0) {
+      return { success: false, outputPath: "", error: "No video clips to render" };
     }
     
     reportProgress({ status: "rendering", progress: 40, message: "Building FFmpeg command..." });
@@ -169,73 +174,77 @@ export async function renderTimeline(
     const outputPath = path.join(outputDir, `${outputName}.mp4`);
     const ffmpegArgs: string[] = [];
     
-    for (const { localPath } of localVideoClips) {
-      ffmpegArgs.push("-loop", "1", "-t", "0", "-i", localPath);
+    ffmpegArgs.push(
+      "-f", "lavfi",
+      "-i", `color=c=black:s=1920x1080:r=${fps}:d=${totalDuration}`,
+    );
+    
+    for (const { localPath, clip } of localVideoClips) {
+      ffmpegArgs.push("-loop", "1", "-t", String(clip.duration), "-i", localPath);
     }
     
     for (const { localPath } of localAudioClips) {
       ffmpegArgs.push("-i", localPath);
     }
     
-    if (localVideoClips.length === 0) {
-      return { success: false, outputPath: "", error: "No video clips to render" };
-    }
-    
     let filterComplex = "";
-    const videoOutputs: string[] = [];
+    const overlayInputs: string[] = [];
     
     for (let i = 0; i < localVideoClips.length; i++) {
-      const { clip } = localVideoClips[i];
-      const kenBurns = generateKenBurnsFilter(clip, i, fps);
+      const { clip, index } = localVideoClips[i];
+      const inputIndex = i + 1;
+      const effect = clip.effect || "none";
+      const kenBurns = generateKenBurnsFilter(effect, clip.duration, index, fps);
       
-      filterComplex += `[${i}:v]${kenBurns},format=yuv420p`;
+      filterComplex += `[${inputIndex}:v]${kenBurns},format=yuva420p`;
       
       if (clip.fade_in && clip.fade_in > 0) {
-        filterComplex += `,fade=t=in:st=0:d=${clip.fade_in}`;
+        filterComplex += `,fade=t=in:st=0:d=${clip.fade_in}:alpha=1`;
       }
       if (clip.fade_out && clip.fade_out > 0) {
-        filterComplex += `,fade=t=out:st=${clip.duration - clip.fade_out}:d=${clip.fade_out}`;
+        filterComplex += `,fade=t=out:st=${clip.duration - clip.fade_out}:d=${clip.fade_out}:alpha=1`;
       }
       
-      filterComplex += `[v${i}]; `;
-      videoOutputs.push(`[v${i}]`);
+      filterComplex += `,setpts=PTS+${clip.start}/TB[v${i}]; `;
+      overlayInputs.push(`[v${i}]`);
     }
     
-    filterComplex += videoOutputs.join("");
-    filterComplex += `concat=n=${localVideoClips.length}:v=1:a=0[vconcat]; `;
+    let currentBase = "[0:v]";
+    for (let i = 0; i < overlayInputs.length; i++) {
+      const clip = localVideoClips[i].clip;
+      const enableExpr = `between(t,${clip.start},${clip.start + clip.duration})`;
+      const outputTag = i === overlayInputs.length - 1 ? "[vmerged]" : `[vtmp${i}]`;
+      filterComplex += `${currentBase}${overlayInputs[i]}overlay=0:0:enable='${enableExpr}'${outputTag}; `;
+      currentBase = outputTag;
+    }
     
-    let finalVideoTag = "[vconcat]";
+    let finalVideoTag = "[vmerged]";
     
     if (timeline.tracks.text.length > 0) {
-      let textFilters = "";
-      for (let i = 0; i < timeline.tracks.text.length; i++) {
-        const clip = timeline.tracks.text[i];
-        textFilters += generateTextFilter(clip, i);
-        if (i < timeline.tracks.text.length - 1) {
-          textFilters += ",";
-        }
-      }
+      const textFilters = timeline.tracks.text.map((clip, i) => generateTextFilter(clip)).join(",");
       filterComplex += `${finalVideoTag}${textFilters}[vfinal]`;
       finalVideoTag = "[vfinal]";
     }
     
     let audioTag = "";
     if (localAudioClips.length > 0) {
-      const audioInputOffset = localVideoClips.length;
+      const audioInputOffset = 1 + localVideoClips.length;
       const audioMerge: string[] = [];
       
       for (let i = 0; i < localAudioClips.length; i++) {
         const { clip } = localAudioClips[i];
         const inputIndex = audioInputOffset + i;
         const vol = clip.volume ?? 1.0;
+        const delayMs = Math.floor(clip.start * 1000);
         
-        filterComplex += `; [${inputIndex}:a]adelay=${Math.floor(clip.start * 1000)}|${Math.floor(clip.start * 1000)},volume=${vol}`;
+        filterComplex += `; [${inputIndex}:a]adelay=${delayMs}|${delayMs},volume=${vol}`;
         
         if (clip.fade_in && clip.fade_in > 0) {
-          filterComplex += `,afade=t=in:st=${clip.start}:d=${clip.fade_in}`;
+          filterComplex += `,afade=t=in:st=0:d=${clip.fade_in}`;
         }
         if (clip.fade_out && clip.fade_out > 0 && clip.duration) {
-          filterComplex += `,afade=t=out:st=${clip.start + clip.duration - clip.fade_out}:d=${clip.fade_out}`;
+          const fadeOutStart = clip.duration - clip.fade_out;
+          filterComplex += `,afade=t=out:st=${fadeOutStart}:d=${clip.fade_out}`;
         }
         
         filterComplex += `[a${i}]`;
@@ -243,7 +252,7 @@ export async function renderTimeline(
       }
       
       if (audioMerge.length > 1) {
-        filterComplex += `; ${audioMerge.join("")}amix=inputs=${audioMerge.length}:duration=longest[afinal]`;
+        filterComplex += `; ${audioMerge.join("")}amix=inputs=${audioMerge.length}:duration=longest:normalize=0[afinal]`;
         audioTag = "[afinal]";
       } else if (audioMerge.length === 1) {
         audioTag = "[a0]";
@@ -261,14 +270,17 @@ export async function renderTimeline(
       "-c:v", "libx264",
       "-preset", "medium",
       "-crf", "23",
+      "-pix_fmt", "yuv420p",
       "-c:a", "aac",
       "-b:a", "192k",
-      "-shortest",
+      "-t", String(totalDuration),
       "-y",
       outputPath
     );
     
     reportProgress({ status: "rendering", progress: 50, message: "Rendering with FFmpeg..." });
+    
+    console.log("[TimelineRenderer] FFmpeg args:", ffmpegArgs.join(" "));
     
     await new Promise<void>((resolve, reject) => {
       const ffmpeg = spawn("ffmpeg", ffmpegArgs);
@@ -279,8 +291,8 @@ export async function renderTimeline(
         const match = stderr.match(/time=(\d+):(\d+):(\d+)/);
         if (match) {
           const time = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]);
-          const pct = Math.min(90, 50 + Math.floor((time / timeline.duration) * 40));
-          reportProgress({ status: "rendering", progress: pct, message: `Encoding: ${time}s / ${timeline.duration}s` });
+          const pct = Math.min(90, 50 + Math.floor((time / totalDuration) * 40));
+          reportProgress({ status: "rendering", progress: pct, message: `Encoding: ${time}s / ${totalDuration}s` });
         }
       });
       
@@ -288,7 +300,8 @@ export async function renderTimeline(
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+          console.error("[TimelineRenderer] FFmpeg stderr:", stderr);
+          reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-1000)}`));
         }
       });
       
