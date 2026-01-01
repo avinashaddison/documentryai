@@ -673,6 +673,7 @@ export default function DocumentaryEditor() {
                                 src={scene.imageUrl}
                                 alt={`Scene ${scene.sceneNumber}`}
                                 className="w-full h-full object-cover"
+                                style={{ filter: "grayscale(100%)" }}
                               />
                             ) : (
                               <div className="flex items-center justify-center h-full">
@@ -805,6 +806,7 @@ export default function DocumentaryEditor() {
                               animation: isPlaying 
                                 ? getKenBurnsAnimation(currentScene.kenBurnsEffect || "zoom_in", currentScene.duration || 5)
                                 : "none",
+                              filter: "grayscale(100%)",
                             }}
                           />
                           
@@ -1034,7 +1036,7 @@ export default function DocumentaryEditor() {
                                 )}>
                                   <div className="h-full bg-gradient-to-b from-blue-900/60 to-blue-950/80 flex items-center">
                                     {scene.imageUrl && (
-                                      <img src={scene.imageUrl} className="h-full w-auto object-cover opacity-60" alt="" />
+                                      <img src={scene.imageUrl} className="h-full w-auto object-cover opacity-60" style={{ filter: "grayscale(100%)" }} alt="" />
                                     )}
                                     <div className="absolute inset-0 flex items-center justify-center">
                                       <span className="text-[9px] font-medium text-white/80 bg-black/30 px-1 rounded">
