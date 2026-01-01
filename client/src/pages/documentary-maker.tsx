@@ -38,6 +38,7 @@ import {
   Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
 
 interface StoryFramework {
   id: number;
@@ -488,28 +489,15 @@ export default function DocumentaryMaker() {
   }, [generationLogs]);
 
   return (
-    <div className="min-h-screen bg-background text-white relative overflow-hidden">
-      {/* Animated background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-500/10 via-amber-500/5 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      
-      <header className="relative z-10 border-b border-orange-500/10 backdrop-blur-xl bg-card/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center neon-glow">
-                <Film className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight gradient-text">Petr AI</span>
-            </div>
-            <div className="w-16" />
-          </div>
-        </div>
-      </header>
+    <WorkspaceSidebar>
+      <div className="min-h-screen bg-background text-white relative overflow-auto">
+        {/* Animated background effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-500/10 via-amber-500/5 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
-      <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
+        <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-4">
@@ -1241,6 +1229,7 @@ export default function DocumentaryMaker() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </WorkspaceSidebar>
   );
 }
