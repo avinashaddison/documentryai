@@ -570,7 +570,7 @@ export default function DocumentaryEditor() {
         {/* Main Editor Area with Resizable Panels */}
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* Left Panel - Media Browser */}
-          <ResizablePanel defaultSize={18} minSize={12} maxSize={30} className="bg-[#12151c]">
+          <ResizablePanel defaultSize={20} minSize={12} maxSize={30} className="bg-[#12151c]">
             <div className="h-full flex flex-col">
               <Tabs value={activePanel} onValueChange={(v) => setActivePanel(v as any)} className="flex-1 flex flex-col">
                 <TabsList className="h-9 w-full justify-start rounded-none bg-[#181c26] border-b border-[#2a3040] p-0">
@@ -673,7 +673,7 @@ export default function DocumentaryEditor() {
           <ResizableHandle className="w-1 bg-[#0a0d14] hover:bg-orange-500/50 transition-colors" />
 
           {/* Center Panel - Preview Monitor */}
-          <ResizablePanel defaultSize={52} minSize={40}>
+          <ResizablePanel defaultSize={60} minSize={40}>
             <ResizablePanelGroup direction="vertical">
               {/* Program Monitor */}
               <ResizablePanel defaultSize={65} minSize={40}>
