@@ -194,4 +194,33 @@ export const insertStoryFrameworkSchema = createInsertSchema(storyFrameworks).om
 export type InsertStoryFramework = z.infer<typeof insertStoryFrameworkSchema>;
 export type StoryFramework = typeof storyFrameworks.$inferSelect;
 
+// Background generation job for running generation pipeline in the background
+export const generationJobs = pgTable("generation_jobs", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("queued"), // queued | running | completed | failed | paused
+  currentStep: text("current_step").default("research"), // research | framework | outline | chapters | images | audio | video
+  progress: integer("progress").notNull().default(0), // 0-100
+  totalChapters: integer("total_chapters").notNull().default(1),
+  currentChapter: integer("current_chapter").default(1),
+  currentScene: integer("current_scene").default(1),
+  completedSteps: text("completed_steps").array(), // Array of completed step names
+  configData: text("config_data"), // JSON string of generation config
+  stateData: text("state_data"), // JSON string of current generation state (chapters, images, audio)
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertGenerationJobSchema = createInsertSchema(generationJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGenerationJob = z.infer<typeof insertGenerationJobSchema>;
+export type GenerationJob = typeof generationJobs.$inferSelect;
+
 export * from "./models/chat";

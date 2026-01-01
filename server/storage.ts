@@ -17,6 +17,8 @@ import {
   type InsertGenerationSession,
   type ProjectResearch,
   type InsertProjectResearch,
+  type GenerationJob,
+  type InsertGenerationJob,
   users,
   projects,
   chapters,
@@ -25,7 +27,8 @@ import {
   storyFrameworks,
   generatedAssets,
   generationSessions,
-  projectResearch
+  projectResearch,
+  generationJobs
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -70,6 +73,13 @@ export interface IStorage {
   createProjectResearch(research: InsertProjectResearch): Promise<ProjectResearch>;
   getProjectResearch(projectId: number): Promise<ProjectResearch | undefined>;
   updateProjectResearch(id: number, updates: Partial<ProjectResearch>): Promise<ProjectResearch | undefined>;
+  
+  // Generation Jobs (background processing)
+  createGenerationJob(job: InsertGenerationJob): Promise<GenerationJob>;
+  getGenerationJob(id: number): Promise<GenerationJob | undefined>;
+  getActiveGenerationJob(projectId: number): Promise<GenerationJob | undefined>;
+  updateGenerationJob(id: number, updates: Partial<GenerationJob>): Promise<GenerationJob | undefined>;
+  getQueuedJobs(): Promise<GenerationJob[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -273,6 +283,66 @@ export class DatabaseStorage implements IStorage {
       .where(eq(projectResearch.id, id))
       .returning();
     return result[0];
+  }
+
+  // Generation Jobs (background processing)
+  async createGenerationJob(job: InsertGenerationJob): Promise<GenerationJob> {
+    const result = await db.insert(generationJobs).values(job).returning();
+    return result[0];
+  }
+
+  async getGenerationJob(id: number): Promise<GenerationJob | undefined> {
+    const result = await db.select().from(generationJobs).where(eq(generationJobs.id, id));
+    return result[0];
+  }
+
+  async getActiveGenerationJob(projectId: number): Promise<GenerationJob | undefined> {
+    const result = await db
+      .select()
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.projectId, projectId),
+          eq(generationJobs.status, "running")
+        )
+      )
+      .orderBy(desc(generationJobs.createdAt))
+      .limit(1);
+    
+    // Also check for queued jobs
+    if (!result[0]) {
+      const queued = await db
+        .select()
+        .from(generationJobs)
+        .where(
+          and(
+            eq(generationJobs.projectId, projectId),
+            eq(generationJobs.status, "queued")
+          )
+        )
+        .orderBy(desc(generationJobs.createdAt))
+        .limit(1);
+      return queued[0];
+    }
+    
+    return result[0];
+  }
+
+  async updateGenerationJob(id: number, updates: Partial<GenerationJob>): Promise<GenerationJob | undefined> {
+    const result = await db
+      .update(generationJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(generationJobs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getQueuedJobs(): Promise<GenerationJob[]> {
+    return await db
+      .select()
+      .from(generationJobs)
+      .where(eq(generationJobs.status, "queued"))
+      .orderBy(generationJobs.createdAt);
   }
 }
 
