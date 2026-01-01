@@ -15,7 +15,7 @@ import DocumentaryEditor from "@/pages/documentary-editor";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DocumentaryMaker} />
       <Route path="/create" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
       <Route path="/editor" component={DocumentaryEditor} />
