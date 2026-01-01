@@ -114,6 +114,78 @@ export async function generateTypewriterSound(config: {
   return runPythonCommand("typewriter_sound", [JSON.stringify(config)]);
 }
 
+export async function createLetterboxScene(config: {
+  image: string;
+  output: string;
+  caption: string;
+  duration?: number;
+  audio?: string;
+  effect?: string;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("letterbox", [JSON.stringify(config)]);
+}
+
+export async function createPipScene(config: {
+  main_image: string;
+  inset_image: string;
+  output: string;
+  duration?: number;
+  audio?: string;
+  inset_position?: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  inset_size?: number;
+  border_color?: string;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("pip", [JSON.stringify(config)]);
+}
+
+export async function createQuoteBoxScene(config: {
+  image: string;
+  output: string;
+  quote: string;
+  duration?: number;
+  audio?: string;
+  effect?: string;
+  position?: "top_left" | "top_right" | "bottom_left" | "center";
+  typewriter?: boolean;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("quote_box", [JSON.stringify(config)]);
+}
+
+export async function createDateStampScene(config: {
+  image: string;
+  output: string;
+  date: string;
+  duration?: number;
+  audio?: string;
+  effect?: string;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("date_stamp", [JSON.stringify(config)]);
+}
+
+export async function createSplitScreenScene(config: {
+  left_image: string;
+  right_image: string;
+  output: string;
+  duration?: number;
+  audio?: string;
+  gap_width?: number;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("split_screen", [JSON.stringify(config)]);
+}
+
+export async function createPortraitTitleCard(config: {
+  background: string;
+  portrait: string;
+  output: string;
+  title: string;
+  subtitle?: string;
+  duration?: number;
+  audio?: string;
+  border_color?: string;
+}): Promise<VideoProcessorResult> {
+  return runPythonCommand("portrait_title", [JSON.stringify(config)]);
+}
+
 export const videoService = {
   detectScenes,
   trimVideo,
@@ -125,4 +197,10 @@ export const videoService = {
   assembleFullVideo,
   createTitleCard,
   generateTypewriterSound,
+  createLetterboxScene,
+  createPipScene,
+  createQuoteBoxScene,
+  createDateStampScene,
+  createSplitScreenScene,
+  createPortraitTitleCard,
 };

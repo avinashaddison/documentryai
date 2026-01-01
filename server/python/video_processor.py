@@ -169,6 +169,44 @@ TEXT_STYLES = {
         "box": True,
         "fade_in": 0.2,
     },
+    # VidRush-style advanced overlays
+    "letterbox_caption": {
+        "fontsize": 42,
+        "fontcolor": "beige",
+        "font": "Serif",
+        "position": "letterbox_bottom",
+        "shadow": False,
+        "fade_in": 0.5,
+    },
+    "quote_box": {
+        "fontsize": 38,
+        "fontcolor": "#F5F0E8",
+        "font": "Serif",
+        "position": "top_left",
+        "shadow": False,
+        "box": True,
+        "box_color": "#C9A67A@0.85",
+        "fade_in": 0.4,
+        "typewriter": True,
+    },
+    "date_stamp": {
+        "fontsize": 52,
+        "fontcolor": "white",
+        "font": "Serif",
+        "position": "bottom_left",
+        "shadow": False,
+        "box": True,
+        "box_color": "#2C2C2C@0.9",
+        "fade_in": 0.3,
+    },
+    "title_subtitle": {
+        "fontsize": 36,
+        "fontcolor": "beige@0.9",
+        "font": "Serif",
+        "position": "center_left",
+        "shadow": True,
+        "fade_in": 0.4,
+    },
 }
 
 
@@ -176,12 +214,15 @@ def get_text_position(position: str, w: int, h: int, text_w: int = 0, text_h: in
     """Calculate x,y position expressions for text placement."""
     positions = {
         "center": ("(w-text_w)/2", "(h-text_h)/2"),
+        "center_left": ("80", "(h-text_h)/2"),
+        "center_right": ("w-text_w-80", "(h-text_h)/2"),
         "top_left": ("50", "50"),
         "top_right": ("w-text_w-50", "50"),
         "top_center": ("(w-text_w)/2", "80"),
         "bottom_left": ("50", "h-text_h-80"),
         "bottom_right": ("w-text_w-50", "h-text_h-80"),
         "bottom_center": ("(w-text_w)/2", "h-text_h-80"),
+        "letterbox_bottom": ("(w-text_w)/2", "h-120"),
     }
     return positions.get(position, positions["center"])
 
@@ -199,6 +240,7 @@ def build_typewriter_filter(
     """
     Build FFmpeg drawtext filter with typewriter effect.
     Text appears character by character like a typewriter.
+    Supports multi-line text (split by newlines) and box backgrounds.
     """
     style_config = TEXT_STYLES.get(style, TEXT_STYLES["chapter_title"])
     
@@ -207,51 +249,68 @@ def build_typewriter_filter(
     font = style_config["font"]
     position = style_config["position"]
     has_shadow = style_config.get("shadow", False)
+    has_box = style_config.get("box", False)
+    box_color = style_config.get("box_color", "black@0.5")
     
-    x_pos, y_pos = get_text_position(position, w, h)
+    base_x, base_y = get_text_position(position, w, h)
+    line_height = int(fontsize * 1.4)
+    char_width = fontsize * 0.55
     
-    # Escape special characters for FFmpeg
-    escaped_text = text.replace("'", "\\'").replace(":", "\\:")
-    
-    # Calculate typewriter timing
-    text_len = len(text)
-    type_duration = text_len / chars_per_second
-    
-    # Typewriter effect: show text[:n] where n increases over time
-    # Using FFmpeg expression: if(lt(t,start),0,min(floor((t-start)*cps),len))
-    # This reveals more characters as time progresses
-    
-    # Build the filter with character-by-character reveal
-    # We use multiple drawtext filters, each showing one character at its reveal time
     filters = []
     
-    for i, char in enumerate(text):
-        char_start = start_time + (i / chars_per_second)
-        char_escaped = char.replace("'", "\\'").replace(":", "\\:").replace("\\", "\\\\")
-        if char == " ":
-            char_escaped = " "
+    # For quote boxes with background, draw the box first (appears immediately)
+    # The box needs to be sized for the full text
+    if has_box:
+        lines = text.split('\n') if '\n' in text else [text]
+        max_line_len = max(len(line) for line in lines)
+        num_lines = len(lines)
+        box_w = int(max_line_len * char_width + 50)
+        box_h = int(num_lines * line_height + 30)
         
-        # Calculate x offset for this character (approximate)
-        char_offset = i * (fontsize * 0.55)  # Rough character width
+        # Draw a colored rectangle using drawbox filter
+        box_filter = f"drawbox=x={base_x}:y={base_y}:w={box_w}:h={box_h}:color={box_color}:t=fill:enable='gte(t,{start_time - 0.1:.3f})'"
+        filters.append(box_filter)
+    
+    # Split text into lines for multi-line support
+    lines = text.split('\n') if '\n' in text else [text]
+    char_index = 0
+    
+    for line_num, line in enumerate(lines):
+        y_offset = line_num * line_height
         
-        # For center positioning, we need to calculate the full text width first
-        if position == "center":
-            full_text_width = text_len * (fontsize * 0.55)
-            base_x = f"((w-{full_text_width})/2)"
-            char_x = f"{base_x}+{char_offset}"
-        else:
-            base_x, _ = get_text_position(position, w, h)
-            char_x = f"({base_x})+{char_offset}"
+        for char_in_line, char in enumerate(line):
+            char_start = start_time + (char_index / chars_per_second)
+            char_escaped = char.replace("'", "\\'").replace(":", "\\:").replace("\\", "\\\\")
+            if char == " ":
+                char_escaped = " "
+            
+            # Calculate x offset within the line
+            x_offset = char_in_line * char_width
+            
+            # Build position expressions
+            if position == "center":
+                line_width = len(line) * char_width
+                char_x = f"((w-{line_width})/2)+{x_offset}"
+                char_y = f"((h-{len(lines) * line_height})/2)+{y_offset}"
+            else:
+                char_x = f"({base_x})+20+{x_offset}"
+                char_y = f"({base_y})+15+{y_offset}"
+            
+            enable_expr = f"gte(t,{char_start:.3f})"
+            
+            # Shadow layer
+            if has_shadow:
+                shadow_filter = f"drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor=black@0.6:font={font}:x={char_x}+3:y={char_y}+3:enable='{enable_expr}'"
+                filters.append(shadow_filter)
+            
+            # Main character
+            char_filter = f"drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor={fontcolor}:font={font}:x={char_x}:y={char_y}:enable='{enable_expr}'"
+            filters.append(char_filter)
+            
+            char_index += 1
         
-        # Each character appears at its specific time and stays
-        enable_expr = f"gte(t,{char_start:.3f})"
-        
-        shadow_filter = ""
-        if has_shadow:
-            shadow_filter = f"drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor=black@0.6:font={font}:x={char_x}+3:y={y_pos}+3:enable='{enable_expr}',"
-        
-        char_filter = f"{shadow_filter}drawtext=text='{char_escaped}':fontsize={fontsize}:fontcolor={fontcolor}:font={font}:x={char_x}:y={y_pos}:enable='{enable_expr}'"
-        filters.append(char_filter)
+        # Count newline as a character for timing
+        char_index += 1
     
     return ",".join(filters)
 
@@ -303,7 +362,8 @@ def build_simple_text_filter(
     # Box background
     box_opts = ""
     if has_box:
-        box_opts = ":box=1:boxcolor=black@0.5:boxborderw=10"
+        box_color = style_config.get("box_color", "black@0.5")
+        box_opts = f":box=1:boxcolor={box_color}:boxborderw=18"
     
     # Main text
     main_text = f"drawtext=text='{escaped_text}':fontsize={fontsize}:fontcolor={fontcolor}:font={font}:x={x_pos}:y={y_pos}:enable='{enable_expr}'{box_opts}"
@@ -342,6 +402,486 @@ def generate_typewriter_sound(duration: float, chars_per_second: float = 12.0, o
     if result.returncode == 0 and os.path.exists(output_path):
         return output_path
     return None
+
+
+# =============================================================================
+# ADVANCED DOCUMENTARY EFFECTS - VidRush Style
+# =============================================================================
+
+def create_letterbox_scene(
+    image_path: str,
+    output_path: str,
+    caption: str,
+    duration: float = 6.0,
+    audio_path: Optional[str] = None,
+    effect: str = "zoom_in_center",
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create a scene with letterbox framing - black bars above and below
+    with caption text centered in the lower black bar.
+    Like: "Führerbunker Tension, 1945"
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        # Image area with letterbox (16:9 content in letterbox frame)
+        bar_height = int(h * 0.12)  # 12% top and bottom bars
+        content_height = h - (2 * bar_height)
+        
+        # Ken Burns on the content area
+        zoompan = build_zoompan_filter(effect, total_frames, w, content_height, fps)
+        bw_filter = "hue=s=0,eq=contrast=1.15:brightness=0.02:gamma=1.05"
+        
+        # Escape caption text
+        escaped_caption = caption.replace("'", "\\'").replace(":", "\\:")
+        
+        # Build filter: scale image, apply Ken Burns, add black bars, add caption
+        filter_complex = f"""
+[0:v]scale={w}:{content_height}:force_original_aspect_ratio=increase,crop={w}:{content_height},{zoompan},{bw_filter}[content];
+color=black:s={w}x{bar_height}:d={duration}:r={fps}[topbar];
+color=black:s={w}x{bar_height}:d={duration}:r={fps}[bottombar];
+[topbar][content][bottombar]vstack=inputs=3[framed];
+[framed]drawtext=text='{escaped_caption}':fontsize=42:fontcolor=beige:font=Serif:x=(w-text_w)/2:y=h-{bar_height//2+20}:enable='gte(t,0.5)',format=yuv420p[v]
+"""
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-i", audio_path,
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Letterbox error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating letterbox scene: {e}", file=sys.stderr)
+        return False
+
+
+def create_pip_scene(
+    main_image: str,
+    inset_image: str,
+    output_path: str,
+    duration: float = 6.0,
+    audio_path: Optional[str] = None,
+    inset_position: str = "bottom_right",
+    inset_size: float = 0.25,
+    border_color: str = "white",
+    border_width: int = 4,
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create picture-in-picture scene with main image and bordered inset.
+    Inset can be positioned in corners with customizable border.
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        inset_w = int(w * inset_size)
+        inset_h = int(h * inset_size)
+        padding = 30
+        
+        # Position calculations
+        positions = {
+            "top_left": (padding, padding),
+            "top_right": (w - inset_w - padding, padding),
+            "bottom_left": (padding, h - inset_h - padding),
+            "bottom_right": (w - inset_w - padding, h - inset_h - padding),
+        }
+        inset_x, inset_y = positions.get(inset_position, positions["bottom_right"])
+        
+        # Ken Burns on main image
+        zoompan = build_zoompan_filter("zoom_in_center", total_frames, w, h, fps)
+        bw_filter = "hue=s=0,eq=contrast=1.1:brightness=0.02"
+        
+        # Build filter for PIP with border
+        filter_complex = f"""
+[0:v]scale={w}x{h}:force_original_aspect_ratio=increase,crop={w}:{h},{zoompan},{bw_filter}[main];
+[1:v]scale={inset_w-border_width*2}x{inset_h-border_width*2}:force_original_aspect_ratio=decrease,pad={inset_w}:{inset_h}:(ow-iw)/2:(oh-ih)/2:color={border_color}[inset];
+[main][inset]overlay={inset_x}:{inset_y}:enable='gte(t,0.3)',format=yuv420p[v]
+"""
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", main_image,
+                "-loop", "1", "-i", inset_image,
+                "-i", audio_path,
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", main_image,
+                "-loop", "1", "-i", inset_image,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"PIP error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating PIP scene: {e}", file=sys.stderr)
+        return False
+
+
+def create_quote_box_scene(
+    image_path: str,
+    output_path: str,
+    quote_text: str,
+    duration: float = 6.0,
+    audio_path: Optional[str] = None,
+    effect: str = "zoom_in_center",
+    box_position: str = "top_left",
+    typewriter: bool = True,
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create scene with quote box overlay - multi-line text with 
+    beige/cream semi-transparent background box.
+    Like: "The war is lost—yet Hitler vows to remain in Berlin."
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        zoompan = build_zoompan_filter(effect, total_frames, w, h, fps)
+        bw_filter = "hue=s=0,eq=contrast=1.15:brightness=0.02"
+        
+        # Escape and wrap text for multi-line display
+        escaped_text = quote_text.replace("'", "\\'").replace(":", "\\:")
+        
+        # Position for quote box
+        positions = {
+            "top_left": (40, 60),
+            "top_right": (w - 700, 60),
+            "bottom_left": (40, h - 200),
+            "center": ((w - 700) // 2, (h - 150) // 2),
+        }
+        box_x, box_y = positions.get(box_position, positions["top_left"])
+        
+        # Build quote box with typewriter or static text
+        if typewriter:
+            text_filter = build_typewriter_filter(quote_text, "quote_box", start_time=0.5, w=w, h=h, fps=fps)
+        else:
+            text_filter = f"drawtext=text='{escaped_text}':fontsize=38:fontcolor=white:font=Serif:x={box_x}+20:y={box_y}+20:box=1:boxcolor=#C9A67A@0.85:boxborderw=20:enable='gte(t,0.4)'"
+        
+        filter_complex = f"[0:v]scale={w}x{h}:force_original_aspect_ratio=increase,crop={w}:{h},{zoompan},{bw_filter},{text_filter},format=yuv420p[v]"
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-i", audio_path,
+                "-filter_complex", filter_complex,
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex,
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Quote box error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating quote box scene: {e}", file=sys.stderr)
+        return False
+
+
+def create_date_stamp_scene(
+    image_path: str,
+    output_path: str,
+    date_text: str,
+    duration: float = 6.0,
+    audio_path: Optional[str] = None,
+    effect: str = "zoom_in_center",
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create scene with vintage date stamp overlay.
+    Date appears in bottom-left with dark background box.
+    Like: "22 April 1945"
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        zoompan = build_zoompan_filter(effect, total_frames, w, h, fps)
+        bw_filter = "hue=s=0,eq=contrast=1.15:brightness=0.02"
+        
+        escaped_date = date_text.replace("'", "\\'").replace(":", "\\:")
+        
+        # Date stamp with dark box - bottom left position
+        text_filter = f"drawtext=text='{escaped_date}':fontsize=52:fontcolor=white:font=Serif:x=50:y=h-130:box=1:boxcolor=#2C2C2C@0.9:boxborderw=18:enable='gte(t,0.4)'"
+        
+        filter_complex = f"[0:v]scale={w}x{h}:force_original_aspect_ratio=increase,crop={w}:{h},{zoompan},{bw_filter},{text_filter},format=yuv420p[v]"
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-i", audio_path,
+                "-filter_complex", filter_complex,
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", image_path,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex,
+                "-map", "[v]", "-map", "1:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Date stamp error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating date stamp scene: {e}", file=sys.stderr)
+        return False
+
+
+def create_split_screen_scene(
+    left_image: str,
+    right_image: str,
+    output_path: str,
+    duration: float = 6.0,
+    audio_path: Optional[str] = None,
+    gap_width: int = 4,
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create side-by-side split screen comparison.
+    Two images displayed with optional gap between them.
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        half_w = (w - gap_width) // 2
+        
+        bw_filter = "hue=s=0,eq=contrast=1.1:brightness=0.02"
+        
+        # Ken Burns on each half
+        left_zoom = build_zoompan_filter("pan_right_zoom", total_frames, half_w, h, fps)
+        right_zoom = build_zoompan_filter("pan_left_zoom", total_frames, half_w, h, fps)
+        
+        filter_complex = f"""
+[0:v]scale={half_w}x{h}:force_original_aspect_ratio=increase,crop={half_w}:{h},{left_zoom},{bw_filter}[left];
+[1:v]scale={half_w}x{h}:force_original_aspect_ratio=increase,crop={half_w}:{h},{right_zoom},{bw_filter}[right];
+color=black:s={gap_width}x{h}:d={duration}:r={fps}[gap];
+[left][gap][right]hstack=inputs=3,format=yuv420p[v]
+"""
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", left_image,
+                "-loop", "1", "-i", right_image,
+                "-i", audio_path,
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", left_image,
+                "-loop", "1", "-i", right_image,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Split screen error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating split screen scene: {e}", file=sys.stderr)
+        return False
+
+
+def create_portrait_title_card(
+    background_image: str,
+    portrait_image: str,
+    output_path: str,
+    title: str,
+    subtitle: str = "",
+    duration: float = 5.0,
+    audio_path: Optional[str] = None,
+    border_color: str = "#C9A67A",
+    fps: int = 24,
+    resolution: tuple = (1920, 1080)
+) -> bool:
+    """
+    Create title card with blurred background and gold-bordered portrait inset.
+    Title and subtitle appear on the left, portrait on the right.
+    Like: "STAY-PUT ORDER / Berlin – 22 April 1945" with portrait
+    """
+    try:
+        ensure_dirs()
+        w, h = resolution
+        total_frames = int(duration * fps)
+        
+        portrait_w = int(w * 0.25)
+        portrait_h = int(h * 0.55)
+        portrait_x = w - portrait_w - 100
+        portrait_y = (h - portrait_h) // 2
+        border = 6
+        
+        # Escape text
+        escaped_title = title.replace("'", "\\'").replace(":", "\\:")
+        escaped_subtitle = subtitle.replace("'", "\\'").replace(":", "\\:")
+        
+        bw_filter = "hue=s=0,eq=contrast=0.8:brightness=-0.05:gamma=0.9"
+        
+        # Build complex filter with blurred background, portrait with border, and text
+        filter_complex = f"""
+[0:v]scale={w}x{h}:force_original_aspect_ratio=increase,crop={w}:{h},{bw_filter},gblur=sigma=8[bg];
+[1:v]scale={portrait_w-border*2}x{portrait_h-border*2}:force_original_aspect_ratio=decrease,hue=s=0,pad={portrait_w}:{portrait_h}:(ow-iw)/2:(oh-ih)/2:color={border_color}[portrait];
+[bg][portrait]overlay={portrait_x}:{portrait_y}:enable='gte(t,0.3)'[comp];
+[comp]drawtext=text='{escaped_title}':fontsize=56:fontcolor=beige:font=Serif:x=80:y=(h-text_h)/2-30:enable='gte(t,0.5)',drawtext=text='{escaped_subtitle}':fontsize=32:fontcolor=beige@0.85:font=Serif:x=80:y=(h/2)+40:enable='gte(t,0.7)',format=yuv420p[v]
+"""
+        
+        if audio_path and os.path.exists(audio_path):
+            audio_duration = get_audio_duration(audio_path)
+            duration = max(duration, audio_duration + 0.4)
+            audio_filter = f"apad=whole_dur={duration}"
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", background_image,
+                "-loop", "1", "-i", portrait_image,
+                "-i", audio_path,
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-af", audio_filter,
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        else:
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-i", background_image,
+                "-loop", "1", "-i", portrait_image,
+                "-f", "lavfi", "-i", f"anullsrc=channel_layout=stereo:sample_rate=48000:duration={duration}",
+                "-filter_complex", filter_complex.replace("\n", " "),
+                "-map", "[v]", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "slow", "-crf", "18",
+                "-c:a", "aac", "-b:a", "192k",
+                "-t", str(duration),
+                output_path
+            ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Portrait title card error: {result.stderr[:500]}", file=sys.stderr)
+        return result.returncode == 0
+        
+    except Exception as e:
+        print(f"Error creating portrait title card: {e}", file=sys.stderr)
+        return False
 
 
 def create_title_card(
@@ -1232,6 +1772,108 @@ if __name__ == "__main__":
             output_path=config.get("output")
         )
         print(json.dumps({"success": result is not None, "output": result}))
+    
+    elif command == "letterbox":
+        if len(sys.argv) < 3:
+            print("Usage: letterbox <json_config>")
+            print("Config: {image, output, caption, duration?, audio?, effect?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_letterbox_scene(
+            image_path=config["image"],
+            output_path=config["output"],
+            caption=config["caption"],
+            duration=config.get("duration", 6.0),
+            audio_path=config.get("audio"),
+            effect=config.get("effect", "zoom_in_center"),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "pip":
+        if len(sys.argv) < 3:
+            print("Usage: pip <json_config>")
+            print("Config: {main_image, inset_image, output, duration?, audio?, inset_position?, inset_size?, border_color?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_pip_scene(
+            main_image=config["main_image"],
+            inset_image=config["inset_image"],
+            output_path=config["output"],
+            duration=config.get("duration", 6.0),
+            audio_path=config.get("audio"),
+            inset_position=config.get("inset_position", "bottom_right"),
+            inset_size=config.get("inset_size", 0.25),
+            border_color=config.get("border_color", "white"),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "quote_box":
+        if len(sys.argv) < 3:
+            print("Usage: quote_box <json_config>")
+            print("Config: {image, output, quote, duration?, audio?, effect?, position?, typewriter?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_quote_box_scene(
+            image_path=config["image"],
+            output_path=config["output"],
+            quote_text=config["quote"],
+            duration=config.get("duration", 6.0),
+            audio_path=config.get("audio"),
+            effect=config.get("effect", "zoom_in_center"),
+            box_position=config.get("position", "top_left"),
+            typewriter=config.get("typewriter", True),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "date_stamp":
+        if len(sys.argv) < 3:
+            print("Usage: date_stamp <json_config>")
+            print("Config: {image, output, date, duration?, audio?, effect?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_date_stamp_scene(
+            image_path=config["image"],
+            output_path=config["output"],
+            date_text=config["date"],
+            duration=config.get("duration", 6.0),
+            audio_path=config.get("audio"),
+            effect=config.get("effect", "zoom_in_center"),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "split_screen":
+        if len(sys.argv) < 3:
+            print("Usage: split_screen <json_config>")
+            print("Config: {left_image, right_image, output, duration?, audio?, gap_width?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_split_screen_scene(
+            left_image=config["left_image"],
+            right_image=config["right_image"],
+            output_path=config["output"],
+            duration=config.get("duration", 6.0),
+            audio_path=config.get("audio"),
+            gap_width=config.get("gap_width", 4),
+        )
+        print(json.dumps({"success": success}))
+    
+    elif command == "portrait_title":
+        if len(sys.argv) < 3:
+            print("Usage: portrait_title <json_config>")
+            print("Config: {background, portrait, output, title, subtitle?, duration?, audio?, border_color?}")
+            sys.exit(1)
+        config = json.loads(sys.argv[2])
+        success = create_portrait_title_card(
+            background_image=config["background"],
+            portrait_image=config["portrait"],
+            output_path=config["output"],
+            title=config["title"],
+            subtitle=config.get("subtitle", ""),
+            duration=config.get("duration", 5.0),
+            audio_path=config.get("audio"),
+            border_color=config.get("border_color", "#C9A67A"),
+        )
+        print(json.dumps({"success": success}))
     
     else:
         print(f"Unknown command: {command}")
