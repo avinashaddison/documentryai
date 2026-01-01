@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { expandResearchQueries, fetchPerplexitySources, analyzeAndSummarizeResearch } from "./research-service";
+import { conductDeepResearch } from "./research-service";
 import { generateDocumentaryFramework, generateChapterOutline, generateChapterScriptWithResearch } from "./documentary-generator";
 import { generateImage } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
@@ -104,7 +104,7 @@ async function processJob(job: GenerationJob) {
     // Step 1: Research
     if (!completedSteps.includes("research")) {
       await updateJobProgress(job.id, "research", 5);
-      await runResearchStep(job.projectId, state);
+      await runResearchStep(job.projectId, job.id, state);
       completedSteps.push("research");
       await saveJobState(job.id, state, completedSteps, 15);
     }
@@ -219,8 +219,8 @@ async function saveJobState(
   });
 }
 
-async function runResearchStep(projectId: number, state: GenerationState) {
-  console.log(`[JobWorker] Running research step for project ${projectId}`);
+async function runResearchStep(projectId: number, jobId: number, state: GenerationState) {
+  console.log(`[JobWorker] Running DEEP research step for project ${projectId}, job ${jobId}`);
   
   const project = await storage.getProject(projectId);
   if (!project) throw new Error("Project not found");
@@ -229,52 +229,57 @@ async function runResearchStep(projectId: number, state: GenerationState) {
     projectId,
     step: "research",
     status: "started",
-    message: "Starting research phase...",
+    message: "Starting deep research phase with Perplexity AI...",
   });
   
-  // Generate research queries using correct function
-  const queries = await expandResearchQueries(project.title);
+  // Use the new deep research function with proper job ID
+  const researchResult = await conductDeepResearch(
+    project.title,
+    projectId,
+    jobId,
+    "deep" // Use deep research for comprehensive fact-gathering
+  );
   
-  // Execute queries (with rate limiting)
-  const sources: any[] = [];
-  for (const query of queries.slice(0, 6)) {
-    try {
-      const fetchedSources = await fetchPerplexitySources(query.query);
-      sources.push(...fetchedSources);
-    } catch (e) {
-      console.error(`[JobWorker] Research query failed:`, e);
-    }
-  }
-  
-  // Analyze results
-  const summary = await analyzeAndSummarizeResearch(project.title, sources);
-  
-  // Save research
+  // Save research with enhanced data
   const existingResearch = await storage.getProjectResearch(projectId);
+  const researchData = {
+    researchQueries: JSON.stringify(researchResult.queries),
+    sources: JSON.stringify(researchResult.sources),
+    researchSummary: JSON.stringify({
+      ...researchResult.summary,
+      facts: researchResult.facts,
+      subtopics: researchResult.subtopics,
+      depth: researchResult.depth,
+    }),
+    status: "completed" as const,
+  };
+  
   if (existingResearch) {
-    await storage.updateProjectResearch(existingResearch.id, {
-      researchQueries: JSON.stringify(queries),
-      sources: JSON.stringify(sources),
-      researchSummary: JSON.stringify(summary),
-      status: "completed",
-    });
+    await storage.updateProjectResearch(existingResearch.id, researchData);
   } else {
     await storage.createProjectResearch({
       projectId,
-      researchQueries: JSON.stringify(queries),
-      sources: JSON.stringify(sources),
-      researchSummary: JSON.stringify(summary),
-      status: "completed",
+      ...researchData,
     });
   }
   
-  state.research = { queries, sources, summary };
+  // Include facts inside summary for downstream generators
+  state.research = { 
+    queries: researchResult.queries, 
+    sources: researchResult.sources, 
+    summary: {
+      ...researchResult.summary,
+      facts: researchResult.facts,
+      subtopics: researchResult.subtopics,
+    },
+    facts: researchResult.facts,
+  };
   
   await storage.createGenerationLog({
     projectId,
     step: "research",
     status: "completed",
-    message: `Research complete: ${sources.length} sources, ${summary.keyFacts?.length || 0} facts`,
+    message: `Deep research complete: ${researchResult.sources.length} sources, ${researchResult.facts.length} facts, ${researchResult.summary.timeline.length} timeline events`,
   });
   
   await storage.updateProject(projectId, { state: "RESEARCH_DONE" });

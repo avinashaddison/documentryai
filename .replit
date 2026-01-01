@@ -45,4 +45,4 @@ mockupState = "FULLSTACK"
 integrations = ["javascript_anthropic_ai_integrations:2.0.0", "javascript_object_storage:2.0.0"]
 
 [objectStorage]
-defaultBucketID = "replit-objstore-c55c509d-9337-4290-9f3a-4fc62db40674"
+defaultBucketID = "replit-objstore-b8839db5-b47e-4fe0-89a6-b6bbf4d9e877"
