@@ -106,6 +106,7 @@ export default function DocumentaryMaker() {
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
+    imageSource: "stock" as "ai" | "stock", // Default to stock photos (real images)
   });
   
   const [generationLogs, setGenerationLogs] = useState<Array<{
@@ -613,6 +614,7 @@ export default function DocumentaryMaker() {
           config: {
             model: config.hookImageModel,
             imageStyle: config.imageStyle,
+            imageSource: config.imageSource,
             voice: config.narratorVoice,
           },
         }),
@@ -1422,43 +1424,71 @@ export default function DocumentaryMaker() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-white">Image Model</Label>
+                  <Label className="text-sm font-medium text-white">Image Source</Label>
                 </div>
                 <Select
-                  value={config.hookImageModel}
-                  onValueChange={(value) => setConfig({ ...config, hookImageModel: value, chapterImageModel: value })}
+                  value={config.imageSource}
+                  onValueChange={(value) => setConfig({ ...config, imageSource: value as "ai" | "stock" })}
                 >
-                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-model">
+                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-source">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {imageModelOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="stock">Stock Photos (Real Images)</SelectItem>
+                    <SelectItem value="ai">AI Generated (Flux/Ideogram)</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {config.imageSource === "stock" 
+                    ? "Uses real photos from Pexels - royalty-free and high quality" 
+                    : "Generates unique images using AI models"}
+                </p>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-white">Image Style</Label>
+              {config.imageSource === "ai" && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm font-medium text-white">AI Model</Label>
+                  </div>
+                  <Select
+                    value={config.hookImageModel}
+                    onValueChange={(value) => setConfig({ ...config, hookImageModel: value, chapterImageModel: value })}
+                  >
+                    <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-model">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {imageModelOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select
-                  value={config.imageStyle}
-                  onValueChange={(value) => setConfig({ ...config, imageStyle: value as "color" | "black-and-white" })}
-                >
-                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-style">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="color">Color Images</SelectItem>
-                    <SelectItem value="black-and-white">Black & White (Vintage)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              )}
+
+              {config.imageSource === "ai" && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                    <Label className="text-sm font-medium text-white">Image Style</Label>
+                  </div>
+                  <Select
+                    value={config.imageStyle}
+                    onValueChange={(value) => setConfig({ ...config, imageStyle: value as "color" | "black-and-white" })}
+                  >
+                    <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-style">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="color">Color Images</SelectItem>
+                      <SelectItem value="black-and-white">Black & White (Vintage)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

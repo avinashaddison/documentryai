@@ -395,47 +395,86 @@ async function runChaptersStep(
 async function runImagesStep(projectId: number, config: any, state: GenerationState) {
   console.log(`[JobWorker] Running images step for project ${projectId}`);
   
+  const imageSource = config.imageSource || "stock";
+  const isStockMode = imageSource === "stock";
+  
   await storage.createGenerationLog({
     projectId,
     step: "images",
     status: "started",
-    message: "Generating images for all chapters...",
+    message: isStockMode ? "Fetching stock photos for all chapters..." : "Generating AI images for all chapters...",
   });
   
   const images: Record<string, string> = {};
   const model = config.hookImageModel || "flux-1.1-pro";
-  const imageStyle = config.imageStyle || "color";
   
-  for (const chapter of state.chapters) {
-    for (const scene of chapter.scenes || []) {
-      const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
-      
-      try {
-        const imageResult = await generateImage(scene.imagePrompt, { 
-          model: model as any,
-          projectId,
-          sceneId: key,
-        });
+  if (isStockMode) {
+    const { fetchStockImageForScene } = await import("./stock-image-service");
+    
+    for (const chapter of state.chapters) {
+      for (const scene of chapter.scenes || []) {
+        const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
         
-        if (!imageResult.success || !imageResult.imageUrl) {
-          throw new Error(imageResult.error || "Image generation failed");
+        try {
+          const result = await fetchStockImageForScene(
+            scene.imagePrompt,
+            projectId,
+            key
+          );
+          
+          if (result.success && result.imageUrl) {
+            images[key] = result.imageUrl;
+            
+            await storage.saveGeneratedAsset({
+              projectId,
+              chapterNumber: chapter.chapterNumber,
+              sceneNumber: scene.sceneNumber,
+              assetType: "image",
+              assetUrl: result.imageUrl,
+              prompt: scene.imagePrompt,
+              status: "completed",
+            });
+          } else {
+            console.error(`[JobWorker] Stock image failed for ${key}:`, result.error);
+          }
+          
+          await new Promise(r => setTimeout(r, 200));
+        } catch (error) {
+          console.error(`[JobWorker] Stock image failed for ${key}:`, error);
         }
+      }
+    }
+  } else {
+    for (const chapter of state.chapters) {
+      for (const scene of chapter.scenes || []) {
+        const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
         
-        images[key] = imageResult.imageUrl;
-        
-        // Save to generated assets
-        await storage.saveGeneratedAsset({
-          projectId,
-          chapterNumber: chapter.chapterNumber,
-          sceneNumber: scene.sceneNumber,
-          assetType: "image",
-          assetUrl: imageResult.imageUrl,
-          prompt: scene.imagePrompt,
-          status: "completed",
-        });
-        
-      } catch (error) {
-        console.error(`[JobWorker] Image generation failed for ${key}:`, error);
+        try {
+          const imageResult = await generateImage(scene.imagePrompt, { 
+            model: model as any,
+            projectId,
+            sceneId: key,
+          });
+          
+          if (!imageResult.success || !imageResult.imageUrl) {
+            throw new Error(imageResult.error || "Image generation failed");
+          }
+          
+          images[key] = imageResult.imageUrl;
+          
+          await storage.saveGeneratedAsset({
+            projectId,
+            chapterNumber: chapter.chapterNumber,
+            sceneNumber: scene.sceneNumber,
+            assetType: "image",
+            assetUrl: imageResult.imageUrl,
+            prompt: scene.imagePrompt,
+            status: "completed",
+          });
+          
+        } catch (error) {
+          console.error(`[JobWorker] AI image generation failed for ${key}:`, error);
+        }
       }
     }
   }
@@ -448,7 +487,7 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
     projectId,
     step: "images",
     status: "completed",
-    message: `Generated ${Object.keys(images).length} images`,
+    message: `${isStockMode ? "Fetched" : "Generated"} ${Object.keys(images).length} images`,
   });
 }
 
