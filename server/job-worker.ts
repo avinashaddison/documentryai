@@ -151,9 +151,10 @@ async function processJob(job: GenerationJob) {
       completedSteps,
     });
     
-    // Update project status
+    // Update project status to completed
     await storage.updateProject(job.projectId, {
       state: "AUDIO_DONE",
+      status: "generated",
     });
     
     console.log(`[JobWorker] Job ${job.id} completed successfully`);
@@ -510,11 +511,13 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
     for (const scene of chapter.scenes || []) {
       const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
       
-      if (!scene.narration) continue;
+      // Use voiceoverScript (from generator) or narration as fallback
+      const narrationText = scene.voiceoverScript || scene.narration;
+      if (!narrationText) continue;
       
       try {
         // generateSceneVoiceover expects (projectId, chapterNumber, sceneNumber, narration, voice)
-        const audioUrl = await generateSceneVoiceover(projectId, chapter.chapterNumber, scene.sceneNumber, scene.narration, voice);
+        const audioUrl = await generateSceneVoiceover(projectId, chapter.chapterNumber, scene.sceneNumber, narrationText, voice);
         
         audio[key] = audioUrl;
         
