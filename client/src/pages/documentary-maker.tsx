@@ -99,7 +99,7 @@ export default function DocumentaryMaker() {
   const [editingChapterValue, setEditingChapterValue] = useState("");
   
   const [config, setConfig] = useState({
-    narratorVoice: "narrator",
+    narratorVoice: "aura-2-mars-en",
     storyLength: "medium",
     hookImageModel: "flux-1.1-pro",
     hookImageCount: 3,
@@ -846,13 +846,53 @@ export default function DocumentaryMaker() {
   const isGenerating = currentStep !== "idle" && currentStep !== "complete";
 
   const voiceOptions = [
-    { value: "narrator", label: "Mars - Narrator Voice" },
-    { value: "male-deep", label: "Zeus - Deep & Trustworthy" },
-    { value: "male-warm", label: "Arcas - Natural & Smooth" },
-    { value: "female-soft", label: "Athena - Calm & Professional" },
-    { value: "female-dramatic", label: "Luna - Friendly & Engaging" },
-    { value: "neutral", label: "Asteria - Clear & Confident" },
+    { value: "aura-2-thalia-en", label: "Thalia", description: "Warm and expressive female" },
+    { value: "aura-2-apollo-en", label: "Apollo", description: "Clear and confident male" },
+    { value: "aura-2-aries-en", label: "Aries", description: "Bold and energetic male" },
+    { value: "aura-2-athena-en", label: "Athena", description: "Calm and professional female" },
+    { value: "aura-2-atlas-en", label: "Atlas", description: "Strong and authoritative male" },
+    { value: "aura-2-aurora-en", label: "Aurora", description: "Friendly and engaging female" },
+    { value: "aura-2-draco-en", label: "Draco", description: "Deep and dramatic male" },
+    { value: "aura-2-jupiter-en", label: "Jupiter", description: "Commanding and powerful male" },
+    { value: "aura-2-mars-en", label: "Mars", description: "Smooth narrator baritone" },
+    { value: "aura-2-neptune-en", label: "Neptune", description: "Calm and soothing male" },
+    { value: "aura-2-zeus-en", label: "Zeus", description: "Deep and trustworthy male" },
+    { value: "aura-2-orion-en", label: "Orion", description: "Clear and knowledgeable" },
   ];
+
+  const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+
+  const handleVoicePreview = async (voice: string) => {
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.src = "";
+    }
+    
+    if (previewingVoice === voice) {
+      setPreviewingVoice(null);
+      setPreviewAudio(null);
+      return;
+    }
+    
+    setPreviewingVoice(voice);
+    try {
+      const audio = new Audio(`/api/voices/${voice}/preview`);
+      audio.onended = () => {
+        setPreviewingVoice(null);
+        setPreviewAudio(null);
+      };
+      audio.onerror = () => {
+        setPreviewingVoice(null);
+        setPreviewAudio(null);
+      };
+      setPreviewAudio(audio);
+      await audio.play();
+    } catch (error) {
+      console.error("Failed to preview voice:", error);
+      setPreviewingVoice(null);
+    }
+  };
 
   const chapterPresets = [
     { count: 3, label: "Short", duration: "5-8 min", color: "from-blue-500 to-cyan-500" },
@@ -1433,28 +1473,54 @@ export default function DocumentaryMaker() {
               <h2 className="text-lg font-display font-bold text-white">Story Configuration</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Mic className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium text-white">Narrator Voice</Label>
                 </div>
-                <Select
-                  value={config.narratorVoice}
-                  onValueChange={(value) => setConfig({ ...config, narratorVoice: value })}
-                >
-                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-narrator-voice">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {voiceOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {voiceOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      className={`relative flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
+                        config.narratorVoice === option.value
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-muted-foreground bg-background/50"
+                      }`}
+                      onClick={() => setConfig({ ...config, narratorVoice: option.value })}
+                      data-testid={`voice-option-${option.value}`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm">{option.label}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVoicePreview(option.value);
+                          }}
+                          data-testid={`button-preview-voice-${option.value}`}
+                        >
+                          {previewingVoice === option.value ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Volume2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                      {config.narratorVoice === option.value && (
+                        <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">

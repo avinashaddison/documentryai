@@ -9,12 +9,26 @@ export interface TTSOptions {
 }
 
 const VOICE_MODELS: Record<string, string> = {
+  // Aura 2 voices - direct model names
+  "aura-2-thalia-en": "aura-2-thalia-en",
+  "aura-2-apollo-en": "aura-2-apollo-en",
+  "aura-2-aries-en": "aura-2-aries-en",
+  "aura-2-athena-en": "aura-2-athena-en",
+  "aura-2-atlas-en": "aura-2-atlas-en",
+  "aura-2-aurora-en": "aura-2-aurora-en",
+  "aura-2-draco-en": "aura-2-draco-en",
+  "aura-2-jupiter-en": "aura-2-jupiter-en",
+  "aura-2-mars-en": "aura-2-mars-en",
+  "aura-2-neptune-en": "aura-2-neptune-en",
+  "aura-2-zeus-en": "aura-2-zeus-en",
+  "aura-2-orion-en": "aura-2-orion-en",
+  // Legacy aliases for backwards compatibility
   "narrator": "aura-2-mars-en",
   "male-deep": "aura-2-zeus-en",
-  "male-warm": "aura-2-arcas-en", 
+  "male-warm": "aura-2-apollo-en", 
   "female-soft": "aura-2-athena-en",
-  "female-dramatic": "aura-2-luna-en",
-  "neutral": "aura-2-asteria-en",
+  "female-dramatic": "aura-2-aurora-en",
+  "neutral": "aura-2-orion-en",
 };
 
 function getBucketId(): string {
@@ -113,11 +127,52 @@ export async function generateSceneVoiceover(
 
 export function getAvailableVoices(): Array<{ id: string; name: string; description: string }> {
   return [
-    { id: "narrator", name: "Mars - Narrator Voice", description: "Smooth, patient, trustworthy baritone for narration" },
-    { id: "male-deep", name: "Zeus - Deep & Trustworthy", description: "Deep, trustworthy, smooth male voice" },
-    { id: "male-warm", name: "Arcas - Natural & Smooth", description: "Natural, smooth, clear, comfortable male voice" },
-    { id: "female-soft", name: "Athena - Calm & Professional", description: "Calm, smooth, professional female voice for storytelling" },
-    { id: "female-dramatic", name: "Luna - Friendly & Engaging", description: "Friendly, natural, engaging female voice" },
-    { id: "neutral", name: "Asteria - Clear & Confident", description: "Clear, confident, knowledgeable, energetic voice" },
+    { id: "aura-2-thalia-en", name: "Thalia", description: "Warm and expressive female voice" },
+    { id: "aura-2-apollo-en", name: "Apollo", description: "Clear and confident male voice" },
+    { id: "aura-2-aries-en", name: "Aries", description: "Bold and energetic male voice" },
+    { id: "aura-2-athena-en", name: "Athena", description: "Calm and professional female voice" },
+    { id: "aura-2-atlas-en", name: "Atlas", description: "Strong and authoritative male voice" },
+    { id: "aura-2-aurora-en", name: "Aurora", description: "Friendly and engaging female voice" },
+    { id: "aura-2-draco-en", name: "Draco", description: "Deep and dramatic male voice" },
+    { id: "aura-2-jupiter-en", name: "Jupiter", description: "Commanding and powerful male voice" },
+    { id: "aura-2-mars-en", name: "Mars", description: "Smooth narrator baritone voice" },
+    { id: "aura-2-neptune-en", name: "Neptune", description: "Calm and soothing male voice" },
+    { id: "aura-2-zeus-en", name: "Zeus", description: "Deep and trustworthy male voice" },
+    { id: "aura-2-orion-en", name: "Orion", description: "Clear and knowledgeable voice" },
   ];
+}
+
+export async function generateVoicePreview(voice: string): Promise<Buffer> {
+  if (!DEEPGRAM_API_KEY) {
+    throw new Error("DEEPGRAM_API_KEY is not set");
+  }
+
+  const deepgram = createClient(DEEPGRAM_API_KEY);
+  const model = VOICE_MODELS[voice] || voice;
+  const previewText = "Welcome to the documentary. This is a preview of the narrator voice you've selected.";
+
+  const response = await deepgram.speak.request(
+    { text: previewText },
+    {
+      model,
+      encoding: "linear16",
+      sample_rate: 24000,
+    }
+  );
+
+  const stream = await response.getStream();
+  if (!stream) {
+    throw new Error("Failed to get audio stream");
+  }
+
+  const chunks: Buffer[] = [];
+  const reader = stream.getReader();
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(Buffer.from(value));
+  }
+
+  return Buffer.concat(chunks);
 }

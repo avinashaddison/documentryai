@@ -15,7 +15,7 @@ import {
   generateChapterOutline 
 } from "./documentary-generator";
 import { generateImage, generateChapterImages } from "./image-generator";
-import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } from "./tts-service";
+import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices, generateVoicePreview } from "./tts-service";
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
@@ -710,6 +710,19 @@ export async function registerRoutes(
 
   app.get("/api/voices", (_req, res) => {
     res.json(getAvailableVoices());
+  });
+
+  app.get("/api/voices/:voice/preview", async (req, res) => {
+    try {
+      const { voice } = req.params;
+      const audioBuffer = await generateVoicePreview(voice);
+      res.setHeader("Content-Type", "audio/wav");
+      res.setHeader("Content-Length", audioBuffer.length);
+      res.send(audioBuffer);
+    } catch (error: any) {
+      console.error("[VoicePreview] Error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/projects/:id/generate-voiceover", async (req, res) => {
