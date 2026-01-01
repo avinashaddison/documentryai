@@ -598,7 +598,7 @@ export default function DocumentaryMaker() {
             <Button
               onClick={handleGenerateFramework}
               disabled={!title.trim() || isGenerating}
-              className="h-14 px-8 gap-2 rounded-xl text-base font-semibold neon-button bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 border-0"
+              className="h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:via-amber-400 hover:to-orange-500 border-0 shadow-lg shadow-orange-500/40 hover:shadow-orange-500/60 hover:scale-105 transition-all duration-300 text-white"
               data-testid="button-generate-framework"
             >
               {isGenerating && currentStep !== "chapters" ? (
