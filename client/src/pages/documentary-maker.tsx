@@ -248,6 +248,27 @@ export default function DocumentaryMaker() {
     setChapters(outlineResult.chapters);
     setProgress(25);
     setCurrentStep("idle");
+    
+    // Save outline to session immediately for restore on refresh
+    try {
+      await fetch(`/api/projects/${id}/session`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "in_progress",
+          currentStep: "images",
+          currentChapter: 1,
+          currentScene: 1,
+          totalChapters,
+          totalScenes: 1,
+          completedImages: 0,
+          completedAudio: 0,
+          outlineData: JSON.stringify(outlineResult.chapters),
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to save outline to session:", e);
+    }
   };
 
   const generateImagesMutation = useMutation({
@@ -328,7 +349,35 @@ export default function DocumentaryMaker() {
             if (assets.audio) setGeneratedAudio(assets.audio);
           }
           
-          // Load script content for chapters
+          // Load session data for chapters and outline
+          const sessionRes = await fetch(`/api/projects/${id}/session`);
+          if (sessionRes.ok) {
+            const sessionData = await sessionRes.json();
+            if (sessionData.session?.chaptersData) {
+              try {
+                const chaptersFromSession = JSON.parse(sessionData.session.chaptersData);
+                if (chaptersFromSession.length > 0) {
+                  setGeneratedChapters(chaptersFromSession);
+                  const titles = chaptersFromSession.map((ch: any) => ch.title);
+                  setChapters(titles);
+                }
+              } catch (e) {
+                console.error("Failed to parse chapters data:", e);
+              }
+            }
+            if (sessionData.session?.outlineData) {
+              try {
+                const outlineFromSession = JSON.parse(sessionData.session.outlineData);
+                if (outlineFromSession.length > 0 && chapters.length === 0) {
+                  setChapters(outlineFromSession);
+                }
+              } catch (e) {
+                console.error("Failed to parse outline data:", e);
+              }
+            }
+          }
+          
+          // Load script content for chapters (fallback)
           if (project.scriptContent?.chapters) {
             const chapterTitles = project.scriptContent.chapters.map((ch: any) => ch.title);
             setChapters(chapterTitles);
@@ -393,6 +442,7 @@ export default function DocumentaryMaker() {
               imageModel: config.hookImageModel,
               imageStyle: config.imageStyle,
               chaptersData: JSON.stringify(generatedChapters),
+              outlineData: JSON.stringify(chapters),
             }),
           });
         } catch (error) {

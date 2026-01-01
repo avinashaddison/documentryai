@@ -124,6 +124,7 @@ export const generationSessions = pgTable("generation_sessions", {
   imageStyle: text("image_style").default("color"), // "color" | "black-and-white"
   errorMessage: text("error_message"),
   chaptersData: text("chapters_data"), // JSON string of full chapters payload
+  outlineData: text("outline_data"), // JSON string of chapter titles
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
