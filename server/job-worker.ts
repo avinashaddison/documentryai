@@ -511,8 +511,8 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
     for (const scene of chapter.scenes || []) {
       const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
       
-      // Use voiceoverScript (from generator) or narration as fallback
-      const narrationText = scene.voiceoverScript || scene.narration;
+      // Use narrationSegment (from generator), voiceoverScript, or narration as fallback
+      const narrationText = scene.narrationSegment || scene.voiceoverScript || scene.narration;
       if (!narrationText) continue;
       
       try {
