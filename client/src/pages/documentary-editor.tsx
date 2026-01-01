@@ -26,7 +26,9 @@ import {
   RotateCcw,
   Maximize,
   Minimize,
+  Eye,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const kenBurnsStyles = `
@@ -588,64 +590,17 @@ export default function DocumentaryEditor() {
         </Button>
 
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-white truncate">{documentaryData.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-white truncate">{documentaryData.title}</h1>
+            <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30 px-2 py-0.5 flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              Preview Mode
+            </Badge>
+          </div>
           <p className="text-xs text-muted-foreground">
             {documentaryData.chapters.length} chapters • {allScenes.length} scenes • {formatTime(totalDuration)}
           </p>
         </div>
-
-        <select
-          value={imageStyle}
-          onChange={(e) => setImageStyle(e.target.value as "color" | "black-and-white")}
-          disabled={isGenerating || isExporting}
-          className="h-9 px-3 rounded-md border border-[#2a3441] bg-[#1a1f26] text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary"
-          data-testid="select-image-style"
-        >
-          <option value="color">Color Images</option>
-          <option value="black-and-white">Black & White (Vintage)</option>
-        </select>
-
-        {canResume && sessionInfo ? (
-          <Button
-            onClick={handleResumeGeneration}
-            disabled={isGenerating || isExporting}
-            variant="outline"
-            className="gap-2 border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-500"
-            data-testid="button-resume"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {generationStatus || `${generationProgress}%`}
-              </>
-            ) : (
-              <>
-                <RotateCcw className="h-4 w-4" />
-                Resume ({sessionInfo.completedImages || 0}/{sessionInfo.totalScenes} images)
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleGenerateAll}
-            disabled={isGenerating || isExporting}
-            variant="outline"
-            className="gap-2 border-primary/50 hover:bg-primary/10"
-            data-testid="button-generate-all"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {generationStatus || `${generationProgress}%`}
-              </>
-            ) : (
-              <>
-                <Wand2 className="h-4 w-4" />
-                Generate All
-              </>
-            )}
-          </Button>
-        )}
 
         <Button
           onClick={handleExport}

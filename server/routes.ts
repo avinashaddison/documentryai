@@ -10,7 +10,8 @@ import { videoService } from "./video-service";
 import { generateStoryFramework } from "./framework-generator";
 import { 
   generateDocumentaryFramework, 
-  generateChapterScript, 
+  generateChapterScript,
+  generateChapterScriptWithResearch,
   generateChapterOutline 
 } from "./documentary-generator";
 import { generateImage, generateChapterImages } from "./image-generator";
@@ -567,13 +568,37 @@ export async function registerRoutes(
         message: `Generating Chapter ${chapterNumber} script...`
       });
 
-      const chapter = await generateChapterScript(
-        framework.generatedTitle || "",
-        framework.premise || "",
-        chapterNumber,
-        totalChapters,
-        chapterTitle
-      );
+      // Load research data if available
+      const research = await storage.getProjectResearch(projectId);
+      let chapter;
+      
+      if (research?.status === "completed" && research.researchSummary) {
+        const researchContext = JSON.parse(research.researchSummary);
+        
+        await storage.createGenerationLog({
+          projectId,
+          step: `chapter_${chapterNumber}`,
+          status: "in_progress",
+          message: `Using research data for factual script generation`
+        });
+        
+        chapter = await generateChapterScriptWithResearch(
+          framework.generatedTitle || "",
+          framework.premise || "",
+          chapterNumber,
+          totalChapters,
+          researchContext,
+          chapterTitle
+        );
+      } else {
+        chapter = await generateChapterScript(
+          framework.generatedTitle || "",
+          framework.premise || "",
+          chapterNumber,
+          totalChapters,
+          chapterTitle
+        );
+      }
 
       const savedChapter = await storage.createChapter({
         projectId,
