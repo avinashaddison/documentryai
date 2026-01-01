@@ -950,8 +950,16 @@ export default function DocumentaryMaker() {
 
         {/* Progress Steps */}
         {currentStep !== "idle" && (
-          <div className="glass-panel-glow rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="glass-panel-glow rounded-2xl p-6 relative overflow-hidden">
+            {/* Animated background particles */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute w-2 h-2 bg-orange-500/30 rounded-full animate-float" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
+              <div className="absolute w-1.5 h-1.5 bg-amber-500/30 rounded-full animate-float" style={{ left: '30%', top: '60%', animationDelay: '0.5s' }} />
+              <div className="absolute w-2 h-2 bg-yellow-500/30 rounded-full animate-float" style={{ left: '70%', top: '30%', animationDelay: '1s' }} />
+              <div className="absolute w-1 h-1 bg-orange-400/40 rounded-full animate-float" style={{ left: '85%', top: '70%', animationDelay: '1.5s' }} />
+            </div>
+            
+            <div className="flex items-center justify-between mb-6 relative">
               {steps.map((step, i) => {
                 const stepIndex = steps.findIndex(s => s.id === currentStep);
                 const isActive = step.id === currentStep;
@@ -959,29 +967,66 @@ export default function DocumentaryMaker() {
                 
                 return (
                   <div key={step.id} className="flex items-center">
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-300",
-                      isComplete ? "bg-gradient-to-br from-green-400 to-emerald-600 text-white neon-glow" :
-                      isActive ? "bg-gradient-to-br from-orange-400 to-amber-600 text-white animate-pulse-glow" :
-                      "bg-card border border-border text-muted-foreground"
-                    )}>
-                      {isComplete ? <Check className="h-5 w-5" /> : <step.icon className="h-5 w-5" />}
+                    <div className="relative">
+                      {/* Glow ring for active step */}
+                      {isActive && (
+                        <div className="absolute inset-0 rounded-xl bg-orange-500/50 blur-md animate-pulse" />
+                      )}
+                      <div className={cn(
+                        "relative w-12 h-12 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-500 transform",
+                        isComplete ? "bg-gradient-to-br from-green-400 via-emerald-500 to-green-600 text-white shadow-lg shadow-green-500/40 scale-100" :
+                        isActive ? "bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/50 scale-110 animate-bounce-subtle" :
+                        "bg-card/80 border-2 border-border text-muted-foreground scale-95 opacity-60"
+                      )}>
+                        {isComplete ? <Check className="h-5 w-5 animate-in zoom-in duration-300" /> : <step.icon className="h-5 w-5" />}
+                      </div>
                     </div>
                     {i < steps.length - 1 && (
-                      <div className={cn(
-                        "w-8 h-0.5 mx-2 rounded-full transition-all duration-300",
-                        isComplete ? "bg-gradient-to-r from-green-400 to-emerald-600" : "bg-border"
-                      )} />
+                      <div className="relative w-12 h-1 mx-1">
+                        <div className="absolute inset-0 rounded-full bg-border" />
+                        <div 
+                          className={cn(
+                            "absolute inset-y-0 left-0 rounded-full transition-all duration-700",
+                            isComplete ? "bg-gradient-to-r from-green-400 to-emerald-500 w-full" : "w-0"
+                          )}
+                        />
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            <div className="relative h-3 bg-card rounded-full overflow-hidden border border-border">
+            
+            {/* Enhanced Progress Bar */}
+            <div className="relative h-4 bg-black/40 rounded-full overflow-hidden border border-white/10 shadow-inner">
+              {/* Background glow */}
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-full transition-all duration-500 animate-shimmer"
-                style={{ width: `${progress}%` }}
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-600/30 via-amber-500/20 to-transparent blur-sm transition-all duration-700"
+                style={{ width: `${Math.min(progress + 10, 100)}%` }}
               />
+              {/* Main progress fill */}
+              <div 
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progress}%` }}
+              >
+                {/* Animated shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine" />
+              </div>
+              {/* Leading edge glow */}
+              {progress > 0 && progress < 100 && (
+                <div 
+                  className="absolute top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-white/60 blur-sm animate-pulse"
+                  style={{ left: `calc(${progress}% - 8px)` }}
+                />
+              )}
+            </div>
+            
+            {/* Progress percentage */}
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-muted-foreground font-mono">{Math.round(progress)}%</span>
+              <span className="text-xs text-orange-400/80 font-medium">
+                {currentStep === "complete" ? "Complete!" : "Processing..."}
+              </span>
             </div>
             <div className="flex items-center justify-center gap-4 mt-3">
               <p className="text-sm text-orange-300 font-medium">
