@@ -56,11 +56,22 @@ Projects follow a 7-state workflow with resume capability:
 - **Session Persistence**: Generation state auto-saved to `generationSessions` table for resume on page refresh
 - **Collapsible Sidebar**: WorkspaceSidebar component with navigation (Create Documentary, Video Generated, Saved Videos)
 
+### Timeline Video Editor
+The platform includes a professional timeline-based video editor with:
+- **Timeline JSON as Single Source of Truth**: All edits stored in timeline.json schema with video, audio, and text tracks
+- **Drag-and-Drop Editing**: Clips can be dragged to reorder and repositioned on the timeline
+- **Clip Resizing**: Edge handles for adjusting clip duration by dragging left/right edges
+- **Clip Properties Panel**: Edit effects (Ken Burns, zoom, pan), volume, fade in/out, and text styling
+- **FFmpeg Backend Rendering**: `/api/timeline/render` endpoint converts timeline JSON to FFmpeg filter graphs
+- **Ken Burns Effects**: zoom_in, zoom_out, pan_left, pan_right, kenburns preset effects
+- **Text Overlays**: Customizable text with font size, color, and background box options
+
 ### Navigation Routes
 - `/` or `/create`: DocumentaryMaker - main creation interface with sidebar
 - `/projects`: Projects list page showing all documentaries with status and resume options
 - `/saved`: Saved Videos page showing completed videos from cloud storage
 - `/documentary-editor`: Read-only preview mode for generated documentaries
+- `/video-editor`: Timeline-based video editor with drag-and-drop functionality
 
 ### Project Structure
 ```
