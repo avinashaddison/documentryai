@@ -28,6 +28,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Play,
+  Pause,
   FileText,
   Volume2,
   Layers,
@@ -1496,7 +1497,7 @@ export default function DocumentaryMaker() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0"
+                          className="h-7 w-7 p-0 rounded-full bg-primary/20 hover:bg-primary/40"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleVoicePreview(option.value);
@@ -1504,9 +1505,9 @@ export default function DocumentaryMaker() {
                           data-testid={`button-preview-voice-${option.value}`}
                         >
                           {previewingVoice === option.value ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Pause className="h-3.5 w-3.5 text-primary" />
                           ) : (
-                            <Volume2 className="h-3 w-3" />
+                            <Play className="h-3.5 w-3.5 text-primary ml-0.5" />
                           )}
                         </Button>
                       </div>
