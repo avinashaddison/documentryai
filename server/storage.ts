@@ -15,6 +15,8 @@ import {
   type InsertGeneratedAsset,
   type GenerationSession,
   type InsertGenerationSession,
+  type ProjectResearch,
+  type InsertProjectResearch,
   users,
   projects,
   chapters,
@@ -22,7 +24,8 @@ import {
   generationLogs,
   storyFrameworks,
   generatedAssets,
-  generationSessions
+  generationSessions,
+  projectResearch
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -62,6 +65,11 @@ export interface IStorage {
   getActiveGenerationSession(projectId: number): Promise<GenerationSession | undefined>;
   updateGenerationSession(id: number, updates: Partial<GenerationSession>): Promise<GenerationSession | undefined>;
   deleteGenerationSession(id: number): Promise<void>;
+  
+  // Project Research
+  createProjectResearch(research: InsertProjectResearch): Promise<ProjectResearch>;
+  getProjectResearch(projectId: number): Promise<ProjectResearch | undefined>;
+  updateProjectResearch(id: number, updates: Partial<ProjectResearch>): Promise<ProjectResearch | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -245,6 +253,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGenerationSession(id: number): Promise<void> {
     await db.delete(generationSessions).where(eq(generationSessions.id, id));
+  }
+
+  // Project Research
+  async createProjectResearch(research: InsertProjectResearch): Promise<ProjectResearch> {
+    const result = await db.insert(projectResearch).values(research).returning();
+    return result[0];
+  }
+
+  async getProjectResearch(projectId: number): Promise<ProjectResearch | undefined> {
+    const result = await db.select().from(projectResearch).where(eq(projectResearch.projectId, projectId));
+    return result[0];
+  }
+
+  async updateProjectResearch(id: number, updates: Partial<ProjectResearch>): Promise<ProjectResearch | undefined> {
+    const result = await db
+      .update(projectResearch)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projectResearch.id, id))
+      .returning();
+    return result[0];
   }
 }
 

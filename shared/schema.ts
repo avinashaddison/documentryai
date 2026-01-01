@@ -25,6 +25,7 @@ export const projects = pgTable("projects", {
   imageModel: text("image_model").notNull(),
   scriptModel: text("script_model").notNull(),
   status: text("status").notNull().default("draft"),
+  state: text("state").notNull().default("CREATED"), // CREATED | RESEARCH_DONE | SCRIPT_DONE | IMAGES_DONE | AUDIO_DONE | EDITOR_APPROVED | RENDERED
   currentStep: integer("current_step").notNull().default(0),
   progress: integer("progress").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -159,6 +160,27 @@ export const storyFrameworks = pgTable("story_frameworks", {
   approved: boolean("approved").default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const projectResearch = pgTable("project_research", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  researchQueries: text("research_queries"), // JSON array of expanded queries
+  sources: text("sources"), // JSON array of sources with citations
+  researchSummary: text("research_summary"), // JSON summary with timeline, facts, controversies
+  status: text("status").notNull().default("pending"), // pending | in_progress | completed | failed
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertProjectResearchSchema = createInsertSchema(projectResearch).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProjectResearch = z.infer<typeof insertProjectResearchSchema>;
+export type ProjectResearch = typeof projectResearch.$inferSelect;
 
 export const insertStoryFrameworkSchema = createInsertSchema(storyFrameworks).omit({
   id: true,
