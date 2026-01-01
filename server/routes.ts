@@ -1169,5 +1169,127 @@ export async function registerRoutes(
     }
   });
 
+  // ============ Background Generation Jobs ============
+  
+  // Start a background generation job
+  app.post("/api/projects/:id/generate-background", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { totalChapters = 5, config = {} } = req.body;
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+      
+      // Check for existing active job
+      const existingJob = await storage.getActiveGenerationJob(projectId);
+      if (existingJob) {
+        res.json({ 
+          job: existingJob,
+          message: "Existing job found" 
+        });
+        return;
+      }
+      
+      // Create new job
+      const job = await storage.createGenerationJob({
+        projectId,
+        status: "queued",
+        totalChapters,
+        configData: JSON.stringify(config),
+      });
+      
+      res.json({ 
+        job,
+        message: "Job queued successfully" 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get active generation job for a project
+  app.get("/api/projects/:id/job", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const job = await storage.getActiveGenerationJob(projectId);
+      
+      if (!job) {
+        res.json({ job: null });
+        return;
+      }
+      
+      // Calculate elapsed time
+      const now = new Date();
+      const startedAt = job.startedAt ? new Date(job.startedAt) : null;
+      const elapsedSeconds = startedAt ? Math.floor((now.getTime() - startedAt.getTime()) / 1000) : 0;
+      
+      // Parse state data for additional info
+      let stateInfo = null;
+      if (job.stateData) {
+        try {
+          stateInfo = JSON.parse(job.stateData);
+        } catch (e) {}
+      }
+      
+      res.json({ 
+        job: {
+          ...job,
+          elapsedSeconds,
+          elapsedFormatted: formatElapsedTime(elapsedSeconds),
+          stateInfo,
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Get job by ID
+  app.get("/api/generation-jobs/:jobId", async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.jobId);
+      const job = await storage.getGenerationJob(jobId);
+      
+      if (!job) {
+        res.status(404).json({ error: "Job not found" });
+        return;
+      }
+      
+      // Calculate elapsed time
+      const now = new Date();
+      const startedAt = job.startedAt ? new Date(job.startedAt) : null;
+      const finishedAt = job.finishedAt ? new Date(job.finishedAt) : null;
+      const elapsedSeconds = startedAt 
+        ? Math.floor(((finishedAt || now).getTime() - startedAt.getTime()) / 1000) 
+        : 0;
+      
+      res.json({ 
+        job: {
+          ...job,
+          elapsedSeconds,
+          elapsedFormatted: formatElapsedTime(elapsedSeconds),
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
+}
+
+function formatElapsedTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  }
+  return `${secs}s`;
 }
