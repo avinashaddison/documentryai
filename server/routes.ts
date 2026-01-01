@@ -1104,22 +1104,80 @@ export async function registerRoutes(
     }
   });
 
-  // Get saved videos (rendered projects)
+  // Get saved videos from object storage
   app.get("/api/saved-videos", async (req, res) => {
     try {
+      const savedVideos: any[] = [];
+      
+      // First, get videos from object storage
+      const publicSearchPaths = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",").map(p => p.trim()).filter(Boolean);
+      
+      if (publicSearchPaths.length > 0) {
+        try {
+          const pathParts = publicSearchPaths[0].split("/").filter(Boolean);
+          const bucketName = pathParts[0];
+          const basePath = pathParts.slice(1).join("/");
+          
+          const bucket = objectStorageClient.bucket(bucketName);
+          const videosPath = basePath ? `${basePath}/videos/` : "videos/";
+          
+          const [files] = await bucket.getFiles({ prefix: videosPath });
+          
+          for (const file of files) {
+            if (file.name.endsWith(".mp4")) {
+              const [metadata] = await file.getMetadata();
+              const projectIdMatch = file.name.match(/project_(\d+)_/);
+              const projectId = projectIdMatch ? parseInt(projectIdMatch[1]) : 0;
+              
+              // Construct the full video URL preserving the storage path
+              // file.name is the full path within the bucket (e.g., "public/videos/project_1_documentary.mp4")
+              const videoUrl = `/objects/public/${file.name}`;
+              
+              savedVideos.push({
+                id: projectId || Math.floor(Math.random() * 10000),
+                projectId: projectId,
+                title: (metadata.metadata?.title as string) || `Documentary ${projectId}`,
+                videoUrl: videoUrl,
+                thumbnailUrl: null,
+                duration: null,
+                size: parseInt(String(metadata.size) || "0"),
+                createdAt: metadata.timeCreated || new Date().toISOString(),
+                source: "cloud"
+              });
+            }
+          }
+        } catch (storageErr) {
+          console.error("[SavedVideos] Object storage error:", storageErr);
+        }
+      }
+      
+      // Also check for locally rendered videos from RENDERED projects
       const projects = await storage.getAllProjects();
       const renderedProjects = projects.filter(p => p.status === "RENDERED");
       
-      const savedVideos = renderedProjects.map(p => ({
-        id: p.id,
-        projectId: p.id,
-        title: p.title,
-        videoUrl: `/generated_videos/project_${p.id}_documentary.mp4`,
-        thumbnailUrl: null,
-        duration: null,
-        size: null,
-        createdAt: p.createdAt,
-      }));
+      for (const p of renderedProjects) {
+        // Skip if already in cloud storage
+        if (savedVideos.some(v => v.projectId === p.id)) continue;
+        
+        const localPath = path.join(process.cwd(), `generated_videos/project_${p.id}_documentary.mp4`);
+        if (fs.existsSync(localPath)) {
+          const stats = fs.statSync(localPath);
+          savedVideos.push({
+            id: p.id,
+            projectId: p.id,
+            title: p.title,
+            videoUrl: `/generated_videos/project_${p.id}_documentary.mp4`,
+            thumbnailUrl: null,
+            duration: null,
+            size: stats.size,
+            createdAt: p.createdAt,
+            source: "local"
+          });
+        }
+      }
+      
+      // Sort by creation date, newest first
+      savedVideos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       res.json(savedVideos);
     } catch (error: any) {
@@ -1420,6 +1478,38 @@ export async function registerRoutes(
         console.warn("[RenderVideo] Cleanup warning:", cleanupErr);
       }
       
+      // Upload video to object storage
+      let objectStorageUrl = "";
+      try {
+        const publicSearchPaths = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",").map(p => p.trim()).filter(Boolean);
+        if (publicSearchPaths.length > 0) {
+          const videoBuffer = await fs.promises.readFile(outputPath);
+          const videoFileName = `videos/project_${projectId}_documentary.mp4`;
+          
+          const pathParts = publicSearchPaths[0].split("/").filter(Boolean);
+          const bucketName = pathParts[0];
+          const basePath = pathParts.slice(1).join("/");
+          
+          const bucket = objectStorageClient.bucket(bucketName);
+          const fullPath = basePath ? `${basePath}/${videoFileName}` : videoFileName;
+          const file = bucket.file(fullPath);
+          
+          await file.save(videoBuffer, {
+            contentType: "video/mp4",
+            metadata: {
+              projectId: projectId.toString(),
+              title: title || `Documentary ${projectId}`,
+              createdAt: new Date().toISOString()
+            }
+          });
+          
+          objectStorageUrl = `/objects/public/${videoFileName}`;
+          console.log(`[RenderVideo] Uploaded to object storage: ${objectStorageUrl}`);
+        }
+      } catch (uploadErr) {
+        console.error("[RenderVideo] Object storage upload failed:", uploadErr);
+      }
+      
       // Update project status to RENDERED
       await storage.updateProject(projectId, { status: "RENDERED" });
       
@@ -1427,8 +1517,9 @@ export async function registerRoutes(
       
       res.json({
         success: true,
-        videoUrl: `/generated_videos/project_${projectId}_documentary.mp4`,
-        message: "Video rendered successfully"
+        videoUrl: objectStorageUrl || `/generated_videos/project_${projectId}_documentary.mp4`,
+        objectStorageUrl,
+        message: "Video rendered and saved to library"
       });
     } catch (error: any) {
       console.error("[RenderVideo] Error:", error);

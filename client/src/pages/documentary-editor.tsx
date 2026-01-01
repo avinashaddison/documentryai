@@ -1206,10 +1206,56 @@ export default function DocumentaryEditor() {
           </ResizablePanel>
         </ResizablePanelGroup>
 
-        {/* Export Progress Overlay */}
+        {/* Export Progress Overlay with Light Streak Animation */}
         {(isExporting || exportStatus === "error" || exportStatus === "complete") && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-[#1a1f26] rounded-xl p-8 max-w-md w-full mx-4 border border-[#2a3040]">
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 overflow-hidden">
+            {/* Animated Light Streaks - Only during rendering */}
+            {isExporting && exportStatus === "processing" && (
+              <>
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute h-[2px] bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-70"
+                      style={{
+                        top: `${10 + i * 12}%`,
+                        left: "-100%",
+                        width: "200%",
+                        animation: `lightStreak ${0.8 + i * 0.15}s linear infinite`,
+                        animationDelay: `${i * 0.1}s`,
+                      }}
+                    />
+                  ))}
+                  {[...Array(6)].map((_, i) => (
+                    <div
+                      key={`v-${i}`}
+                      className="absolute w-[2px] bg-gradient-to-b from-transparent via-amber-400 to-transparent opacity-50"
+                      style={{
+                        left: `${15 + i * 15}%`,
+                        top: "-100%",
+                        height: "200%",
+                        animation: `lightStreakVertical ${1.2 + i * 0.2}s linear infinite`,
+                        animationDelay: `${i * 0.15}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="absolute inset-0 bg-gradient-radial from-orange-500/10 via-transparent to-transparent animate-pulse pointer-events-none" />
+              </>
+            )}
+            
+            <style>{`
+              @keyframes lightStreak {
+                0% { transform: translateX(-50%); }
+                100% { transform: translateX(100%); }
+              }
+              @keyframes lightStreakVertical {
+                0% { transform: translateY(-50%); }
+                100% { transform: translateY(100%); }
+              }
+            `}</style>
+            
+            <div className="bg-[#1a1f26]/95 backdrop-blur-xl rounded-xl p-8 max-w-md w-full mx-4 border border-orange-500/30 shadow-2xl shadow-orange-500/20 relative z-10">
               <div className="text-center">
                 {exportStatus === "error" ? (
                   <>
@@ -1222,32 +1268,48 @@ export default function DocumentaryEditor() {
                   </>
                 ) : exportStatus === "complete" ? (
                   <>
-                    <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <Download className="h-6 w-6 text-green-500" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center ring-4 ring-green-500/30">
+                      <Download className="h-8 w-8 text-green-500" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">Export Complete!</h3>
-                    <p className="text-sm text-gray-400 mb-4">Your video is ready</p>
-                    <div className="flex gap-2 justify-center">
+                    <h3 className="text-xl font-semibold mb-2">Export Complete!</h3>
+                    <p className="text-sm text-gray-400 mb-6">Your video has been saved to the library</p>
+                    <div className="flex gap-3 justify-center">
                       {exportedVideoUrl && (
-                        <Button asChild className="bg-gradient-to-r from-orange-500 to-amber-600">
+                        <Button asChild className="bg-gradient-to-r from-orange-500 to-amber-600 shadow-lg shadow-orange-500/25">
                           <a href={exportedVideoUrl} target="_blank" rel="noopener noreferrer">
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </a>
                         </Button>
                       )}
-                      <Button onClick={() => setExportStatus("idle")} variant="outline">
+                      <Button onClick={() => setExportStatus("idle")} variant="outline" className="border-gray-600">
                         Close
                       </Button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Loader2 className="h-12 w-12 mx-auto text-orange-500 animate-spin mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Rendering Video</h3>
-                    <p className="text-sm text-gray-400 mb-4">This may take a few minutes...</p>
-                    <Progress value={exportProgress} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-2">{exportProgress}% complete</p>
+                    <div className="relative w-20 h-20 mx-auto mb-6">
+                      <div className="absolute inset-0 rounded-full border-4 border-orange-500/20" />
+                      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-500 animate-spin" />
+                      <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-amber-400 animate-spin" style={{ animationDuration: "0.6s", animationDirection: "reverse" }} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-lg font-bold text-orange-500">{exportProgress}%</span>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">Rendering Video</h3>
+                    <p className="text-sm text-gray-400 mb-6">Processing your documentary...</p>
+                    <div className="relative h-3 bg-[#0a0d14] rounded-full overflow-hidden">
+                      <div 
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 rounded-full transition-all duration-300"
+                        style={{ width: `${exportProgress}%` }}
+                      />
+                      <div 
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 rounded-full animate-pulse"
+                        style={{ width: `${exportProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">This may take a few minutes</p>
                   </>
                 )}
               </div>

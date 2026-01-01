@@ -26,6 +26,7 @@ interface SavedVideo {
   duration?: number;
   size?: number;
   createdAt: string;
+  source?: "cloud" | "local";
 }
 
 export default function SavedVideos() {
@@ -117,8 +118,8 @@ export default function SavedVideos() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="h-12 w-12 text-muted-foreground" />
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a1f26] to-[#0a0d14]">
+                        <Film className="h-12 w-12 text-orange-500/50" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -131,6 +132,16 @@ export default function SavedVideos() {
                         <Play className="h-5 w-5 ml-0.5" />
                       </Button>
                     </div>
+                    {/* Source badge */}
+                    <Badge className={cn(
+                      "absolute top-2 left-2 text-[10px] gap-1",
+                      video.source === "cloud" 
+                        ? "bg-blue-500/80 text-white" 
+                        : "bg-gray-600/80 text-white"
+                    )}>
+                      {video.source === "cloud" ? <Cloud className="h-3 w-3" /> : <HardDrive className="h-3 w-3" />}
+                      {video.source === "cloud" ? "Cloud" : "Local"}
+                    </Badge>
                     {video.duration && (
                       <Badge className="absolute bottom-2 right-2 bg-black/70 text-white text-xs">
                         {formatDuration(video.duration)}
