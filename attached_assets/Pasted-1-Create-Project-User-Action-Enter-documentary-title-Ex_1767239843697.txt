@@ -1,0 +1,195 @@
+1️⃣ Create Project
+
+User Action
+
+Enter documentary title
+Example: “The History of Ancient Rome”
+
+System
+
+Create project_id
+
+Initialize folders
+
+Set state = CREATED
+
+{
+  "title": "The History of Ancient Rome",
+  "state": "CREATED"
+}
+
+2️⃣ Research Phase (NEW – MUST COME FIRST)
+2.1 Research Query Expansion
+
+LLM: Claude
+
+Claude ONLY:
+
+Expands research questions
+
+Identifies timelines, eras, controversies
+
+NO storytelling, NO chapters
+
+Output:
+
+research_queries.json
+
+2.2 Deep Research Collection
+
+APIs
+
+Perplexity → cited & fresh sources
+
+Exa → long-form semantic articles
+
+Tavily → full text extraction
+
+Output:
+
+sources.json
+
+2.3 Research Analysis & Validation
+
+LLM: Claude (analysis mode)
+
+Claude generates:
+
+Chronological factual timeline
+
+Verified facts only
+
+Conflicting viewpoints (if any)
+
+research_summary.json
+
+
+✅ Gate Rule:
+If research fails → pipeline stops here.
+
+Set state → RESEARCH_DONE
+
+3️⃣ Story & Chapter Generation
+
+LLM: Claude
+
+Now (and only now):
+
+Generate documentary narrative
+
+Chapter-wise script
+
+Neutral, factual tone
+
+Duration-aware writing
+
+Output:
+
+chapters/chapter_01.json
+chapters/chapter_02.json
+
+
+Set state → SCRIPT_DONE
+
+4️⃣ Image Prompt + Image Generation
+
+Models (Selectable):
+
+Flux 1.1 Pro
+
+Ideogram
+
+Flow:
+
+Claude generates scene-wise image prompts
+
+Image model generates cinematic visuals
+
+8–15 images per chapter
+
+Output:
+
+images/chapter_01/scene_01.png
+
+
+Set state → IMAGES_DONE
+
+5️⃣ Voiceover Generation
+
+Voice API
+
+Deepgram – Mars Narrator
+
+Rules:
+
+Chapter-wise narration
+
+Documentary pacing (130–150 WPM)
+
+One audio file per chapter
+
+Output:
+
+audio/chapter_01.wav
+
+
+Set state → AUDIO_DONE
+
+6️⃣ Editor – Timeline Preview & Review
+
+Editor Role (IMPORTANT FIX)
+
+Read-only asset preview
+
+Timeline view (scene + audio sync)
+
+Allow:
+
+Scene reorder
+
+Duration adjust
+
+Image replace
+
+⚠️ Editor must NOT regenerate content
+
+Data source:
+
+timeline.json
+
+
+Set state → EDITOR_APPROVED
+
+7️⃣ Export / Render
+
+Renderer: FFmpeg
+
+Features:
+
+Ken Burns (pan + zoom)
+
+Cross-fade transitions
+
+Captions
+
+Chapter markers
+
+⏱️ Performance:
+
+~10–20 minutes render for 1-hour video
+
+Output:
+
+final/petr_documentary.mp4
+
+
+Set state → RENDERED
+
+🔁 STATE-BASED RESUME SYSTEM (MANDATORY)
+CREATED
+→ RESEARCH_DONE
+→ SCRIPT_DONE
+→ IMAGES_DONE
+→ AUDIO_DONE
+→ EDITOR_APPROVED
+→ RENDERED
