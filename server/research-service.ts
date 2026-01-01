@@ -406,6 +406,11 @@ export async function conductDeepResearch(
 
   // Phase 1: Initial broad research
   sseBroadcaster.emitProgress(projectId, jobId, "research", 5, "Generating research queries...");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "initial",
+    activityType: "phase_complete",
+    message: "Preparing research queries...",
+  });
   
   const initialQueries = await generateInitialQueries(title);
   allQueries.push(...initialQueries);
@@ -421,6 +426,16 @@ export async function conductDeepResearch(
     const query = priorityQueries[i];
     console.log(`[Research] Query ${i + 1}/${priorityQueries.length}: ${query.query.substring(0, 50)}...`);
     
+    // Emit query started
+    sseBroadcaster.emitResearchActivity(projectId, jobId, {
+      phase: "initial",
+      activityType: "query_started",
+      query: query.query,
+      queryIndex: i + 1,
+      totalQueries: priorityQueries.length,
+      message: `Searching: ${query.query}`,
+    });
+    
     sseBroadcaster.emitProgress(
       projectId, jobId, "research", 
       10 + Math.round((i / priorityQueries.length) * 25),
@@ -432,26 +447,33 @@ export async function conductDeepResearch(
     if (result.content) {
       allContent += `\n\n### ${query.category.toUpperCase()}: ${query.query}\n${result.content}`;
       
-      result.citations.forEach((url, idx) => {
-        allSources.push({
-          title: `Source ${allSources.length + 1}`,
-          url,
-          snippet: result.content.substring(0, 300),
-          relevance: 1 - (idx * 0.1),
-          query: query.query,
-        });
+      // Emit query completed
+      sseBroadcaster.emitResearchActivity(projectId, jobId, {
+        phase: "initial",
+        activityType: "query_completed",
+        query: query.query,
+        queryIndex: i + 1,
+        totalQueries: priorityQueries.length,
+        message: `Found ${result.citations.length} sources`,
       });
       
-      // Emit live event
-      sseBroadcaster.broadcast({
-        type: "log_entry",
-        projectId,
-        data: {
-          step: "research",
-          status: "discovery",
-          message: `Found ${result.citations.length} sources for "${query.category}"`,
-          timestamp: new Date().toISOString(),
-        }
+      // Emit each source found
+      result.citations.forEach((url, idx) => {
+        const source = {
+          title: `Source ${allSources.length + 1}`,
+          url,
+          snippet: result.content.substring(0, 200),
+          relevance: 1 - (idx * 0.1),
+          query: query.query,
+        };
+        allSources.push(source);
+        
+        sseBroadcaster.emitResearchActivity(projectId, jobId, {
+          phase: "initial",
+          activityType: "source_found",
+          source: { title: source.title, url: source.url, snippet: source.snippet.substring(0, 100) },
+          message: `Source: ${url.substring(0, 60)}...`,
+        });
       });
     }
     
@@ -460,15 +482,35 @@ export async function conductDeepResearch(
   }
 
   console.log(`[Research] Initial research complete. ${allSources.length} sources collected.`);
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "initial",
+    activityType: "phase_complete",
+    message: `Initial research complete: ${allSources.length} sources collected`,
+  });
   
   // Phase 2: Extract subtopics and do deep dive (only for medium/deep)
   let subtopics: string[] = [];
   
   if (depth !== "shallow") {
     sseBroadcaster.emitProgress(projectId, jobId, "research", 40, "Analyzing findings for deep dive...");
+    sseBroadcaster.emitResearchActivity(projectId, jobId, {
+      phase: "deep",
+      activityType: "phase_complete",
+      message: "Analyzing initial findings for deeper investigation...",
+    });
     
     subtopics = await extractSubtopics(title, allContent);
     console.log(`[Research] Identified ${subtopics.length} subtopics for deep dive`);
+    
+    // Emit each subtopic identified
+    subtopics.forEach((subtopic, idx) => {
+      sseBroadcaster.emitResearchActivity(projectId, jobId, {
+        phase: "deep",
+        activityType: "subtopic_identified",
+        subtopic,
+        message: `Subtopic ${idx + 1}: ${subtopic}`,
+      });
+    });
     
     if (depth === "deep" && subtopics.length > 0) {
       sseBroadcaster.emitProgress(projectId, jobId, "research", 45, `Deep diving into ${subtopics.length} subtopics...`);
@@ -483,6 +525,16 @@ export async function conductDeepResearch(
         const query = selectedDeepQueries[i];
         console.log(`[Research] Deep query ${i + 1}/${selectedDeepQueries.length}: ${query.query.substring(0, 50)}...`);
         
+        // Emit deep dive query started
+        sseBroadcaster.emitResearchActivity(projectId, jobId, {
+          phase: "deep",
+          activityType: "query_started",
+          query: query.query,
+          queryIndex: i + 1,
+          totalQueries: selectedDeepQueries.length,
+          message: `Deep dive: ${query.query}`,
+        });
+        
         sseBroadcaster.emitProgress(
           projectId, jobId, "research",
           50 + Math.round((i / selectedDeepQueries.length) * 20),
@@ -494,25 +546,32 @@ export async function conductDeepResearch(
         if (result.content) {
           allContent += `\n\n### DEEP DIVE - ${query.category}: ${query.query}\n${result.content}`;
           
-          result.citations.forEach((url, idx) => {
-            allSources.push({
-              title: `Deep Source ${allSources.length + 1}`,
-              url,
-              snippet: result.content.substring(0, 300),
-              relevance: 0.9 - (idx * 0.1),
-              query: query.query,
-            });
+          // Emit query completed
+          sseBroadcaster.emitResearchActivity(projectId, jobId, {
+            phase: "deep",
+            activityType: "query_completed",
+            query: query.query,
+            queryIndex: i + 1,
+            totalQueries: selectedDeepQueries.length,
+            message: `Deep dive found ${result.citations.length} sources`,
           });
           
-          sseBroadcaster.broadcast({
-            type: "log_entry",
-            projectId,
-            data: {
-              step: "research",
-              status: "deep_discovery",
-              message: `Deep dive: Found ${result.citations.length} sources for "${query.category}"`,
-              timestamp: new Date().toISOString(),
-            }
+          result.citations.forEach((url, idx) => {
+            const source = {
+              title: `Deep Source ${allSources.length + 1}`,
+              url,
+              snippet: result.content.substring(0, 200),
+              relevance: 0.9 - (idx * 0.1),
+              query: query.query,
+            };
+            allSources.push(source);
+            
+            sseBroadcaster.emitResearchActivity(projectId, jobId, {
+              phase: "deep",
+              activityType: "source_found",
+              source: { title: source.title, url: source.url, snippet: source.snippet.substring(0, 100) },
+              message: `Deep source: ${url.substring(0, 60)}...`,
+            });
           });
         }
         
@@ -522,31 +581,58 @@ export async function conductDeepResearch(
   }
 
   console.log(`[Research] Total sources collected: ${allSources.length}`);
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "deep",
+    activityType: "phase_complete",
+    message: `Deep research complete: ${allSources.length} total sources`,
+  });
   
   // Phase 3: Extract structured facts
   sseBroadcaster.emitProgress(projectId, jobId, "research", 75, "Extracting verified facts...");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "synthesis",
+    activityType: "phase_complete",
+    message: "Extracting verified facts from research...",
+  });
   
   const facts = await extractStructuredFacts(title, allContent, allSources);
   console.log(`[Research] Extracted ${facts.length} structured facts`);
   
-  sseBroadcaster.broadcast({
-    type: "log_entry",
-    projectId,
-    data: {
-      step: "research",
-      status: "facts_extracted",
-      message: `Extracted ${facts.length} verified facts from research`,
-      timestamp: new Date().toISOString(),
-    }
+  // Emit each extracted fact
+  facts.slice(0, 10).forEach((fact, idx) => {
+    sseBroadcaster.emitResearchActivity(projectId, jobId, {
+      phase: "synthesis",
+      activityType: "fact_extracted",
+      fact: { claim: fact.claim, confidence: fact.confidence, category: fact.category },
+      message: `Fact ${idx + 1}: ${fact.claim.substring(0, 80)}...`,
+    });
   });
+  
+  if (facts.length > 10) {
+    sseBroadcaster.emitResearchActivity(projectId, jobId, {
+      phase: "synthesis",
+      activityType: "fact_extracted",
+      message: `...and ${facts.length - 10} more facts extracted`,
+    });
+  }
 
   // Phase 4: Create comprehensive summary
   sseBroadcaster.emitProgress(projectId, jobId, "research", 85, "Creating research summary...");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "synthesis",
+    activityType: "phase_complete",
+    message: "Creating comprehensive research summary...",
+  });
   
   const summary = await createResearchSummary(title, allContent, facts);
   console.log(`[Research] Summary created with ${summary.timeline.length} timeline events`);
 
   sseBroadcaster.emitProgress(projectId, jobId, "research", 95, "Research complete!");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "synthesis",
+    activityType: "phase_complete",
+    message: `Research complete! ${facts.length} facts, ${summary.timeline.length} timeline events, ${allSources.length} sources`,
+  });
   
   return {
     queries: allQueries,
