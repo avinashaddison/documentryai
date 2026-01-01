@@ -111,6 +111,111 @@ Respond ONLY with valid JSON.`;
   }
 }
 
+export interface ResearchContext {
+  timeline?: Array<{ date: string; event: string; significance: string }>;
+  keyFacts?: Array<{ fact: string; source: string; verified: boolean }>;
+  controversies?: Array<{ topic: string; perspectives: string[] }>;
+  mainCharacters?: Array<{ name: string; role: string; significance: string }>;
+}
+
+export async function generateChapterScriptWithResearch(
+  documentaryTitle: string,
+  premise: string,
+  chapterNumber: number,
+  totalChapters: number,
+  researchContext: ResearchContext,
+  chapterTitle?: string
+): Promise<ChapterScript> {
+  const timelineText = researchContext.timeline?.length 
+    ? `VERIFIED TIMELINE:\n${researchContext.timeline.map(t => `- ${t.date}: ${t.event}`).join('\n')}`
+    : '';
+  
+  const factsText = researchContext.keyFacts?.length
+    ? `KEY FACTS (use these in narration):\n${researchContext.keyFacts.map(f => `- ${f.fact}`).join('\n')}`
+    : '';
+    
+  const charactersText = researchContext.mainCharacters?.length
+    ? `KEY FIGURES:\n${researchContext.mainCharacters.map(c => `- ${c.name}: ${c.role}`).join('\n')}`
+    : '';
+
+  const prompt = `You are writing Chapter ${chapterNumber} of ${totalChapters} for a premium historical documentary titled: "${documentaryTitle}"
+
+Premise: ${premise}
+
+${chapterTitle ? `This chapter is about: ${chapterTitle}` : ''}
+
+RESEARCH DATA (MUST use these verified facts - do not invent information):
+${timelineText}
+${factsText}
+${charactersText}
+
+STYLE GUIDE (Match "Grand Manors" / "Old Money Dynasty" documentary channels):
+
+NARRATION STYLE:
+- Write for a deep, authoritative male narrator with measured pacing
+- Use short, punchy sentences mixed with longer descriptive passages
+- Include specific dates, numbers, names, and historical facts FROM THE RESEARCH DATA
+- Build tension through rhetorical questions: "But what happened next would change everything."
+- Create dramatic reveals: "Behind the gilded facade, a darker truth waited."
+- Use natural pause points: "The answer... was far more troubling than anyone imagined."
+- Present tense for immediacy, past tense for historical context
+- CRITICAL: Only use facts from the research data. Do not invent dates, names, or events.
+
+IMAGE PROMPTS (for Ken Burns-style documentary):
+- Historical archival photographs and period images
+- Architectural exterior shots of mansions, buildings, estates
+- Interior details: grand staircases, ornate rooms, period furniture
+- Portraits and formal photographs of the era
+- Dramatic landscapes with atmospheric lighting
+- Document close-ups: newspapers, letters, photographs
+- All images should work with slow zoom/pan (Ken Burns effect)
+
+Generate this chapter's complete script with scene breakdowns. Each scene should be 15-25 seconds of narration.
+
+Respond in JSON format:
+{
+  "chapterNumber": ${chapterNumber},
+  "title": "Chapter title",
+  "narration": "The complete narration text for this chapter (2-4 minutes of speaking, ~400-600 words). Write in measured, authoritative documentary style with natural pauses.",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "imagePrompt": "Detailed cinematic image prompt optimized for Ken Burns effect.",
+      "duration": 18,
+      "narrationSegment": "The portion of narration that plays over this image.",
+      "mood": "mysterious/dramatic/revelatory/somber/triumphant/ominous/contemplative",
+      "shotType": "wide establishing / architectural detail / portrait / interior grand / document closeup / landscape atmospheric"
+    }
+  ],
+  "estimatedDuration": 180
+}
+
+Create 8-12 scenes for this chapter.
+
+Respond ONLY with valid JSON.`;
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-5",
+    max_tokens: 4096,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") {
+    throw new Error("Unexpected response format");
+  }
+
+  try {
+    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return JSON.parse(content.text);
+  } catch (e) {
+    throw new Error("Failed to parse chapter script");
+  }
+}
+
 export async function generateChapterScript(
   documentaryTitle: string,
   premise: string,

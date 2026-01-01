@@ -18,6 +18,7 @@ import { generateChapterVoiceover, generateSceneVoiceover, getAvailableVoices } 
 import { runAutopilotGeneration, generateSceneAssets, getGenerationStatus, resumeGeneration } from "./autopilot-generator";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+import { conductFullResearch } from "./research-service";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -137,6 +138,96 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       await storage.deleteProject(id);
       res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:id/research", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      let research = await storage.getProjectResearch(id);
+      
+      if (!research) {
+        research = await storage.createProjectResearch({
+          projectId: id,
+          status: "in_progress",
+        });
+      } else if (research.status === "completed") {
+        return res.json({
+          success: true,
+          research: {
+            queries: JSON.parse(research.researchQueries || "[]"),
+            sources: JSON.parse(research.sources || "[]"),
+            summary: JSON.parse(research.researchSummary || "{}"),
+          }
+        });
+      } else {
+        await storage.updateProjectResearch(research.id, { status: "in_progress" });
+      }
+
+      res.json({ message: "Research started", projectId: id, researchId: research.id });
+
+      (async () => {
+        try {
+          const results = await conductFullResearch(project.title);
+          
+          await storage.updateProjectResearch(research!.id, {
+            researchQueries: JSON.stringify(results.queries),
+            sources: JSON.stringify(results.sources),
+            researchSummary: JSON.stringify(results.summary),
+            status: "completed",
+          });
+
+          await storage.updateProject(id, { state: "RESEARCH_DONE" });
+
+          await storage.createGenerationLog({
+            projectId: id,
+            step: "research",
+            status: "completed",
+            message: `Research complete: ${results.sources.length} sources, ${results.summary.keyFacts?.length || 0} facts`
+          });
+        } catch (error: any) {
+          await storage.updateProjectResearch(research!.id, {
+            status: "failed",
+            errorMessage: error.message,
+          });
+          await storage.createGenerationLog({
+            projectId: id,
+            step: "research",
+            status: "failed",
+            message: error.message
+          });
+        }
+      })();
+
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/projects/:id/research", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const research = await storage.getProjectResearch(id);
+      
+      if (!research) {
+        return res.json({ status: "not_started" });
+      }
+
+      res.json({
+        status: research.status,
+        queries: research.researchQueries ? JSON.parse(research.researchQueries) : [],
+        sources: research.sources ? JSON.parse(research.sources) : [],
+        summary: research.researchSummary ? JSON.parse(research.researchSummary) : {},
+        error: research.errorMessage,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
