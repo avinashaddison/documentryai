@@ -1298,6 +1298,144 @@ export async function registerRoutes(
     }
   });
 
+  // Render video endpoint - exports documentary to MP4
+  app.post("/api/render-video", async (req, res) => {
+    try {
+      const { projectId, title, chapters } = req.body;
+      
+      if (!projectId || !chapters || !Array.isArray(chapters)) {
+        res.status(400).json({ error: "Missing projectId or chapters" });
+        return;
+      }
+      
+      console.log(`[RenderVideo] Starting render for project ${projectId} with ${chapters.length} chapters`);
+      
+      // Create directories
+      const tempDir = path.join(process.cwd(), "temp_processing");
+      const outputDir = path.join(process.cwd(), "generated_videos");
+      const imagesDir = path.join(tempDir, `project_${projectId}_images`);
+      const audioDir = path.join(tempDir, `project_${projectId}_audio`);
+      
+      await fs.promises.mkdir(tempDir, { recursive: true });
+      await fs.promises.mkdir(outputDir, { recursive: true });
+      await fs.promises.mkdir(imagesDir, { recursive: true });
+      await fs.promises.mkdir(audioDir, { recursive: true });
+      
+      // Download images and audio, build project data for Python
+      const processedChapters: any[] = [];
+      
+      for (const chapter of chapters) {
+        const processedScenes: any[] = [];
+        
+        for (const scene of chapter.scenes || []) {
+          const imagePath = path.join(imagesDir, `ch${chapter.chapterNumber}_sc${scene.sceneNumber}.jpg`);
+          const audioPath = path.join(audioDir, `ch${chapter.chapterNumber}_sc${scene.sceneNumber}.wav`);
+          
+          // Download image from URL
+          if (scene.imageUrl) {
+            try {
+              const imageResponse = await fetch(scene.imageUrl);
+              if (imageResponse.ok) {
+                const buffer = Buffer.from(await imageResponse.arrayBuffer());
+                await fs.promises.writeFile(imagePath, buffer);
+                console.log(`[RenderVideo] Downloaded image: ${imagePath}`);
+              }
+            } catch (err) {
+              console.error(`[RenderVideo] Failed to download image for scene ${scene.sceneNumber}:`, err);
+            }
+          }
+          
+          // Download audio from object storage
+          if (scene.audioUrl) {
+            try {
+              const downloaded = await downloadAudioFromStorage(scene.audioUrl, audioPath);
+              if (downloaded) {
+                console.log(`[RenderVideo] Downloaded audio: ${audioPath}`);
+              }
+            } catch (err) {
+              console.error(`[RenderVideo] Failed to download audio for scene ${scene.sceneNumber}:`, err);
+            }
+          }
+          
+          processedScenes.push({
+            scene_number: scene.sceneNumber,
+            image_path: imagePath,
+            audio_path: fs.existsSync(audioPath) ? audioPath : "",
+            duration: scene.duration || 5,
+            ken_burns_effect: scene.kenBurnsEffect || "zoom_in"
+          });
+        }
+        
+        processedChapters.push({
+          chapter_number: chapter.chapterNumber,
+          title: chapter.title,
+          scenes: processedScenes
+        });
+      }
+      
+      const projectData = {
+        project_id: projectId,
+        title: title || `Documentary ${projectId}`,
+        chapters: processedChapters
+      };
+      
+      // Call Python video processor
+      const { spawn } = await import("child_process");
+      const outputPath = path.join(outputDir, `project_${projectId}_documentary.mp4`);
+      
+      // Format config for the Python script: assemble_full <json_config>
+      const configForPython = JSON.stringify({
+        project: projectData,
+        output: outputPath
+      });
+      
+      const pythonProcess = spawn("python", [
+        "server/python/video_processor.py",
+        "assemble_full",
+        configForPython
+      ]);
+      
+      let stderr = "";
+      pythonProcess.stderr.on("data", (data) => {
+        stderr += data.toString();
+        console.log(`[RenderVideo] Python: ${data.toString()}`);
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        pythonProcess.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Video processing failed: ${stderr}`));
+          }
+        });
+        pythonProcess.on("error", reject);
+      });
+      
+      // Clean up temp files
+      try {
+        await fs.promises.rm(imagesDir, { recursive: true, force: true });
+        await fs.promises.rm(audioDir, { recursive: true, force: true });
+      } catch (cleanupErr) {
+        console.warn("[RenderVideo] Cleanup warning:", cleanupErr);
+      }
+      
+      // Update project status to RENDERED
+      await storage.updateProject(projectId, { status: "RENDERED" });
+      
+      console.log(`[RenderVideo] Render complete: ${outputPath}`);
+      
+      res.json({
+        success: true,
+        videoUrl: `/generated_videos/project_${projectId}_documentary.mp4`,
+        message: "Video rendered successfully"
+      });
+    } catch (error: any) {
+      console.error("[RenderVideo] Error:", error);
+      res.status(500).json({ error: error.message || "Video rendering failed" });
+    }
+  });
+
   return httpServer;
 }
 
