@@ -7,7 +7,7 @@ interface SSEClient {
 }
 
 interface SSEEvent {
-  type: "job_status" | "chapter_generated" | "scene_image_generated" | "audio_generated" | "progress_update" | "log_entry" | "research_activity";
+  type: "job_status" | "chapter_generated" | "scene_image_generated" | "audio_generated" | "progress_update" | "log_entry" | "research_activity" | "outline_generated" | "framework_generated";
   projectId: number;
   jobId?: number;
   data: any;
@@ -34,6 +34,8 @@ interface ProjectState {
   images?: Record<string, string>;
   audio?: Record<string, string>;
   researchActivities?: ResearchActivity[];
+  outline?: string[];
+  framework?: any;
 }
 
 class SSEBroadcaster {
@@ -100,6 +102,16 @@ class SSEBroadcaster {
         state.researchActivities.forEach(activity => {
           this.sendToClient(clientId, { type: "research_activity", projectId, data: activity });
         });
+      }
+      
+      // Send cached outline if any
+      if (state.outline && state.outline.length > 0) {
+        this.sendToClient(clientId, { type: "outline_generated", projectId, data: { outline: state.outline, totalChapters: state.outline.length } });
+      }
+      
+      // Send cached framework if any
+      if (state.framework) {
+        this.sendToClient(clientId, { type: "framework_generated", projectId, data: { framework: state.framework } });
       }
     }
     
@@ -179,6 +191,10 @@ class SSEBroadcaster {
       if (state.researchActivities.length > 50) {
         state.researchActivities = state.researchActivities.slice(-50);
       }
+    } else if (event.type === "outline_generated") {
+      state.outline = event.data.outline;
+    } else if (event.type === "framework_generated") {
+      state.framework = event.data.framework;
     }
     
     this.clients.forEach((client, clientId) => {
@@ -198,6 +214,29 @@ class SSEBroadcaster {
         title: chapter.title,
         scenesCount: chapter.scenes?.length || 0,
         chapter,
+      },
+    });
+  }
+
+  emitOutlineGenerated(projectId: number, jobId: number, outline: string[]) {
+    this.broadcast({
+      type: "outline_generated",
+      projectId,
+      jobId,
+      data: {
+        outline,
+        totalChapters: outline.length,
+      },
+    });
+  }
+
+  emitFrameworkGenerated(projectId: number, jobId: number, framework: any) {
+    this.broadcast({
+      type: "framework_generated",
+      projectId,
+      jobId,
+      data: {
+        framework,
       },
     });
   }

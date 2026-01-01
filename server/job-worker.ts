@@ -315,6 +315,9 @@ async function runFrameworkStep(projectId: number, totalChapters: number, state:
   
   state.framework = framework;
   
+  // Emit framework generated event via SSE
+  sseBroadcaster.emitFrameworkGenerated(projectId, processingJobId || 0, framework);
+  
   await storage.createGenerationLog({
     projectId,
     step: "framework",
@@ -347,6 +350,9 @@ async function runOutlineStep(projectId: number, totalChapters: number, state: G
   const outline = await generateChapterOutline(project.title, premise, openingHook, totalChapters);
   
   state.outline = outline;
+  
+  // Emit outline generated event via SSE
+  sseBroadcaster.emitOutlineGenerated(projectId, processingJobId || 0, outline);
   
   await storage.createGenerationLog({
     projectId,

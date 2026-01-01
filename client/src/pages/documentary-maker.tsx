@@ -206,13 +206,19 @@ export default function DocumentaryMaker() {
   const handleGenerateFramework = async () => {
     if (!title.trim()) return;
     
+    // Reset all state for fresh generation
     setFramework(null);
     setChapters([]);
     setGeneratedChapters([]);
+    setGeneratedImages({});
+    setGeneratedAudio({});
     setResearchData(null);
+    setResearchActivities([]);
+    setLiveEvents([]);
     setCurrentStep("research");
-    setProgress(2);
+    setProgress(0);
     
+    // Create the project
     const project = await createProjectMutation.mutateAsync({ 
       projectTitle: title, 
       chapterCount: totalChapters 
@@ -223,66 +229,41 @@ export default function DocumentaryMaker() {
     // Update URL with project ID so refresh preserves the session
     navigate(`/create/${id}`, { replace: true });
     
-    // Start research phase
+    // Immediately start the full background generation job with deep research
     try {
-      await fetch(`/api/projects/${id}/research`, { method: "POST" });
-      
-      // Poll for research completion
-      let researchComplete = false;
-      while (!researchComplete) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const researchRes = await fetch(`/api/projects/${id}/research`);
-        const researchStatus = await researchRes.json();
-        
-        if (researchStatus.status === "completed") {
-          setResearchData(researchStatus);
-          researchComplete = true;
-          setProgress(10);
-        } else if (researchStatus.status === "failed") {
-          console.error("Research failed:", researchStatus.error);
-          researchComplete = true;
-          setProgress(10);
-        }
-      }
-    } catch (error) {
-      console.error("Research error:", error);
-    }
-    
-    setCurrentStep("framework");
-    setProgress(12);
-    
-    const result = await generateFrameworkMutation.mutateAsync({ id, numChapters: totalChapters });
-    setFramework(result.storedFramework);
-    setProgress(18);
-    
-    setCurrentStep("outline");
-    const outlineResult = await generateOutlineMutation.mutateAsync({ 
-      id, 
-      numChapters: totalChapters 
-    });
-    setChapters(outlineResult.chapters);
-    setProgress(25);
-    setCurrentStep("idle");
-    
-    // Save outline to session immediately for restore on refresh
-    try {
-      await fetch(`/api/projects/${id}/session`, {
-        method: "PUT",
+      const res = await fetch(`/api/projects/${id}/generate-background`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: "in_progress",
-          currentStep: "images",
-          currentChapter: 1,
-          currentScene: 1,
           totalChapters,
-          totalScenes: 1,
-          completedImages: 0,
-          completedAudio: 0,
-          outlineData: JSON.stringify(outlineResult.chapters),
+          config: {
+            model: config.hookImageModel,
+            imageStyle: config.imageStyle,
+            imageSource: config.imageSource,
+            voice: config.narratorVoice,
+          },
         }),
       });
-    } catch (e) {
-      console.error("Failed to save outline to session:", e);
+      
+      if (!res.ok) {
+        throw new Error("Failed to start generation");
+      }
+      
+      const data = await res.json();
+      setActiveJob({
+        id: data.job.id,
+        status: data.job.status,
+        progress: 0,
+        currentStep: null,
+        completedSteps: [],
+        elapsedFormatted: "0s",
+        error: null,
+        stateInfo: null,
+      });
+      
+    } catch (error) {
+      console.error("Failed to start background generation:", error);
+      setCurrentStep("idle");
     }
   };
 
@@ -622,6 +603,16 @@ export default function DocumentaryMaker() {
       es.addEventListener("research_activity", (e) => {
         const data = JSON.parse(e.data) as ResearchActivity;
         setResearchActivities(prev => [...prev.slice(-49), data]);
+      });
+      
+      es.addEventListener("outline_generated", (e) => {
+        const data = JSON.parse(e.data);
+        setChapters(data.outline);
+      });
+      
+      es.addEventListener("framework_generated", (e) => {
+        const data = JSON.parse(e.data);
+        setFramework(data.framework);
       });
       
       es.onerror = () => {
