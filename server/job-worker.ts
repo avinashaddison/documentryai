@@ -394,9 +394,11 @@ async function runChaptersStep(
 
 async function runImagesStep(projectId: number, config: any, state: GenerationState) {
   console.log(`[JobWorker] Running images step for project ${projectId}`);
+  console.log(`[JobWorker] Config:`, JSON.stringify(config));
   
   const imageSource = config.imageSource || "stock";
   const isStockMode = imageSource === "stock";
+  console.log(`[JobWorker] Image source: ${imageSource}, isStockMode: ${isStockMode}`);
   
   await storage.createGenerationLog({
     projectId,
