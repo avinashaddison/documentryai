@@ -1,10 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { sseBroadcaster } from "./sse-broadcaster";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
+// Lazy initialization to ensure env vars are loaded
+let anthropicClient: Anthropic | null = null;
+
+function getAnthropicClient(): Anthropic {
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({
+      apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+    });
+  }
+  return anthropicClient;
+}
 
 export interface ResearchQuery {
   query: string;
@@ -86,7 +94,7 @@ Respond in JSON format:
 
 Respond ONLY with valid JSON.`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropicClient().messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
@@ -138,7 +146,7 @@ Respond in JSON format:
 
 Respond ONLY with valid JSON.`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropicClient().messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
@@ -238,7 +246,7 @@ Respond in JSON format:
 
 Respond ONLY with valid JSON.`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropicClient().messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
@@ -296,7 +304,7 @@ Prioritize facts that are:
 
 Respond ONLY with valid JSON.`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropicClient().messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
@@ -369,7 +377,7 @@ Include:
 
 Respond ONLY with valid JSON.`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropicClient().messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
