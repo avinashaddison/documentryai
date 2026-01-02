@@ -45,13 +45,4 @@ mockupState = "FULLSTACK"
 integrations = ["javascript_anthropic_ai_integrations:2.0.0", "javascript_object_storage:2.0.0"]
 
 [objectStorage]
-defaultBucketID = "replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7"
-
-[userenv]
-
-[userenv.shared]
-AI_INTEGRATIONS_ANTHROPIC_BASE_URL = "http://localhost:1106/modelfarm/anthropic"
-AI_INTEGRATIONS_ANTHROPIC_API_KEY = "_DUMMY_API_KEY_"
-DEFAULT_OBJECT_STORAGE_BUCKET_ID = "replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7"
-PUBLIC_OBJECT_SEARCH_PATHS = "/replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7/public"
-PRIVATE_OBJECT_DIR = "/replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7/.private"
+defaultBucketID = "replit-objstore-b8839db5-b47e-4fe0-89a6-b6bbf4d9e877"

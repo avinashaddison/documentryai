@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { 
   Sparkles, 
   Loader2, 
@@ -121,8 +120,7 @@ export default function DocumentaryMaker() {
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
-    imageSource: "stock" as "ai" | "stock",
-    deepResearch: true,
+    imageSource: "stock" as "ai" | "stock", // Default to stock photos (real images)
   });
   
   const [generationLogs, setGenerationLogs] = useState<Array<{
@@ -243,7 +241,6 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
-            deepResearch: config.deepResearch,
           },
         }),
       });
@@ -649,7 +646,6 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
-            deepResearch: config.deepResearch,
           },
         }),
       });
@@ -1053,7 +1049,7 @@ export default function DocumentaryMaker() {
             </div>
             <div className="flex items-center justify-center gap-4 mt-3">
               <p className="text-sm text-orange-300 font-medium">
-                {currentStep === "research" && (config.deepResearch ? "Researching topic with Perplexity AI..." : "Preparing research data...")}
+                {currentStep === "research" && "Researching topic with Perplexity AI..."}
                 {currentStep === "framework" && "Generating documentary framework with Claude..."}
                 {currentStep === "outline" && "Creating chapter outline..."}
                 {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
@@ -1338,27 +1334,6 @@ export default function DocumentaryMaker() {
               <span className="text-xs text-orange-300">
                 chapters (~{Math.round(totalChapters * 3)} min)
               </span>
-            </div>
-            
-            {/* Deep Research Toggle */}
-            <div className="flex items-center justify-between pt-4 border-t border-border/50">
-              <div className="flex items-center gap-3">
-                <Search className="h-5 w-5 text-orange-400" />
-                <div>
-                  <Label className="text-sm font-medium text-white">Deep Research</Label>
-                  <p className="text-xs text-muted-foreground">
-                    {config.deepResearch 
-                      ? "Uses Perplexity AI for comprehensive fact-finding" 
-                      : "Generates content without external research"}
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={config.deepResearch}
-                onCheckedChange={(checked) => setConfig({ ...config, deepResearch: checked })}
-                disabled={isGenerating}
-                data-testid="switch-deep-research"
-              />
             </div>
           </div>
         </div>
@@ -1693,6 +1668,7 @@ export default function DocumentaryMaker() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />

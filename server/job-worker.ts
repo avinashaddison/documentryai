@@ -100,12 +100,11 @@ async function processJob(job: GenerationJob) {
     
     const completedSteps = job.completedSteps || [];
     const config = job.configData ? JSON.parse(job.configData) : {};
-    const deepResearchEnabled = config.deepResearch !== false;
     
     // Step 1: Research
     if (!completedSteps.includes("research")) {
       await updateJobProgress(job.id, "research", 5);
-      await runResearchStep(job.projectId, job.id, state, deepResearchEnabled);
+      await runResearchStep(job.projectId, job.id, state);
       completedSteps.push("research");
       await saveJobState(job.id, state, completedSteps, 15);
     }
@@ -220,70 +219,11 @@ async function saveJobState(
   });
 }
 
-async function runResearchStep(projectId: number, jobId: number, state: GenerationState, deepResearchEnabled: boolean = true) {
-  console.log(`[JobWorker] Running research step for project ${projectId}, job ${jobId}, deepResearch: ${deepResearchEnabled}`);
+async function runResearchStep(projectId: number, jobId: number, state: GenerationState) {
+  console.log(`[JobWorker] Running DEEP research step for project ${projectId}, job ${jobId}`);
   
   const project = await storage.getProject(projectId);
   if (!project) throw new Error("Project not found");
-  
-  if (!deepResearchEnabled) {
-    console.log(`[JobWorker] Deep research disabled, skipping Perplexity research`);
-    
-    await storage.createGenerationLog({
-      projectId,
-      step: "research",
-      status: "completed",
-      message: "Deep research disabled - using AI generation without external research",
-    });
-    
-    const baseSummary = {
-      timeline: [],
-      keyFacts: [],
-      controversies: [],
-      mainCharacters: [],
-      statistics: [],
-      quotes: [],
-    };
-    
-    const emptySummary = {
-      ...baseSummary,
-      facts: [],
-      subtopics: [],
-      depth: "shallow" as const,
-    };
-    
-    state.research = {
-      queries: [],
-      sources: [],
-      summary: {
-        ...baseSummary,
-        facts: [],
-        subtopics: [],
-        depth: "shallow",
-      },
-      facts: [],
-    };
-    
-    const existingResearch = await storage.getProjectResearch(projectId);
-    const researchData = {
-      researchQueries: JSON.stringify([]),
-      sources: JSON.stringify([]),
-      researchSummary: JSON.stringify(emptySummary),
-      status: "completed" as const,
-    };
-    
-    if (existingResearch) {
-      await storage.updateProjectResearch(existingResearch.id, researchData);
-    } else {
-      await storage.createProjectResearch({
-        projectId,
-        ...researchData,
-      });
-    }
-    
-    await storage.updateProject(projectId, { state: "RESEARCH_DONE" });
-    return;
-  }
   
   await storage.createGenerationLog({
     projectId,
@@ -292,11 +232,12 @@ async function runResearchStep(projectId: number, jobId: number, state: Generati
     message: "Starting deep research phase with Perplexity AI...",
   });
   
+  // Use the new deep research function with proper job ID
   const researchResult = await conductDeepResearch(
     project.title,
     projectId,
     jobId,
-    "deep"
+    "deep" // Use deep research for comprehensive fact-gathering
   );
   
   // Save research with enhanced data
@@ -330,7 +271,6 @@ async function runResearchStep(projectId: number, jobId: number, state: Generati
       ...researchResult.summary,
       facts: researchResult.facts,
       subtopics: researchResult.subtopics,
-      depth: researchResult.depth,
     },
     facts: researchResult.facts,
   };

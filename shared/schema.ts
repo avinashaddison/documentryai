@@ -22,7 +22,6 @@ export const projects = pgTable("projects", {
   title: text("title").notNull(),
   chapterCount: integer("chapter_count").notNull(),
   voiceEnabled: boolean("voice_enabled").notNull().default(true),
-  deepResearch: boolean("deep_research").notNull().default(true),
   imageModel: text("image_model").notNull(),
   scriptModel: text("script_model").notNull(),
   status: text("status").notNull().default("draft"),
