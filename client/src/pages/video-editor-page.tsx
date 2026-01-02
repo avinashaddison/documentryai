@@ -1,5 +1,9 @@
 import { VideoEditor } from "@/components/editor/video-editor";
+import { useParams } from "wouter";
 
 export default function VideoEditorPage() {
-  return <VideoEditor />;
+  const params = useParams<{ projectId?: string }>();
+  const projectId = params.projectId ? parseInt(params.projectId, 10) : undefined;
+  
+  return <VideoEditor projectId={projectId} />;
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { 
   Play, 
   Pause, 
@@ -72,7 +72,11 @@ function generateId(): string {
   return `clip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-export function VideoEditor() {
+interface VideoEditorProps {
+  projectId?: number;
+}
+
+export function VideoEditor({ projectId }: VideoEditorProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [zoom, setZoom] = useState(100);
@@ -83,6 +87,7 @@ export function VideoEditor() {
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [activeSidebarTool, setActiveSidebarTool] = useState<string>('video');
+  const [projectLoaded, setProjectLoaded] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   
   const pixelsPerSecond = (zoom / 100) * 80;
@@ -92,22 +97,125 @@ export function VideoEditor() {
     fps: 30,
     duration: 30,
     tracks: {
-      video: [
-        { id: generateId(), src: "/sample/scene1.jpg", start: 0, duration: 8, effect: "zoom_in", fade_in: 0.5, fade_out: 0.5, blur: false },
-        { id: generateId(), src: "/sample/scene2.jpg", start: 8, duration: 7, effect: "pan_left", fade_in: 0.5, fade_out: 0.5, blur: false },
-        { id: generateId(), src: "/sample/scene3.jpg", start: 15, duration: 8, effect: "kenburns", fade_in: 0.5, fade_out: 0.5, blur: false },
-        { id: generateId(), src: "/sample/scene4.jpg", start: 23, duration: 7, effect: "zoom_out", fade_in: 0.5, fade_out: 0.5, blur: false },
-      ],
-      audio: [
-        { id: generateId(), src: "/sample/narration.wav", start: 0, duration: 30, volume: 1.0, fade_in: 0.5, fade_out: 1.0, ducking: false, audioType: "narration" as const },
-        { id: generateId(), src: "/sample/bgm.mp3", start: 0, duration: 30, volume: 0.3, fade_in: 2, fade_out: 2, ducking: true, audioType: "music" as const },
-      ],
-      text: [
-        { id: generateId(), text: "The Beginning", start: 1, end: 5, font: "Serif", size: 64, color: "#FFFFFF", x: "(w-text_w)/2", y: "h-150", box: true, box_color: "#000000", box_opacity: 0.6 },
-        { id: generateId(), text: "Chapter One", start: 10, end: 14, font: "Serif", size: 48, color: "#FFFFFF", x: "(w-text_w)/2", y: "h-120", box: true, box_color: "#000000", box_opacity: 0.5 },
-      ],
+      video: [],
+      audio: [],
+      text: [],
     },
   });
+
+  const { data: projectData, isLoading: isLoadingProject } = useQuery({
+    queryKey: ["project-editor", projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+      const [projectRes, chaptersRes, assetsRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}`),
+        fetch(`/api/projects/${projectId}/chapters`),
+        fetch(`/api/projects/${projectId}/assets`),
+      ]);
+      
+      if (!projectRes.ok) throw new Error("Failed to load project");
+      
+      const project = await projectRes.json();
+      const chapters = chaptersRes.ok ? await chaptersRes.json() : [];
+      const assets = assetsRes.ok ? await assetsRes.json() : [];
+      
+      return { project, chapters, assets };
+    },
+    enabled: !!projectId,
+  });
+
+  useEffect(() => {
+    if (projectData && !projectLoaded) {
+      const { chapters, assets } = projectData;
+      
+      const videoClips: TimelineVideoClip[] = [];
+      const audioClips: TimelineAudioClip[] = [];
+      const textClips: TimelineTextClip[] = [];
+      
+      let currentStart = 0;
+      const effects: Array<"zoom_in" | "pan_left" | "kenburns" | "zoom_out" | "pan_right"> = ["zoom_in", "pan_left", "kenburns", "zoom_out", "pan_right"];
+      
+      chapters.forEach((chapter: any, chapterIdx: number) => {
+        const scenes = chapter.scenes || [];
+        
+        scenes.forEach((scene: any, sceneIdx: number) => {
+          const key = `ch${chapter.chapterNumber}_sc${scene.sceneNumber}`;
+          const imageAsset = assets.find((a: any) => 
+            a.chapterNumber === chapter.chapterNumber && 
+            a.sceneNumber === scene.sceneNumber && 
+            a.assetType === "image"
+          );
+          const audioAsset = assets.find((a: any) => 
+            a.chapterNumber === chapter.chapterNumber && 
+            a.sceneNumber === scene.sceneNumber && 
+            a.assetType === "audio"
+          );
+          
+          const duration = scene.duration || 8;
+          
+          if (imageAsset?.assetUrl) {
+            videoClips.push({
+              id: generateId(),
+              src: imageAsset.assetUrl,
+              start: currentStart,
+              duration,
+              effect: effects[(chapterIdx + sceneIdx) % effects.length],
+              fade_in: 0.5,
+              fade_out: 0.5,
+              blur: false,
+            });
+          }
+          
+          if (audioAsset?.assetUrl) {
+            audioClips.push({
+              id: generateId(),
+              src: audioAsset.assetUrl,
+              start: currentStart,
+              duration,
+              volume: 1.0,
+              fade_in: 0.3,
+              fade_out: 0.3,
+              ducking: false,
+              audioType: "narration" as const,
+            });
+          }
+          
+          if (chapterIdx === 0 && sceneIdx === 0) {
+            textClips.push({
+              id: generateId(),
+              text: projectData.project.title || "Documentary",
+              start: currentStart + 0.5,
+              end: currentStart + 4,
+              font: "Serif",
+              size: 64,
+              color: "#FFFFFF",
+              x: "(w-text_w)/2",
+              y: "h-150",
+              box: true,
+              box_color: "#000000",
+              box_opacity: 0.6,
+            });
+          }
+          
+          currentStart += duration;
+        });
+      });
+      
+      if (videoClips.length > 0 || audioClips.length > 0) {
+        setTimeline({
+          resolution: "1920x1080",
+          fps: 30,
+          duration: Math.max(currentStart, 30),
+          tracks: {
+            video: videoClips,
+            audio: audioClips,
+            text: textClips,
+          },
+        });
+        setProjectLoaded(true);
+      }
+    }
+  }, [projectData, projectLoaded]);
 
   const [tracks] = useState<EditorTrack[]>([
     { id: 'video', type: 'video', label: 'Video', visible: true, locked: false },
@@ -364,7 +472,7 @@ export function VideoEditor() {
     }));
   };
 
-  const sfxCategories = [...new Set(SFX_LIBRARY.map(sfx => sfx.category))];
+  const sfxCategories = Array.from(new Set(SFX_LIBRARY.map(sfx => sfx.category)));
 
   const handleRender = () => {
     setIsRendering(true);
@@ -372,6 +480,21 @@ export function VideoEditor() {
       onSettled: () => setIsRendering(false),
     });
   };
+
+  if (isLoadingProject) {
+    return (
+      <div className="flex flex-col h-full bg-[#0f1419] text-white items-center justify-center" data-testid="video-editor-loading">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center animate-pulse">
+            <Wand2 className="h-8 w-8 text-white" />
+          </div>
+          <p className="text-gray-400">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasContent = timeline.tracks.video.length > 0 || timeline.tracks.audio.length > 0;
 
   return (
     <div className="flex flex-col h-full bg-[#0f1419] text-white select-none" data-testid="video-editor">
@@ -502,8 +625,16 @@ export function VideoEditor() {
                     <Play className="h-10 w-10 text-white ml-1" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">Timeline Preview</h2>
-                    <p className="text-sm text-gray-400 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
+                    <h2 className="text-xl font-bold text-white">
+                      {projectData?.project?.title || "Timeline Preview"}
+                    </h2>
+                    {hasContent ? (
+                      <p className="text-sm text-gray-400 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
+                    ) : (
+                      <p className="text-sm text-amber-400 mt-1">
+                        {projectId ? "No generated content yet. Complete the documentary generation first." : "Add clips to the timeline to get started."}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
