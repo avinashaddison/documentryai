@@ -494,7 +494,11 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
         const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
         
         try {
-          const imageResult = await generateImage(scene.imagePrompt, { 
+          const enhancedPrompt = scene.historicalContext 
+            ? `${scene.imagePrompt}. Historical context: ${scene.historicalContext}`
+            : scene.imagePrompt;
+          
+          const imageResult = await generateImage(enhancedPrompt, { 
             model: model as any,
             projectId,
             sceneId: key,

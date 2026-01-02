@@ -47,6 +47,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip } from "@shared/schema";
+import { SFX_LIBRARY } from "@shared/schema";
 
 interface EditorTrack {
   id: string;
@@ -81,6 +82,7 @@ export function VideoEditor() {
   const [resizingClip, setResizingClip] = useState<{ clipId: string; trackType: string; edge: 'left' | 'right'; initialWidth: number; initialStart: number } | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
+  const [activeSidebarTool, setActiveSidebarTool] = useState<string>('video');
   const timelineRef = useRef<HTMLDivElement>(null);
   
   const pixelsPerSecond = (zoom / 100) * 80;
@@ -97,8 +99,8 @@ export function VideoEditor() {
         { id: generateId(), src: "/sample/scene4.jpg", start: 23, duration: 7, effect: "zoom_out", fade_in: 0.5, fade_out: 0.5, blur: false },
       ],
       audio: [
-        { id: generateId(), src: "/sample/narration.wav", start: 0, duration: 30, volume: 1.0, fade_in: 0.5, fade_out: 1.0, ducking: false },
-        { id: generateId(), src: "/sample/bgm.mp3", start: 0, duration: 30, volume: 0.3, fade_in: 2, fade_out: 2, ducking: true },
+        { id: generateId(), src: "/sample/narration.wav", start: 0, duration: 30, volume: 1.0, fade_in: 0.5, fade_out: 1.0, ducking: false, audioType: "narration" as const },
+        { id: generateId(), src: "/sample/bgm.mp3", start: 0, duration: 30, volume: 0.3, fade_in: 2, fade_out: 2, ducking: true, audioType: "music" as const },
       ],
       text: [
         { id: generateId(), text: "The Beginning", start: 1, end: 5, font: "Serif", size: 64, color: "#FFFFFF", x: "(w-text_w)/2", y: "h-150", box: true, box_color: "#000000", box_opacity: 0.6 },
@@ -332,12 +334,37 @@ export function VideoEditor() {
   const selectedClip = getSelectedClip();
 
   const sidebarTools = [
-    { icon: Video, label: 'Video', active: true },
-    { icon: Type, label: 'Text', active: false },
-    { icon: Music, label: 'Audio', active: false },
-    { icon: ImageIcon, label: 'Images', active: false },
-    { icon: Sparkles, label: 'Effects', active: false },
+    { icon: Video, id: 'video', label: 'Video' },
+    { icon: Type, id: 'text', label: 'Text' },
+    { icon: Music, id: 'audio', label: 'Audio' },
+    { icon: Volume2, id: 'sfx', label: 'Sound FX' },
+    { icon: ImageIcon, id: 'images', label: 'Images' },
+    { icon: Sparkles, id: 'effects', label: 'Effects' },
   ];
+
+  const addSfxToTimeline = (sfx: typeof SFX_LIBRARY[number]) => {
+    const newClip: TimelineAudioClip = {
+      id: generateId(),
+      src: `/sfx/${sfx.id}.mp3`,
+      start: currentTime,
+      duration: sfx.duration,
+      volume: 0.8,
+      fade_in: 0.1,
+      fade_out: 0.1,
+      ducking: false,
+      audioType: "sfx" as const,
+    };
+    
+    setTimeline(prev => ({
+      ...prev,
+      tracks: {
+        ...prev.tracks,
+        audio: [...prev.tracks.audio, newClip].sort((a, b) => a.start - b.start),
+      },
+    }));
+  };
+
+  const sfxCategories = [...new Set(SFX_LIBRARY.map(sfx => sfx.category))];
 
   const handleRender = () => {
     setIsRendering(true);
@@ -395,15 +422,16 @@ export function VideoEditor() {
         
         {/* Left Sidebar - Tools */}
         <div className="w-12 bg-[#1a1f26] border-r border-[#2a3441] flex flex-col items-center py-2 gap-1">
-          {sidebarTools.map((tool, i) => (
-            <Tooltip key={i}>
+          {sidebarTools.map((tool) => (
+            <Tooltip key={tool.id}>
               <TooltipTrigger asChild>
                 <button 
+                  onClick={() => setActiveSidebarTool(activeSidebarTool === tool.id ? '' : tool.id)}
                   className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                    tool.active ? "bg-blue-500/20 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    activeSidebarTool === tool.id ? "bg-blue-500/20 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-white"
                   )}
-                  data-testid={`tool-${tool.label.toLowerCase()}`}
+                  data-testid={`tool-${tool.id}`}
                 >
                   <tool.icon className="h-5 w-5" />
                 </button>
@@ -412,6 +440,46 @@ export function VideoEditor() {
             </Tooltip>
           ))}
         </div>
+
+        {/* SFX Library Panel */}
+        {activeSidebarTool === 'sfx' && (
+          <div className="w-64 bg-[#1a1f26] border-r border-[#2a3441] flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-[#2a3441]">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-blue-400" />
+                Sound Effects
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Click to add at playhead position</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {sfxCategories.map(category => (
+                <div key={category} className="mb-3">
+                  <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                    {category}
+                  </h4>
+                  <div className="space-y-1">
+                    {SFX_LIBRARY.filter(sfx => sfx.category === category).map(sfx => (
+                      <button
+                        key={sfx.id}
+                        onClick={() => addSfxToTimeline(sfx)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-[#242c38] hover:bg-[#2d3847] transition-colors group"
+                        data-testid={`sfx-${sfx.id}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
+                            <Volume2 className="h-3 w-3 text-purple-400" />
+                          </div>
+                          <span className="text-sm text-gray-200">{sfx.name}</span>
+                        </div>
+                        <span className="text-xs text-gray-500 group-hover:text-gray-400">{sfx.duration}s</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">

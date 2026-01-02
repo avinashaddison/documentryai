@@ -29,6 +29,7 @@ export interface ScenePrompt {
   narrationSegment: string;
   mood: string;
   shotType: string;
+  historicalContext?: string;
 }
 
 export async function generateDocumentaryFramework(
@@ -162,13 +163,15 @@ NARRATION STYLE:
 - CRITICAL: Only use facts from the research data. Do not invent dates, names, or events.
 
 IMAGE PROMPTS (for Ken Burns-style documentary):
-- Historical archival photographs and period images
-- Architectural exterior shots of mansions, buildings, estates
-- Interior details: grand staircases, ornate rooms, period furniture
-- Portraits and formal photographs of the era
-- Dramatic landscapes with atmospheric lighting
-- Document close-ups: newspapers, letters, photographs
+- CRITICAL: Use SPECIFIC names, locations, dates, and details from the research data
+- Historical archival photographs and period images showing actual events and locations from research
+- Architectural exterior shots of NAMED mansions, buildings, estates mentioned in research
+- Interior details: grand staircases, ornate rooms, period furniture authentic to the era
+- Portraits and formal photographs depicting NAMED key figures from the research
+- Dramatic landscapes with atmospheric lighting showing SPECIFIC locations from the timeline
+- Document close-ups: newspapers, letters, photographs with dates matching research timeline
 - All images should work with slow zoom/pan (Ken Burns effect)
+- Include specific historical context in prompts: year, location, event details from research
 
 Generate this chapter's complete script with scene breakdowns. Each scene should be 15-25 seconds of narration.
 
@@ -180,11 +183,12 @@ Respond in JSON format:
   "scenes": [
     {
       "sceneNumber": 1,
-      "imagePrompt": "Detailed cinematic image prompt optimized for Ken Burns effect.",
+      "imagePrompt": "Ultra-detailed cinematic image prompt with SPECIFIC names, dates, and locations from research. Include historical era, setting details, and mood. Example: '1945 Berlin bunker interior, dim lighting, concrete walls, sparse furniture, tension-filled atmosphere, documentary photograph style'",
       "duration": 18,
       "narrationSegment": "The portion of narration that plays over this image.",
       "mood": "mysterious/dramatic/revelatory/somber/triumphant/ominous/contemplative",
-      "shotType": "wide establishing / architectural detail / portrait / interior grand / document closeup / landscape atmospheric"
+      "shotType": "wide establishing / architectural detail / portrait / interior grand / document closeup / landscape atmospheric",
+      "historicalContext": "Specific date and event from research data this scene depicts"
     }
   ],
   "estimatedDuration": 180

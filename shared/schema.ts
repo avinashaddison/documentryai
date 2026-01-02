@@ -248,7 +248,26 @@ export const TimelineAudioClipSchema = z.object({
   fade_in: z.number().optional().default(0),
   fade_out: z.number().optional().default(0),
   ducking: z.boolean().optional().default(false),
+  audioType: z.enum(["narration", "music", "sfx"]).optional().default("narration"),
 });
+
+export const SFX_LIBRARY = [
+  { id: "whoosh", name: "Whoosh", duration: 1.2, category: "transition" },
+  { id: "dramatic_hit", name: "Dramatic Hit", duration: 0.8, category: "impact" },
+  { id: "suspense_rise", name: "Suspense Rise", duration: 3.0, category: "tension" },
+  { id: "reveal_sting", name: "Reveal Sting", duration: 2.0, category: "reveal" },
+  { id: "paper_rustle", name: "Paper Rustle", duration: 1.5, category: "ambient" },
+  { id: "clock_tick", name: "Clock Tick", duration: 2.0, category: "ambient" },
+  { id: "wind_ambient", name: "Wind Ambient", duration: 5.0, category: "ambient" },
+  { id: "typewriter", name: "Typewriter", duration: 2.5, category: "effect" },
+  { id: "camera_flash", name: "Camera Flash", duration: 0.5, category: "effect" },
+  { id: "door_creak", name: "Door Creak", duration: 2.0, category: "ambient" },
+  { id: "thunder", name: "Thunder", duration: 4.0, category: "weather" },
+  { id: "rain_light", name: "Light Rain", duration: 10.0, category: "weather" },
+  { id: "crowd_murmur", name: "Crowd Murmur", duration: 8.0, category: "ambient" },
+  { id: "tension_drone", name: "Tension Drone", duration: 6.0, category: "tension" },
+  { id: "heartbeat", name: "Heartbeat", duration: 4.0, category: "tension" },
+] as const;
 
 export const TimelineTextClipSchema = z.object({
   id: z.string(),
