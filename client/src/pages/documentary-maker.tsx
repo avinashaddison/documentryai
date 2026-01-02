@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { 
   Sparkles, 
   Loader2, 
@@ -120,7 +121,8 @@ export default function DocumentaryMaker() {
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
-    imageSource: "stock" as "ai" | "stock", // Default to stock photos (real images)
+    imageSource: "stock" as "ai" | "stock",
+    deepResearch: true,
   });
   
   const [generationLogs, setGenerationLogs] = useState<Array<{
@@ -241,6 +243,7 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
+            deepResearch: config.deepResearch,
           },
         }),
       });
@@ -646,6 +649,7 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
+            deepResearch: config.deepResearch,
           },
         }),
       });
@@ -1668,6 +1672,27 @@ export default function DocumentaryMaker() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <div className="space-y-3 md:col-span-2">
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
+                  <div className="flex items-center gap-3">
+                    <Search className="h-5 w-5 text-primary" />
+                    <div>
+                      <Label className="text-sm font-medium text-white">Deep Research</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {config.deepResearch 
+                          ? "Uses Perplexity AI for comprehensive fact-finding and verification" 
+                          : "Generates content using AI without external research"}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={config.deepResearch}
+                    onCheckedChange={(checked) => setConfig({ ...config, deepResearch: checked })}
+                    data-testid="switch-deep-research"
+                  />
+                </div>
+              </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
