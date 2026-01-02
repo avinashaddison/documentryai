@@ -22,10 +22,10 @@ function Router() {
       <Route path="/create/:projectId" component={DocumentaryMaker} />
       <Route path="/documentary-maker" component={DocumentaryMaker} />
       <Route path="/documentary-maker/:projectId" component={DocumentaryMaker} />
-      <Route path="/editor" component={DocumentaryEditor} />
-      <Route path="/editor/:projectId" component={DocumentaryEditor} />
-      <Route path="/documentary-editor" component={DocumentaryEditor} />
-      <Route path="/documentary-editor/:projectId" component={DocumentaryEditor} />
+      <Route path="/editor" component={VideoEditorPage} />
+      <Route path="/editor/:projectId" component={VideoEditorPage} />
+      <Route path="/documentary-editor" component={VideoEditorPage} />
+      <Route path="/documentary-editor/:projectId" component={VideoEditorPage} />
       <Route path="/film-maker" component={FilmMaker} />
       <Route path="/projects" component={Projects} />
       <Route path="/saved" component={SavedVideos} />
