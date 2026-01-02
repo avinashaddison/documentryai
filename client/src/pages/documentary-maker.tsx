@@ -1339,6 +1339,27 @@ export default function DocumentaryMaker() {
                 chapters (~{Math.round(totalChapters * 3)} min)
               </span>
             </div>
+            
+            {/* Deep Research Toggle */}
+            <div className="flex items-center justify-between pt-4 border-t border-border/50">
+              <div className="flex items-center gap-3">
+                <Search className="h-5 w-5 text-orange-400" />
+                <div>
+                  <Label className="text-sm font-medium text-white">Deep Research</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {config.deepResearch 
+                      ? "Uses Perplexity AI for comprehensive fact-finding" 
+                      : "Generates content without external research"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={config.deepResearch}
+                onCheckedChange={(checked) => setConfig({ ...config, deepResearch: checked })}
+                disabled={isGenerating}
+                data-testid="switch-deep-research"
+              />
+            </div>
           </div>
         </div>
 
@@ -1672,28 +1693,6 @@ export default function DocumentaryMaker() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              <div className="space-y-3 md:col-span-2">
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/30">
-                  <div className="flex items-center gap-3">
-                    <Search className="h-5 w-5 text-primary" />
-                    <div>
-                      <Label className="text-sm font-medium text-white">Deep Research</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {config.deepResearch 
-                          ? "Uses Perplexity AI for comprehensive fact-finding and verification" 
-                          : "Generates content using AI without external research"}
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={config.deepResearch}
-                    onCheckedChange={(checked) => setConfig({ ...config, deepResearch: checked })}
-                    data-testid="switch-deep-research"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />
