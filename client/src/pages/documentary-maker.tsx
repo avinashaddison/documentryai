@@ -124,8 +124,10 @@ export default function DocumentaryMaker() {
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
-    imageSource: "stock" as "ai" | "stock", // Default to stock photos (real images)
-    researchMethod: "perplexity" as "perplexity" | "claude", // Research method selection
+    imageSource: "stock" as "ai" | "stock",
+    researchMethod: "perplexity" as "perplexity" | "claude",
+    storyStyle: "narrative" as "narrative" | "investigative" | "historical" | "educational",
+    storyTone: "dramatic" as "dramatic" | "serious" | "educational" | "inspirational",
   });
   
   const [generationLogs, setGenerationLogs] = useState<Array<{
@@ -1468,6 +1470,100 @@ export default function DocumentaryMaker() {
                   </div>
                 )}
               </button>
+            </div>
+          </div>
+          
+          {/* Story Configuration */}
+          <div className="space-y-4 pt-4 border-t border-border/50">
+            <Label className="text-sm text-emerald-300 flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Story Configuration
+            </Label>
+            
+            {/* Story Style */}
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground">Documentary Style</span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "narrative", label: "Narrative", desc: "Story-driven" },
+                  { value: "investigative", label: "Investigative", desc: "Deep dive" },
+                  { value: "historical", label: "Historical", desc: "Timeline focus" },
+                  { value: "educational", label: "Educational", desc: "Informative" },
+                ].map((style) => (
+                  <button
+                    key={style.value}
+                    onClick={() => setConfig({ ...config, storyStyle: style.value as typeof config.storyStyle })}
+                    disabled={isGenerating}
+                    className={cn(
+                      "relative rounded-lg p-3 transition-all duration-200 text-left",
+                      "border",
+                      config.storyStyle === style.value
+                        ? "border-emerald-400/60 bg-emerald-500/15"
+                        : "border-border bg-card/50 hover:border-emerald-500/40 hover:bg-card/80",
+                      isGenerating && "opacity-50 cursor-not-allowed"
+                    )}
+                    data-testid={`button-style-${style.value}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          config.storyStyle === style.value ? "text-emerald-400" : "text-white/80"
+                        )}>
+                          {style.label}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{style.desc}</div>
+                      </div>
+                      {config.storyStyle === style.value && (
+                        <Check className="h-4 w-4 text-emerald-400" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Story Tone */}
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground">Narrative Tone</span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "dramatic", label: "Dramatic", desc: "Cinematic feel" },
+                  { value: "serious", label: "Serious", desc: "Factual focus" },
+                  { value: "educational", label: "Educational", desc: "Learning-focused" },
+                  { value: "inspirational", label: "Inspirational", desc: "Uplifting" },
+                ].map((tone) => (
+                  <button
+                    key={tone.value}
+                    onClick={() => setConfig({ ...config, storyTone: tone.value as typeof config.storyTone })}
+                    disabled={isGenerating}
+                    className={cn(
+                      "relative rounded-lg p-3 transition-all duration-200 text-left",
+                      "border",
+                      config.storyTone === tone.value
+                        ? "border-amber-400/60 bg-amber-500/15"
+                        : "border-border bg-card/50 hover:border-amber-500/40 hover:bg-card/80",
+                      isGenerating && "opacity-50 cursor-not-allowed"
+                    )}
+                    data-testid={`button-tone-${tone.value}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          config.storyTone === tone.value ? "text-amber-400" : "text-white/80"
+                        )}>
+                          {tone.label}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{tone.desc}</div>
+                      </div>
+                      {config.storyTone === tone.value && (
+                        <Check className="h-4 w-4 text-amber-400" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
