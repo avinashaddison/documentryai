@@ -110,7 +110,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   let currentTime = 0;
   let sceneIndex = 0;
 
-  const autoColorGrade = colorGrade || detectColorGrade(style, title);
+  // Always use grayscale for black and white documentary style
+  const autoColorGrade = colorGrade || "grayscale";
   
   // Add stylized year/era overlay at the start (like "1945" splash)
   const yearFromTitle = extractYearFromTitle(title);

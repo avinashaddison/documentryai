@@ -1249,7 +1249,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                       : currentVideoClip.effect === "zoom_out" 
                       ? "scale(0.95)" 
                       : "scale(1)",
-                    filter: currentVideoClip.blur ? "blur(4px)" : "none",
+                    filter: `grayscale(100%)${currentVideoClip.blur ? " blur(4px)" : ""}`,
                     transition: "transform 0.3s ease-out"
                   }}
                 />
@@ -1594,6 +1594,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                                     src={(clip as TimelineVideoClip).src} 
                                     alt=""
                                     className="absolute inset-0 w-full h-full object-cover"
+                                    style={{ filter: "grayscale(100%)" }}
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
                                   {/* Gradient overlay for text readability */}

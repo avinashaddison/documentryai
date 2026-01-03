@@ -13,6 +13,7 @@ export function VideoPreview() {
            src={generatedImage} 
            alt="Preview" 
            className="w-full h-full object-cover opacity-80"
+           style={{ filter: "grayscale(100%)" }}
          />
          
          {/* Overlay Gradients */}
