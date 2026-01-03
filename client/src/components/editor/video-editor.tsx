@@ -79,7 +79,7 @@ interface VideoEditorProps {
 export function VideoEditor({ projectId }: VideoEditorProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [zoom, setZoom] = useState(25); // Start zoomed out to show more timeline
+  const [zoom, setZoom] = useState(12); // Start very zoomed out for compact clips
   const [aspectRatio, setAspectRatio] = useState("16:9");
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [draggingClip, setDraggingClip] = useState<{ clipId: string; trackType: string; offsetX: number } | null>(null);
