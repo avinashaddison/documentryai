@@ -69,13 +69,16 @@ async function downloadAsset(url: string, localPath: string): Promise<boolean> {
 function generateKenBurnsFilter(effect: string, duration: number, index: number, fps: number): string {
   const d = Math.ceil(duration * fps);
   
+  // Note: Input is already scaled to 1920x1080 and looped before this filter
+  // zoompan generates d frames at fps framerate with motion effects
   const effects: Record<string, string> = {
     zoom_in: `zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     zoom_out: `zoompan=z='if(lte(zoom,1.0),1.5,max(1.0,zoom-0.0015))':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     pan_left: `zoompan=z='1.2':x='iw*0.2*(1-on/${d})':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     pan_right: `zoompan=z='1.2':x='iw*0.2*(on/${d})':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
     kenburns: `zoompan=z='if(mod(${index},2),min(zoom+0.001,1.3),if(lte(zoom,1.0),1.3,max(1.0,zoom-0.001)))':x='iw/2-(iw/zoom/2)+sin(on*0.01)*50':y='ih/2-(ih/zoom/2)':d=${d}:s=1920x1080:fps=${fps}`,
-    none: `scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1`,
+    // For "none", just trim the looped frames to the right duration without motion
+    none: `trim=duration=${duration},fps=${fps}`,
   };
   
   return effects[effect] || effects.none;
@@ -210,7 +213,9 @@ export async function renderTimeline(
     );
     
     for (const { localPath, clip } of localVideoClips) {
-      ffmpegArgs.push("-loop", "1", "-t", String(clip.duration), "-i", localPath);
+      // Don't use -loop with zoompan - zoompan generates its own frames via 'd' parameter
+      // Just use -framerate 1 to indicate it's a single image
+      ffmpegArgs.push("-framerate", "1", "-i", localPath);
     }
     
     for (const { localPath } of localAudioClips) {
@@ -226,7 +231,8 @@ export async function renderTimeline(
       const effect = clip.effect || "none";
       const kenBurns = generateKenBurnsFilter(effect, clip.duration, index, fps);
       
-      filterComplex += `[${inputIndex}:v]${kenBurns}`;
+      // Scale image first, loop it, then apply zoompan for Ken Burns animation
+      filterComplex += `[${inputIndex}:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,loop=loop=-1:size=1:start=0,${kenBurns}`;
       
       // Apply color grading (documentary-style)
       const colorGrade = (clip as any).colorGrade || "none";
