@@ -43,6 +43,7 @@ waitForPort = 5000
 [agent]
 mockupState = "FULLSTACK"
 integrations = ["javascript_anthropic_ai_integrations:2.0.0", "javascript_object_storage:2.0.0"]
+expertMode = true
 
 [objectStorage]
-defaultBucketID = "replit-objstore-b8839db5-b47e-4fe0-89a6-b6bbf4d9e877"
+defaultBucketID = "replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7"
