@@ -1565,6 +1565,96 @@ export default function DocumentaryMaker() {
                 ))}
               </div>
             </div>
+            
+            {/* Narrator Voice Selection */}
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Mic className="h-3 w-3" />
+                Narrator Voice
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "aura-2-mars-en", label: "Mars", desc: "Deep male" },
+                  { value: "aura-2-luna-en", label: "Luna", desc: "Warm female" },
+                  { value: "aura-2-orion-en", label: "Orion", desc: "Authoritative" },
+                  { value: "aura-2-stella-en", label: "Stella", desc: "Clear female" },
+                ].map((voice) => (
+                  <button
+                    key={voice.value}
+                    onClick={() => setConfig({ ...config, narratorVoice: voice.value })}
+                    disabled={isGenerating}
+                    className={cn(
+                      "relative rounded-lg p-3 transition-all duration-200 text-left",
+                      "border",
+                      config.narratorVoice === voice.value
+                        ? "border-violet-400/60 bg-violet-500/15"
+                        : "border-border bg-card/50 hover:border-violet-500/40 hover:bg-card/80",
+                      isGenerating && "opacity-50 cursor-not-allowed"
+                    )}
+                    data-testid={`button-voice-${voice.value}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          config.narratorVoice === voice.value ? "text-violet-400" : "text-white/80"
+                        )}>
+                          {voice.label}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{voice.desc}</div>
+                      </div>
+                      {config.narratorVoice === voice.value && (
+                        <Check className="h-4 w-4 text-violet-400" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Image Source Selection */}
+            <div className="space-y-2">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" />
+                Image Source
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "stock", label: "Stock Photos", desc: "Real images" },
+                  { value: "ai", label: "AI Generated", desc: "Unique visuals" },
+                ].map((source) => (
+                  <button
+                    key={source.value}
+                    onClick={() => setConfig({ ...config, imageSource: source.value as "ai" | "stock" })}
+                    disabled={isGenerating}
+                    className={cn(
+                      "relative rounded-lg p-3 transition-all duration-200 text-left",
+                      "border",
+                      config.imageSource === source.value
+                        ? "border-pink-400/60 bg-pink-500/15"
+                        : "border-border bg-card/50 hover:border-pink-500/40 hover:bg-card/80",
+                      isGenerating && "opacity-50 cursor-not-allowed"
+                    )}
+                    data-testid={`button-source-${source.value}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={cn(
+                          "text-sm font-medium",
+                          config.imageSource === source.value ? "text-pink-400" : "text-white/80"
+                        )}>
+                          {source.label}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{source.desc}</div>
+                      </div>
+                      {config.imageSource === source.value && (
+                        <Check className="h-4 w-4 text-pink-400" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
