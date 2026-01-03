@@ -1528,19 +1528,13 @@ export default function DocumentaryMaker() {
                 <Mic className="h-3 w-3" />
                 Narrator Voice
               </span>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: "aura-2-mars-en", label: "Mars", desc: "Deep male" },
-                  { value: "aura-2-luna-en", label: "Luna", desc: "Warm female" },
-                  { value: "aura-2-orion-en", label: "Orion", desc: "Authoritative" },
-                  { value: "aura-2-stella-en", label: "Stella", desc: "Clear female" },
-                ].map((voice) => (
-                  <button
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {voiceOptions.map((voice) => (
+                  <div
                     key={voice.value}
-                    onClick={() => setConfig({ ...config, narratorVoice: voice.value })}
-                    disabled={isGenerating}
+                    onClick={() => !isGenerating && setConfig({ ...config, narratorVoice: voice.value })}
                     className={cn(
-                      "relative rounded-lg p-3 transition-all duration-200 text-left",
+                      "relative rounded-lg p-3 transition-all duration-200 text-left cursor-pointer",
                       "border",
                       config.narratorVoice === voice.value
                         ? "border-violet-400/60 bg-violet-500/15"
@@ -1549,21 +1543,44 @@ export default function DocumentaryMaker() {
                     )}
                     data-testid={`button-voice-${voice.value}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <div className={cn(
                           "text-sm font-medium",
                           config.narratorVoice === voice.value ? "text-violet-400" : "text-white/80"
                         )}>
                           {voice.label}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">{voice.desc}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{voice.description}</div>
                       </div>
-                      {config.narratorVoice === voice.value && (
-                        <Check className="h-4 w-4 text-violet-400" />
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-7 w-7 rounded-full",
+                            previewingVoice === voice.value 
+                              ? "bg-violet-500/30 text-violet-300" 
+                              : "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20"
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVoicePreview(voice.value);
+                          }}
+                          data-testid={`button-preview-${voice.value}`}
+                        >
+                          {previewingVoice === voice.value ? (
+                            <Pause className="h-3 w-3" />
+                          ) : (
+                            <Play className="h-3 w-3 ml-0.5" />
+                          )}
+                        </Button>
+                        {config.narratorVoice === voice.value && (
+                          <Check className="h-4 w-4 text-violet-400" />
+                        )}
+                      </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
