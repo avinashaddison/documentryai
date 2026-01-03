@@ -74,6 +74,31 @@ function generateId(): string {
   return `clip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Deterministic pseudo-random generator for stable waveform visualization
+function seededRandom(seed: string): () => number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return () => {
+    hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
+    hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
+    hash ^= hash >>> 16;
+    return (hash >>> 0) / 4294967296;
+  };
+}
+
+// Generate stable waveform bar heights based on clip ID
+function generateWaveformBars(clipId: string, barCount: number): number[] {
+  const random = seededRandom(clipId);
+  const bars: number[] = [];
+  for (let i = 0; i < barCount; i++) {
+    bars.push(20 + Math.sin(i * 0.5) * 15 + random() * 20);
+  }
+  return bars;
+}
+
 interface VideoEditorProps {
   projectId?: number;
 }
@@ -1441,7 +1466,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 {tracks.map((track, index) => (
                   <div 
                     key={track.id} 
-                    className="h-12 border-b border-cyan-500/5 flex items-center px-2 gap-2 hover:bg-white/5 transition-colors"
+                    className="h-16 border-b border-cyan-500/5 flex items-center px-2 gap-2 hover:bg-white/5 transition-colors"
                     data-testid={`track-header-${track.id}`}
                   >
                     <div className={cn(
@@ -1513,7 +1538,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                       <div 
                         key={track.id} 
                         className={cn(
-                          "h-12 border-b border-cyan-500/5 relative",
+                          "h-16 border-b border-cyan-500/5 relative",
                           track.locked && "opacity-50"
                         )}
                         data-testid={`track-${track.id}`}
@@ -1561,20 +1586,89 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                               onDoubleClick={() => setPropertiesPanelOpen(true)}
                               data-testid={`clip-${clip.id}`}
                             >
-                              {/* Clip content */}
-                              <div className="h-full flex items-center overflow-hidden px-2">
-                                <GripVertical className="h-3 w-3 text-white/40 flex-shrink-0 mr-1" />
-                                <span className="text-[10px] text-white truncate font-medium">
-                                  {clip.type === 'video' && `Scene ${timeline.tracks.video.findIndex(v => v.id === clip.id) + 1}`}
-                                  {clip.type === 'audio' && (clip as TimelineAudioClip).src.split('/').pop()}
-                                  {clip.type === 'text' && (clip as TimelineTextClip).text}
-                                </span>
-                                {clip.type === 'video' && (clip as TimelineVideoClip).effect !== 'none' && (
-                                  <span className="ml-auto text-[8px] text-cyan-300 bg-cyan-500/20 px-1.5 py-0.5 rounded">
-                                    {(clip as TimelineVideoClip).effect}
-                                  </span>
-                                )}
-                              </div>
+                              {/* Video clip with thumbnail */}
+                              {clip.type === 'video' && (
+                                <div className="h-full relative overflow-hidden rounded-md">
+                                  {/* Thumbnail background */}
+                                  <img 
+                                    src={(clip as TimelineVideoClip).src} 
+                                    alt=""
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                  {/* Gradient overlay for text readability */}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+                                  {/* Content - positioned at bottom */}
+                                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-1.5 py-1 z-10">
+                                    <div className="flex items-center gap-1 min-w-0">
+                                      <GripVertical className="h-3 w-3 text-white/80 flex-shrink-0" />
+                                      <span className="text-[10px] text-white font-semibold truncate drop-shadow-md">
+                                        Scene {timeline.tracks.video.findIndex(v => v.id === clip.id) + 1}
+                                      </span>
+                                    </div>
+                                    {(clip as TimelineVideoClip).effect !== 'none' && (
+                                      <span className="text-[7px] text-white bg-black/50 px-1 py-0.5 rounded font-medium">
+                                        {(clip as TimelineVideoClip).effect}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Audio clip with waveform */}
+                              {clip.type === 'audio' && (() => {
+                                const barCount = Math.min(Math.floor(clipDuration * pixelsPerSecond / 3), 80);
+                                const waveformBars = generateWaveformBars(clip.id, barCount);
+                                const isSfx = (clip as TimelineAudioClip).audioType === 'sfx';
+                                return (
+                                  <div className="h-full relative overflow-hidden rounded-md">
+                                    {/* Waveform visualization */}
+                                    <div className="absolute inset-0 flex items-center justify-center gap-[1px] px-1">
+                                      {waveformBars.map((height, i) => (
+                                        <div 
+                                          key={i}
+                                          className={isSfx ? "bg-purple-400/80" : "bg-amber-400/80"}
+                                          style={{ 
+                                            width: 2, 
+                                            height: `${height}%`,
+                                            minHeight: 4
+                                          }}
+                                        />
+                                      ))}
+                                    </div>
+                                    {/* Content overlay */}
+                                    <div className="relative h-full flex items-center px-2 z-10">
+                                      <GripVertical className="h-3 w-3 text-white/80 flex-shrink-0 mr-1" />
+                                      <span className="text-[9px] text-white font-semibold truncate bg-black/50 px-1 rounded drop-shadow">
+                                        {(clip as TimelineAudioClip).src.split('/').pop()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Text clip with content display */}
+                              {clip.type === 'text' && (
+                                <div className="h-full relative overflow-hidden rounded-md">
+                                  {/* Pattern background */}
+                                  <div className="absolute inset-0 opacity-40">
+                                    {Array.from({ length: Math.min(Math.floor(clipDuration * pixelsPerSecond / 8), 30) }).map((_, i) => (
+                                      <div 
+                                        key={i}
+                                        className="absolute top-0 bottom-0 w-[2px] bg-pink-300"
+                                        style={{ left: i * 8 }}
+                                      />
+                                    ))}
+                                  </div>
+                                  {/* Content */}
+                                  <div className="relative h-full flex items-center px-2 z-10">
+                                    <GripVertical className="h-3 w-3 text-white/60 flex-shrink-0 mr-1" />
+                                    <span className="text-[10px] text-white font-medium truncate">
+                                      {(clip as TimelineTextClip).text || 'Text'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Resize handles */}
                               {!track.locked && (
