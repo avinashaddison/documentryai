@@ -817,7 +817,7 @@ export default function DocumentaryMaker() {
   const handleContinueToEditor = () => {
     if (projectId) {
       // Navigate to the neon video editor with the project ID
-      navigate(`/video-editor?project=${projectId}`);
+      navigate(`/editor/${projectId}`);
     }
   };
 
@@ -1976,7 +1976,7 @@ export default function DocumentaryMaker() {
               
               {/* Open Video Editor Button */}
               <Button
-                onClick={() => navigate(`/video-editor?project=${projectId}`)}
+                onClick={() => navigate(`/editor/${projectId}`)}
                 className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-medium"
                 data-testid="button-open-video-editor"
               >

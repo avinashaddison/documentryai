@@ -108,17 +108,45 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     queryKey: ["project-editor", projectId],
     queryFn: async () => {
       if (!projectId) return null;
-      const [projectRes, chaptersRes, assetsRes] = await Promise.all([
+      const [projectRes, chaptersRes, assetsRes, sessionRes] = await Promise.all([
         fetch(`/api/projects/${projectId}`),
         fetch(`/api/projects/${projectId}/generated-chapters`),
         fetch(`/api/projects/${projectId}/generated-assets`),
+        fetch(`/api/projects/${projectId}/session`),
       ]);
       
       if (!projectRes.ok) throw new Error("Failed to load project");
       
       const project = await projectRes.json();
-      const chaptersData = chaptersRes.ok ? await chaptersRes.json() : { chapters: [] };
+      let chaptersData = chaptersRes.ok ? await chaptersRes.json() : { chapters: [] };
       const assetsData = assetsRes.ok ? await assetsRes.json() : { images: {}, audio: {} };
+      const sessionData = sessionRes.ok ? await sessionRes.json() : { session: null };
+      
+      // If chapters are empty, try to get them from session data
+      if ((!chaptersData.chapters || chaptersData.chapters.length === 0) && sessionData.session?.chaptersData) {
+        try {
+          const parsedChapters = JSON.parse(sessionData.session.chaptersData);
+          chaptersData = { chapters: parsedChapters };
+        } catch (e) {
+          console.error("Failed to parse chapters from session:", e);
+        }
+      }
+      
+      // Also get images/audio from session if not available in assets
+      if ((!assetsData.images || Object.keys(assetsData.images).length === 0) && sessionData.session?.imagesData) {
+        try {
+          assetsData.images = JSON.parse(sessionData.session.imagesData);
+        } catch (e) {
+          console.error("Failed to parse images from session:", e);
+        }
+      }
+      if ((!assetsData.audio || Object.keys(assetsData.audio).length === 0) && sessionData.session?.audioData) {
+        try {
+          assetsData.audio = JSON.parse(sessionData.session.audioData);
+        } catch (e) {
+          console.error("Failed to parse audio from session:", e);
+        }
+      }
       
       // Transform assets from key-value format to array format
       const assets: any[] = [];
