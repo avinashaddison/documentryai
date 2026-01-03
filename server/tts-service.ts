@@ -1,7 +1,10 @@
 import { createClient } from "@deepgram/sdk";
 import { objectStorageClient } from "./replit_integrations/object_storage";
+import * as fs from "fs";
+import * as path from "path";
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+const USE_LOCAL_STORAGE = true; // Fallback to local storage when Object Storage has issues
 
 export interface TTSOptions {
   voice?: string;
@@ -83,6 +86,23 @@ export async function generateSpeechToStorage(
 
     const audioBuffer = Buffer.concat(chunks);
     
+    // Try local storage first (workaround for Object Storage billing issues)
+    if (USE_LOCAL_STORAGE) {
+      const localPath = path.join(process.cwd(), "public", objectPath.replace("public/", ""));
+      const dir = path.dirname(localPath);
+      
+      // Ensure directory exists
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      fs.writeFileSync(localPath, audioBuffer);
+      const publicUrl = `/${objectPath}`;
+      console.log(`[TTS] Audio saved locally: ${publicUrl} (${audioBuffer.length} bytes)`);
+      return publicUrl;
+    }
+    
+    // Fallback to Object Storage
     const bucketId = getBucketId();
     const bucket = objectStorageClient.bucket(bucketId);
     const file = bucket.file(objectPath);

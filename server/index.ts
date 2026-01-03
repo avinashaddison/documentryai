@@ -10,6 +10,7 @@ const httpServer = createServer(app);
 
 app.use("/generated_assets", express.static(path.join(process.cwd(), "generated_assets")));
 app.use("/generated_videos", express.static(path.join(process.cwd(), "generated_videos")));
+app.use("/public", express.static(path.join(process.cwd(), "public")));
 
 declare module "http" {
   interface IncomingMessage {
