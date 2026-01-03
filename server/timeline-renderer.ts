@@ -21,6 +21,26 @@ async function downloadAsset(url: string, localPath: string): Promise<boolean> {
       fs.mkdirSync(dir, { recursive: true });
     }
 
+    // Handle /public/audio/ paths - these are stored in object storage
+    if (url.startsWith("/public/audio/") || url.startsWith("/public/")) {
+      try {
+        // Remove leading slash to get object storage path
+        const objectPath = url.replace(/^\//, "");
+        const bucket = objectStorageClient.bucket("replit-objstore");
+        const file = bucket.file(objectPath);
+        const [exists] = await file.exists();
+        
+        if (exists) {
+          await file.download({ destination: localPath });
+          console.log(`[TimelineRenderer] Downloaded from object storage: ${objectPath}`);
+          return true;
+        }
+      } catch (e) {
+        console.error(`[TimelineRenderer] Object storage download failed for ${url}:`, e);
+      }
+      return false;
+    }
+
     if (url.startsWith("/objects/public/")) {
       const publicSearchPaths = (process.env.PUBLIC_OBJECT_SEARCH_PATHS || "").split(",").map(p => p.trim()).filter(Boolean);
       if (publicSearchPaths.length === 0) return false;
