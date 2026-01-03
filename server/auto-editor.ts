@@ -196,6 +196,41 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
           audioType: "narration",
         });
       }
+      
+      // Add caption overlay for key narration moments (like quote boxes)
+      if (addCaptions && scene.narration) {
+        // Extract a short, impactful quote from the narration (first sentence or key phrase)
+        const sentences = scene.narration.split(/[.!?]+/).filter(s => s.trim().length > 10);
+        if (sentences.length > 0) {
+          // Take the most impactful sentence (usually shorter ones work better)
+          let caption = sentences[0].trim();
+          if (caption.length > 80) {
+            // Truncate to ~60 chars at word boundary
+            caption = caption.substring(0, 60).replace(/\s+\S*$/, "") + "...";
+          }
+          
+          textClips.push({
+            id: generateId(),
+            text: caption,
+            start: currentTime + 1,
+            end: currentTime + Math.min(scene.duration - 1, 6),
+            font: "Serif",
+            size: 42,
+            color: "#1a1a1a",
+            x: "80",
+            y: "80",
+            box: true,
+            box_color: "#F5F0E6",
+            box_opacity: 0.92,
+            textType: "caption",
+            shadow: false,
+            shadowColor: "#000000",
+            shadowOffset: 0,
+            animation: "none",
+            boxPadding: 18,
+          } as any);
+        }
+      }
 
       if (addDateLabels && scene.metadata?.date) {
         textClips.push({

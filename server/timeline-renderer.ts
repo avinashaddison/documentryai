@@ -119,35 +119,52 @@ function generateColorGradeFilter(colorGrade: string): string {
 }
 
 function generateTextFilter(clip: TimelineTextClip): string {
-  const escapedText = clip.text.replace(/'/g, "'\\''").replace(/:/g, "\\:");
+  const escapedText = clip.text.replace(/'/g, "'\\''").replace(/:/g, "\\:").replace(/\n/g, "\\n");
   const size = clip.size || 48;
   const color = clip.color || "white";
   const x = clip.x || "(w-text_w)/2";
   const y = clip.y || "h-120";
   const boxPadding = (clip as any).boxPadding || 10;
   
-  // Choose font based on text type for documentary style
+  // Choose font based on text type for professional documentary style
   const textType = (clip as any).textType || "caption";
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-  if (textType === "chapter_title" || textType === "date_label") {
+  
+  // Use serif fonts for titles, dates, and era splashes (like the "1945" style)
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
   }
   
-  let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${size}:fontcolor=${color}:x=${x}:y=${y}`;
+  // For era splash (big year like "1945"), use special styling
+  let actualSize = size;
+  if (textType === "era_splash") {
+    actualSize = 200; // Large dramatic year text
+  } else if (textType === "chapter_title") {
+    actualSize = 64; // Medium chapter titles
+  } else if (textType === "caption") {
+    actualSize = 42; // Caption/quote text
+  }
   
-  // Add shadow for better readability
+  let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${actualSize}:fontcolor=${color}:x=${x}:y=${y}`;
+  
+  // Add shadow for better readability - documentary style uses heavier shadows
   if ((clip as any).shadow) {
     const shadowColor = (clip as any).shadowColor || "black";
-    const shadowOffset = (clip as any).shadowOffset || 2;
+    const shadowOffset = textType === "era_splash" ? 8 : ((clip as any).shadowOffset || 3);
     filter += `:shadowcolor=${shadowColor}:shadowx=${shadowOffset}:shadowy=${shadowOffset}`;
   }
   
-  // Add box background
+  // Add box background for captions
   if (clip.box) {
     const boxColor = clip.box_color || "black";
-    const boxOpacity = clip.box_opacity || 0.5;
+    const boxOpacity = clip.box_opacity || 0.6;
     filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=${boxPadding}`;
   }
+  
+  // Add fade in/out effect for text
+  const fadeIn = 0.5;
+  const fadeOut = 0.3;
+  const duration = clip.end - clip.start;
   
   filter += `:enable='between(t,${clip.start},${clip.end})'`;
   
