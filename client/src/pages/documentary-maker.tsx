@@ -815,16 +815,9 @@ export default function DocumentaryMaker() {
   };
 
   const handleContinueToEditor = () => {
-    if (projectId && framework) {
-      const editorData = {
-        projectId,
-        title: framework.generatedTitle || title,
-        chapters: generatedChapters,
-        generatedImages,
-        generatedAudio,
-      };
-      sessionStorage.setItem("documentaryEditorData", JSON.stringify(editorData));
-      navigate(`/documentary-editor/${projectId}`);
+    if (projectId) {
+      // Navigate to the neon video editor with the project ID
+      navigate(`/video-editor?project=${projectId}`);
     }
   };
 
@@ -968,6 +961,23 @@ export default function DocumentaryMaker() {
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             Enter a topic and let AI generate a complete documentary with narration, visuals, and professional editing.
           </p>
+          
+          {/* Quick Action Bar - Show when project has generated content */}
+          {projectId && Object.keys(generatedImages).length > 0 && (
+            <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border/50">
+              <Button
+                onClick={handleContinueToEditor}
+                className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-semibold px-6"
+                data-testid="button-quick-open-editor"
+              >
+                <Film className="h-4 w-4 mr-2" />
+                Open Video Editor
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {Object.keys(generatedImages).length} scenes ready to edit
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Progress Steps */}
@@ -1958,10 +1968,22 @@ export default function DocumentaryMaker() {
         {/* Generated Images Gallery */}
         {Object.keys(generatedImages).length > 0 && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-primary" />
-              Generated Scene Images ({Object.keys(generatedImages).length})
-            </h2>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-primary" />
+                Generated Scene Images ({Object.keys(generatedImages).length})
+              </h2>
+              
+              {/* Open Video Editor Button */}
+              <Button
+                onClick={() => navigate(`/video-editor?project=${projectId}`)}
+                className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-medium"
+                data-testid="button-open-video-editor"
+              >
+                <Film className="h-4 w-4 mr-2" />
+                Open Video Editor
+              </Button>
+            </div>
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto">
               {Object.entries(generatedImages).map(([key, url]) => (
