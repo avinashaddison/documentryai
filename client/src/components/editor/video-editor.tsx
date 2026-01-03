@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/sheet";
 import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip } from "@shared/schema";
 import { SFX_LIBRARY } from "@shared/schema";
+import { AIEditPanel } from "./ai-edit-panel";
 
 interface EditorTrack {
   id: string;
@@ -575,6 +576,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
   const selectedClip = getSelectedClip();
 
   const sidebarTools = [
+    { icon: Wand2, id: 'ai', label: 'AI Edit' },
     { icon: Video, id: 'video', label: 'Video' },
     { icon: Type, id: 'text', label: 'Text' },
     { icon: Music, id: 'audio', label: 'Audio' },
@@ -920,6 +922,17 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             <TooltipContent side="right" className="bg-[#161b22] border-purple-500/20">Duplicate (D)</TooltipContent>
           </Tooltip>
         </div>
+
+        {/* AI Edit Panel - Neon Theme */}
+        {activeSidebarTool === 'ai' && (
+          <AIEditPanel
+            timeline={timeline}
+            currentTime={currentTime}
+            selectedClipId={selectedClipId}
+            onTimelineUpdate={setTimeline}
+            onSeek={setCurrentTime}
+          />
+        )}
 
         {/* SFX Library Panel - Neon Theme */}
         {activeSidebarTool === 'sfx' && (
