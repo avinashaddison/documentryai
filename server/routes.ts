@@ -1632,7 +1632,7 @@ export async function registerRoutes(
       }
       
       // Get all generated assets for this project
-      const assets = await storage.getGeneratedAssets(projectId);
+      const assets = await storage.getGeneratedAssetsByProject(projectId);
       if (!assets || assets.length === 0) {
         res.status(400).json({ error: "No generated assets found for this project" });
         return;
@@ -1766,7 +1766,7 @@ export async function registerRoutes(
           context.title = project.title;
           
           const chapters = await storage.getChaptersByProject(projectId);
-          const assets = await storage.getGeneratedAssets(projectId);
+          const assets = await storage.getGeneratedAssetsByProject(projectId);
           
           context.chapters = chapters.map(ch => {
             const chapterAssets = assets.filter(a => a.chapterNumber === ch.chapterNumber);
