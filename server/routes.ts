@@ -25,6 +25,13 @@ import { renderTimeline } from "./timeline-renderer";
 import { buildTimelineFromAssets, buildDocumentaryTimeline } from "./auto-editor";
 import { generateAIEditPlan, applyEditPlanToTimeline } from "./ai-editor";
 
+// Global render progress tracker
+let currentRenderProgress = {
+  status: 'idle' as 'idle' | 'downloading' | 'rendering' | 'uploading' | 'complete' | 'error',
+  progress: 0,
+  message: ''
+};
+
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
     if (!objectPath.startsWith("/objects/public/")) {
@@ -1562,6 +1569,11 @@ export async function registerRoutes(
     }
   });
 
+  // Get render progress
+  app.get("/api/timeline/render-progress", (req, res) => {
+    res.json(currentRenderProgress);
+  });
+
   // Timeline-based video render endpoint - uses timeline JSON as source of truth
   app.post("/api/timeline/render", async (req, res) => {
     try {
@@ -1584,15 +1596,27 @@ export async function registerRoutes(
       const validTimeline = parseResult.data;
       const name = outputName || `timeline_${Date.now()}`;
       
+      // Reset progress tracker
+      currentRenderProgress = { status: 'downloading', progress: 0, message: 'Starting render...' };
+      
       console.log(`[TimelineRender] Starting render: ${name}`);
       console.log(`[TimelineRender] Resolution: ${validTimeline.resolution}, FPS: ${validTimeline.fps}, Duration: ${validTimeline.duration}s`);
       console.log(`[TimelineRender] Video clips: ${validTimeline.tracks.video.length}, Audio clips: ${validTimeline.tracks.audio.length}, Text clips: ${validTimeline.tracks.text.length}`);
       
       const result = await renderTimeline(validTimeline, name, (progress) => {
+        // Update global progress tracker
+        currentRenderProgress = {
+          status: progress.status === 'pending' ? 'downloading' : 
+                  progress.status === 'failed' ? 'error' : 
+                  progress.status as any,
+          progress: progress.progress,
+          message: progress.message
+        };
         console.log(`[TimelineRender] ${progress.status}: ${progress.message} (${progress.progress}%)`);
       });
       
       if (result.success) {
+        currentRenderProgress = { status: 'complete', progress: 100, message: 'Render complete!' };
         res.json({
           success: true,
           videoUrl: result.objectStorageUrl || `/generated_videos/${name}.mp4`,
@@ -1601,12 +1625,14 @@ export async function registerRoutes(
           message: "Timeline rendered successfully"
         });
       } else {
+        currentRenderProgress = { status: 'error', progress: 0, message: result.error || 'Render failed' };
         res.status(500).json({ 
           success: false, 
           error: result.error || "Render failed" 
         });
       }
     } catch (error: any) {
+      currentRenderProgress = { status: 'error', progress: 0, message: error.message || 'Render failed' };
       console.error("[TimelineRender] Error:", error);
       res.status(500).json({ error: error.message || "Timeline rendering failed" });
     }

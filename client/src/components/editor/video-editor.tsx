@@ -47,6 +47,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip } from "@shared/schema";
 import { SFX_LIBRARY } from "@shared/schema";
 import { AIEditPanel } from "./ai-edit-panel";
@@ -114,6 +121,11 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [isAIEnhancing, setIsAIEnhancing] = useState(false);
+  const [showRenderModal, setShowRenderModal] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [renderStatus, setRenderStatus] = useState<'idle' | 'downloading' | 'rendering' | 'uploading' | 'complete' | 'error'>('idle');
+  const [renderMessage, setRenderMessage] = useState('');
+  const [renderedVideoUrl, setRenderedVideoUrl] = useState<string | null>(null);
   const [activeSidebarTool, setActiveSidebarTool] = useState<string>('video');
   const [projectLoaded, setProjectLoaded] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -311,12 +323,20 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
 
   const renderMutation = useMutation({
     mutationFn: async () => {
+      const renderName = `timeline_video_${Date.now()}`;
+      
+      setShowRenderModal(true);
+      setRenderProgress(0);
+      setRenderStatus('downloading');
+      setRenderMessage('Starting render...');
+      setRenderedVideoUrl(null);
+      
       const response = await fetch("/api/timeline/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           timeline,
-          outputName: `timeline_video_${Date.now()}`,
+          outputName: renderName,
         }),
       });
       if (!response.ok) {
@@ -325,7 +345,37 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
       }
       return response.json();
     },
+    onSuccess: (data) => {
+      setRenderStatus('complete');
+      setRenderProgress(100);
+      setRenderMessage('Video rendered successfully!');
+      setRenderedVideoUrl(data.videoUrl || data.localPath);
+    },
+    onError: (error: Error) => {
+      setRenderStatus('error');
+      setRenderMessage(error.message || 'Render failed');
+    },
   });
+
+  useEffect(() => {
+    if (!isRendering) return;
+    
+    const pollProgress = async () => {
+      try {
+        const res = await fetch('/api/timeline/render-progress');
+        if (res.ok) {
+          const data = await res.json();
+          setRenderProgress(data.progress || 0);
+          setRenderStatus(data.status || 'rendering');
+          setRenderMessage(data.message || 'Processing...');
+        }
+      } catch {
+      }
+    };
+    
+    const interval = setInterval(pollProgress, 1000);
+    return () => clearInterval(interval);
+  }, [isRendering]);
 
   const getSelectedClip = (): AnyClip | null => {
     if (!selectedClipId) return null;
@@ -2024,6 +2074,96 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Render Progress Modal */}
+      <Dialog open={showRenderModal} onOpenChange={setShowRenderModal}>
+        <DialogContent className="bg-[#1a1a2e] border-cyan-500/30 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+              {renderStatus === 'complete' ? 'Render Complete!' : renderStatus === 'error' ? 'Render Failed' : 'Rendering Video...'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {renderStatus !== 'complete' && renderStatus !== 'error' && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">
+                      {renderStatus === 'downloading' ? 'Downloading assets...' : 
+                       renderStatus === 'rendering' ? 'Encoding video...' :
+                       renderStatus === 'uploading' ? 'Uploading to storage...' : 
+                       'Processing...'}
+                    </span>
+                    <span className="text-cyan-400 font-mono">{renderProgress}%</span>
+                  </div>
+                  <Progress value={renderProgress} className="h-2 bg-gray-800" />
+                </div>
+                
+                <div className="text-center text-gray-500 text-sm">
+                  {renderMessage}
+                </div>
+                
+                <div className="flex justify-center">
+                  <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                </div>
+              </>
+            )}
+            
+            {renderStatus === 'complete' && renderedVideoUrl && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 text-green-400">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="text-lg">✓</span>
+                  </div>
+                  <span>Video rendered successfully!</span>
+                </div>
+                
+                <div className="space-y-3">
+                  <a
+                    href={renderedVideoUrl}
+                    download
+                    className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium hover:opacity-90 transition-opacity"
+                    data-testid="button-download-video"
+                  >
+                    <Download className="h-5 w-5" />
+                    Download Video
+                  </a>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-600 hover:bg-gray-800"
+                    onClick={() => setShowRenderModal(false)}
+                    data-testid="button-close-render-modal"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {renderStatus === 'error' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 text-red-400">
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <span className="text-lg">✕</span>
+                  </div>
+                  <span>{renderMessage || 'Render failed'}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  className="w-full border-gray-600 hover:bg-gray-800"
+                  onClick={() => setShowRenderModal(false)}
+                  data-testid="button-close-error-modal"
+                >
+                  Close
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
