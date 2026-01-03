@@ -704,3 +704,223 @@ export async function conductFullResearch(title: string): Promise<{
     summary: result.summary,
   };
 }
+
+// Claude Opus 4.5 Deep Research - uses AI knowledge instead of web search
+export async function conductClaudeDeepResearch(
+  title: string,
+  projectId: number,
+  jobId: number,
+  depth: "shallow" | "medium" | "deep" = "deep"
+): Promise<DeepResearchResult> {
+  console.log(`[Research] Starting Claude Opus 4.5 ${depth} research for: ${title}`);
+  
+  sseBroadcaster.emitProgress(projectId, jobId, "research", 5, "Claude Opus 4.5 beginning deep analysis...");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "initial",
+    activityType: "phase_complete",
+    message: "Claude Opus 4.5 beginning comprehensive research...",
+  });
+  
+  // Single comprehensive research prompt for Claude Opus 4.5
+  const researchPrompt = `You are a senior investigative journalist and documentary researcher. Conduct comprehensive research about: "${title}"
+
+Your task is to provide thorough, detailed research that will serve as the foundation for a documentary. Draw upon your extensive knowledge to provide:
+
+1. HISTORICAL CONTEXT & ORIGINS
+- When and how did this topic/event/phenomenon begin?
+- What were the root causes and contributing factors?
+- Key dates, places, and circumstances
+
+2. KEY FIGURES & STAKEHOLDERS  
+- Who are the main people involved (with full names)?
+- What are their roles, motivations, and significance?
+- Include both protagonists and antagonists
+
+3. TIMELINE OF EVENTS
+- Create a detailed chronological timeline
+- Include dates, events, and their significance
+- Note cause-and-effect relationships
+
+4. EVIDENCE & DOCUMENTATION
+- What official records, documents, or primary sources exist?
+- Statistical data and verifiable facts
+- Academic studies or expert analyses
+
+5. CONTROVERSIES & DEBATES
+- What aspects are disputed or controversial?
+- Different perspectives and interpretations
+- Unresolved questions
+
+6. IMPACT & CONSEQUENCES
+- Short-term and long-term effects
+- Who was affected and how?
+- Lasting legacy and current relevance
+
+7. LESSER-KNOWN FACTS
+- Hidden angles and overlooked details
+- Surprising or counterintuitive information
+- What most people don't know
+
+8. CURRENT STATUS
+- What is the situation today?
+- Recent developments
+- Ongoing implications
+
+Respond in this JSON format:
+{
+  "timeline": [
+    {"date": "date/period", "event": "what happened", "significance": "why it matters"}
+  ],
+  "keyFacts": [
+    {"fact": "verifiable claim", "source": "source type (historical record, expert analysis, etc.)", "verified": true}
+  ],
+  "mainCharacters": [
+    {"name": "full name", "role": "their role", "significance": "why they matter"}
+  ],
+  "controversies": [
+    {"topic": "controversial aspect", "perspectives": ["perspective 1", "perspective 2"]}
+  ],
+  "statistics": [
+    {"stat": "statistic or number", "context": "what it means", "source": "source type"}
+  ],
+  "quotes": [
+    {"quote": "notable quote", "speaker": "who said it", "context": "when/why"}
+  ],
+  "subtopics": ["subtopic 1", "subtopic 2"],
+  "facts": [
+    {
+      "id": "fact_1",
+      "claim": "the factual claim",
+      "evidence": "supporting evidence",
+      "sources": ["source references"],
+      "confidence": "high|medium|low",
+      "category": "origins|timeline|figures|evidence|impact|controversies|hidden|current",
+      "timePeriod": "relevant time period"
+    }
+  ]
+}
+
+Be thorough, accurate, and provide as much detail as possible. Respond ONLY with valid JSON.`;
+
+  sseBroadcaster.emitProgress(projectId, jobId, "research", 20, "Claude analyzing topic in depth...");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "deep",
+    activityType: "query_started",
+    query: "Comprehensive analysis",
+    message: "Claude Opus 4.5 conducting deep analysis...",
+  });
+
+  const message = await getAnthropicClient().messages.create({
+    model: "claude-opus-4-5",
+    max_tokens: 8192,
+    messages: [{ role: "user", content: researchPrompt }],
+  });
+
+  const content = message.content[0];
+  if (content.type !== "text") throw new Error("Unexpected response format");
+
+  sseBroadcaster.emitProgress(projectId, jobId, "research", 60, "Processing research findings...");
+
+  let researchData;
+  try {
+    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    researchData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.text);
+  } catch (e) {
+    console.error("[Research] Failed to parse Claude research response:", e);
+    // Fallback to basic structure
+    researchData = {
+      timeline: [],
+      keyFacts: [],
+      mainCharacters: [],
+      controversies: [],
+      statistics: [],
+      quotes: [],
+      subtopics: [title],
+      facts: [],
+    };
+  }
+
+  // Create queries from subtopics (for consistency with Perplexity method)
+  const queries: ResearchQuery[] = (researchData.subtopics || []).map((subtopic: string, i: number) => ({
+    query: subtopic,
+    category: "deep",
+    priority: i + 1,
+    phase: "deep" as const,
+  }));
+
+  // Create sources from the research (Claude's knowledge base)
+  const sources: Source[] = [
+    {
+      title: "Claude Opus 4.5 Knowledge Base",
+      url: "",
+      snippet: `Comprehensive AI-powered research on: ${title}`,
+      relevance: 1,
+    }
+  ];
+
+  // Add fact-based sources
+  (researchData.facts || []).forEach((fact: any, i: number) => {
+    if (fact.sources && fact.sources.length > 0) {
+      sources.push({
+        title: fact.sources[0] || `Research Finding ${i + 1}`,
+        url: "",
+        snippet: fact.claim,
+        relevance: fact.confidence === "high" ? 1 : fact.confidence === "medium" ? 0.7 : 0.5,
+      });
+    }
+  });
+
+  sseBroadcaster.emitProgress(projectId, jobId, "research", 80, "Structuring research summary...");
+
+  // Extract facts
+  const facts: ResearchFact[] = (researchData.facts || []).map((f: any) => ({
+    id: f.id || `fact_${Math.random().toString(36).substr(2, 9)}`,
+    claim: f.claim,
+    evidence: f.evidence || "",
+    sources: f.sources || ["Claude Opus 4.5 Analysis"],
+    confidence: f.confidence || "medium",
+    category: f.category || "general",
+    timePeriod: f.timePeriod,
+  }));
+
+  // Also extract facts from keyFacts if no explicit facts
+  if (facts.length === 0 && researchData.keyFacts) {
+    researchData.keyFacts.forEach((kf: any, i: number) => {
+      facts.push({
+        id: `keyfact_${i}`,
+        claim: kf.fact,
+        evidence: kf.source || "",
+        sources: [kf.source || "Claude Opus 4.5 Analysis"],
+        confidence: kf.verified ? "high" : "medium",
+        category: "evidence",
+      });
+    });
+  }
+
+  const summary: ResearchSummary = {
+    timeline: researchData.timeline || [],
+    keyFacts: researchData.keyFacts || [],
+    controversies: researchData.controversies || [],
+    mainCharacters: researchData.mainCharacters || [],
+    statistics: researchData.statistics || [],
+    quotes: researchData.quotes || [],
+  };
+
+  sseBroadcaster.emitProgress(projectId, jobId, "research", 95, "Research complete!");
+  sseBroadcaster.emitResearchActivity(projectId, jobId, {
+    phase: "synthesis",
+    activityType: "phase_complete",
+    message: `Claude research complete! ${facts.length} facts, ${summary.timeline.length} timeline events`,
+  });
+
+  console.log(`[Research] Claude research completed: ${facts.length} facts, ${summary.timeline.length} timeline events`);
+
+  return {
+    queries,
+    sources,
+    summary,
+    facts,
+    subtopics: researchData.subtopics || [title],
+    depth,
+  };
+}

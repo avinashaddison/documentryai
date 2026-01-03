@@ -121,6 +121,7 @@ export default function DocumentaryMaker() {
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
     imageSource: "stock" as "ai" | "stock", // Default to stock photos (real images)
+    researchMethod: "perplexity" as "perplexity" | "claude", // Research method selection
   });
   
   const [generationLogs, setGenerationLogs] = useState<Array<{
@@ -241,6 +242,7 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
+            researchMethod: config.researchMethod,
           },
         }),
       });
@@ -646,6 +648,7 @@ export default function DocumentaryMaker() {
             imageStyle: config.imageStyle,
             imageSource: config.imageSource,
             voice: config.narratorVoice,
+            researchMethod: config.researchMethod,
           },
         }),
       });
@@ -1334,6 +1337,120 @@ export default function DocumentaryMaker() {
               <span className="text-xs text-orange-300">
                 chapters (~{Math.round(totalChapters * 3)} min)
               </span>
+            </div>
+          </div>
+          
+          {/* Research Method Selector */}
+          <div className="space-y-4 pt-4 border-t border-border/50">
+            <Label className="text-sm text-cyan-300 flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              Research Method
+            </Label>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {/* Perplexity Option */}
+              <button
+                onClick={() => setConfig({ ...config, researchMethod: "perplexity" })}
+                disabled={isGenerating}
+                className={cn(
+                  "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
+                  "border",
+                  config.researchMethod === "perplexity"
+                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow"
+                    : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+                data-testid="button-research-perplexity"
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 opacity-0 transition-opacity duration-300",
+                  config.researchMethod === "perplexity" ? "opacity-15" : "group-hover:opacity-5"
+                )} />
+                
+                {config.researchMethod === "perplexity" && (
+                  <div className="absolute inset-0 rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 blur-md opacity-40" />
+                  </div>
+                )}
+                
+                <div className="relative z-10 text-center space-y-2">
+                  <div className={cn(
+                    "text-2xl font-bold transition-all duration-300",
+                    config.researchMethod === "perplexity" ? "text-cyan-400 neon-text" : "text-white/70 group-hover:text-white"
+                  )}>
+                    Perplexity
+                  </div>
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    config.researchMethod === "perplexity" ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
+                  )}>
+                    Web search + AI synthesis
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Real-time web data
+                  </div>
+                </div>
+                
+                {config.researchMethod === "perplexity" && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
+              
+              {/* Claude Opus 4.5 Option */}
+              <button
+                onClick={() => setConfig({ ...config, researchMethod: "claude" })}
+                disabled={isGenerating}
+                className={cn(
+                  "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
+                  "border",
+                  config.researchMethod === "claude"
+                    ? "border-purple-400/60 bg-purple-500/10 scale-[1.02] neon-glow"
+                    : "border-border bg-card/50 hover:border-purple-500/40 hover:bg-card/80",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+                data-testid="button-research-claude"
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 opacity-0 transition-opacity duration-300",
+                  config.researchMethod === "claude" ? "opacity-15" : "group-hover:opacity-5"
+                )} />
+                
+                {config.researchMethod === "claude" && (
+                  <div className="absolute inset-0 rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 blur-md opacity-40" />
+                  </div>
+                )}
+                
+                <div className="relative z-10 text-center space-y-2">
+                  <div className={cn(
+                    "text-2xl font-bold transition-all duration-300",
+                    config.researchMethod === "claude" ? "text-purple-400 neon-text" : "text-white/70 group-hover:text-white"
+                  )}>
+                    Claude Opus 4.5
+                  </div>
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    config.researchMethod === "claude" ? "text-purple-300" : "text-muted-foreground group-hover:text-white/70"
+                  )}>
+                    Deep AI reasoning
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Knowledge-based analysis
+                  </div>
+                </div>
+                
+                {config.researchMethod === "claude" && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
             </div>
           </div>
         </div>

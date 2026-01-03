@@ -1,5 +1,5 @@
 import { storage } from "./storage";
-import { conductDeepResearch } from "./research-service";
+import { conductDeepResearch, conductClaudeDeepResearch } from "./research-service";
 import { generateDocumentaryFramework, generateChapterOutline, generateChapterScriptWithResearch } from "./documentary-generator";
 import { generateImage } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
@@ -104,7 +104,7 @@ async function processJob(job: GenerationJob) {
     // Step 1: Research
     if (!completedSteps.includes("research")) {
       await updateJobProgress(job.id, "research", 5);
-      await runResearchStep(job.projectId, job.id, state);
+      await runResearchStep(job.projectId, job.id, state, config);
       completedSteps.push("research");
       await saveJobState(job.id, state, completedSteps, 15);
     }
@@ -219,26 +219,38 @@ async function saveJobState(
   });
 }
 
-async function runResearchStep(projectId: number, jobId: number, state: GenerationState) {
-  console.log(`[JobWorker] Running DEEP research step for project ${projectId}, job ${jobId}`);
+async function runResearchStep(projectId: number, jobId: number, state: GenerationState, config: any) {
+  const researchMethod = config?.researchMethod || "perplexity";
+  console.log(`[JobWorker] Running DEEP research step for project ${projectId}, job ${jobId} using ${researchMethod}`);
   
   const project = await storage.getProject(projectId);
   if (!project) throw new Error("Project not found");
   
+  const researchMethodLabel = researchMethod === "claude" ? "Claude Opus 4.5" : "Perplexity AI";
   await storage.createGenerationLog({
     projectId,
     step: "research",
     status: "started",
-    message: "Starting deep research phase with Perplexity AI...",
+    message: `Starting deep research phase with ${researchMethodLabel}...`,
   });
   
-  // Use the new deep research function with proper job ID
-  const researchResult = await conductDeepResearch(
-    project.title,
-    projectId,
-    jobId,
-    "deep" // Use deep research for comprehensive fact-gathering
-  );
+  // Use the appropriate research function based on method
+  let researchResult;
+  if (researchMethod === "claude") {
+    researchResult = await conductClaudeDeepResearch(
+      project.title,
+      projectId,
+      jobId,
+      "deep"
+    );
+  } else {
+    researchResult = await conductDeepResearch(
+      project.title,
+      projectId,
+      jobId,
+      "deep"
+    );
+  }
   
   // Save research with enhanced data
   const existingResearch = await storage.getProjectResearch(projectId);
