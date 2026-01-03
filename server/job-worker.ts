@@ -4,6 +4,8 @@ import { generateDocumentaryFramework, generateChapterOutline, generateChapterSc
 import { generateImage } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
 import { sseBroadcaster } from "./sse-broadcaster";
+import { buildTimelineFromAssets } from "./auto-editor";
+import { renderTimeline } from "./timeline-renderer";
 import type { GenerationJob } from "@shared/schema";
 
 let isProcessing = false;
@@ -146,7 +148,18 @@ async function processJob(job: GenerationJob) {
       await updateJobProgress(job.id, "audio", 85);
       await runAudioStep(job.projectId, config, state);
       completedSteps.push("audio");
-      await saveJobState(job.id, state, completedSteps, 95);
+      await saveJobState(job.id, state, completedSteps, 90);
+    }
+    
+    // Step 7: Auto-Render
+    if (!completedSteps.includes("render")) {
+      await updateJobProgress(job.id, "render", 92);
+      const videoUrl = await runAutoRenderStep(job.projectId, state);
+      if (videoUrl) {
+        (state as any).renderedVideoUrl = videoUrl;
+      }
+      completedSteps.push("render");
+      await saveJobState(job.id, state, completedSteps, 99);
     }
     
     // Mark job as completed
@@ -160,14 +173,15 @@ async function processJob(job: GenerationJob) {
     
     // Update project status to completed
     await storage.updateProject(job.projectId, {
-      state: "AUDIO_DONE",
+      state: "RENDERED",
       status: "generated",
+      renderedVideoUrl: (state as any).renderedVideoUrl || null,
     });
     
     // Emit job completed event via SSE
     sseBroadcaster.emitJobStatus(job.projectId, job.id, "completed", "complete", 100);
     
-    console.log(`[JobWorker] Job ${job.id} completed successfully`);
+    console.log(`[JobWorker] Job ${job.id} completed successfully with video: ${(state as any).renderedVideoUrl}`);
     
   } catch (error: any) {
     console.error(`[JobWorker] Job ${job.id} failed:`, error);
@@ -626,4 +640,131 @@ export function getProcessingJobId(): number | null {
 
 export function isJobProcessing(): boolean {
   return isProcessing;
+}
+
+async function runAutoRenderStep(projectId: number, state: GenerationState): Promise<string | null> {
+  console.log(`[JobWorker] Starting auto-render for project ${projectId}`);
+  
+  await storage.createGenerationLog({
+    projectId,
+    step: "render",
+    status: "running",
+    message: "Auto-rendering documentary video...",
+  });
+  
+  sseBroadcaster.emitProgress(projectId, processingJobId || 0, "render", 92, "Building video timeline...");
+  
+  try {
+    // Get project data
+    const project = await storage.getProject(projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    
+    // Get all generated assets
+    const assets = await storage.getGeneratedAssetsByProject(projectId);
+    if (!assets || assets.length === 0) {
+      console.log(`[JobWorker] No assets found for auto-render`);
+      return null;
+    }
+    
+    // Get chapter data for titles
+    const chapters = await storage.getChaptersByProject(projectId);
+    const chapterTitles: Record<number, string> = {};
+    for (const ch of chapters) {
+      chapterTitles[ch.chapterNumber] = ch.content.split('\n')[0]?.replace(/^#+\s*/, '') || `Chapter ${ch.chapterNumber}`;
+    }
+    
+    // Build merged asset list (combine image and audio for same scene)
+    const sceneMap = new Map<string, any>();
+    
+    for (const asset of assets) {
+      const key = `${asset.chapterNumber}-${asset.sceneNumber}`;
+      
+      if (!sceneMap.has(key)) {
+        sceneMap.set(key, {
+          chapterNumber: asset.chapterNumber,
+          chapterTitle: chapterTitles[asset.chapterNumber],
+          sceneNumber: asset.sceneNumber,
+          imageUrl: "",
+          audioUrl: undefined,
+          narration: asset.narration || undefined,
+          duration: 5,
+        });
+      }
+      
+      const scene = sceneMap.get(key);
+      if (asset.assetType === "image") {
+        scene.imageUrl = asset.assetUrl;
+      } else if (asset.assetType === "audio") {
+        scene.audioUrl = asset.assetUrl;
+        if (asset.duration) {
+          scene.duration = asset.duration / 1000;
+        }
+      }
+      if (asset.narration && !scene.narration) {
+        scene.narration = asset.narration;
+      }
+    }
+    
+    const mergedAssets = Array.from(sceneMap.values()).filter(a => a.imageUrl);
+    
+    if (mergedAssets.length === 0) {
+      console.log(`[JobWorker] No valid scenes for auto-render`);
+      return null;
+    }
+    
+    console.log(`[JobWorker] Building timeline from ${mergedAssets.length} scenes`);
+    sseBroadcaster.emitProgress(projectId, processingJobId || 0, "render", 94, `Building timeline from ${mergedAssets.length} scenes...`);
+    
+    // Build timeline with auto-editing
+    const timeline = buildTimelineFromAssets(
+      projectId,
+      project.title,
+      mergedAssets,
+      {
+        style: "documentary",
+        addChapterTitles: true,
+        addCaptions: true,
+      }
+    );
+    
+    console.log(`[JobWorker] Timeline built: ${timeline.duration}s, ${timeline.tracks.video.length} video, ${timeline.tracks.text.length} text`);
+    sseBroadcaster.emitProgress(projectId, processingJobId || 0, "render", 95, "Rendering video with FFmpeg...");
+    
+    // Render the timeline
+    const outputName = `documentary_${projectId}_${Date.now()}`;
+    const result = await renderTimeline(timeline, outputName, (progress) => {
+      const pct = 95 + Math.floor(progress.progress * 0.04);
+      sseBroadcaster.emitProgress(projectId, processingJobId || 0, "render", pct, progress.message);
+    });
+    
+    if (result.success) {
+      const videoUrl = result.objectStorageUrl || `/generated_videos/${outputName}.mp4`;
+      
+      await storage.createGenerationLog({
+        projectId,
+        step: "render",
+        status: "completed",
+        message: `Video rendered successfully: ${videoUrl}`,
+      });
+      
+      console.log(`[JobWorker] Auto-render complete: ${videoUrl}`);
+      return videoUrl;
+    } else {
+      throw new Error(result.error || "Render failed");
+    }
+    
+  } catch (error: any) {
+    console.error(`[JobWorker] Auto-render failed:`, error);
+    
+    await storage.createGenerationLog({
+      projectId,
+      step: "render",
+      status: "failed",
+      message: `Auto-render failed: ${error.message}`,
+    });
+    
+    return null;
+  }
 }

@@ -64,6 +64,32 @@ function detectColorGrade(style: string, title: string): "grayscale" | "sepia" |
   return "none";
 }
 
+function extractYearFromTitle(title: string): string | null {
+  // Match 4-digit years (1900-2099)
+  const yearMatch = title.match(/\b(19\d{2}|20\d{2})\b/);
+  return yearMatch ? yearMatch[1] : null;
+}
+
+function extractEraFromTitle(title: string): string | null {
+  const lowerTitle = title.toLowerCase();
+  
+  // Check for specific era keywords
+  if (lowerTitle.includes("wwii") || lowerTitle.includes("ww2") || lowerTitle.includes("world war ii")) {
+    return "1939-1945";
+  }
+  if (lowerTitle.includes("world war i") || lowerTitle.includes("ww1") || lowerTitle.includes("wwi")) {
+    return "1914-1918";
+  }
+  if (lowerTitle.includes("cold war")) {
+    return "1947-1991";
+  }
+  if (lowerTitle.includes("vietnam")) {
+    return "1955-1975";
+  }
+  
+  return null;
+}
+
 export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   const {
     title,
@@ -85,6 +111,35 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   let sceneIndex = 0;
 
   const autoColorGrade = colorGrade || detectColorGrade(style, title);
+  
+  // Add stylized year/era overlay at the start (like "1945" splash)
+  const yearFromTitle = extractYearFromTitle(title);
+  const eraFromTitle = extractEraFromTitle(title);
+  const dateOverlay = yearFromTitle || eraFromTitle;
+  
+  if (dateOverlay && chapters.length > 0 && chapters[0].scenes.length > 0) {
+    // Add large centered year overlay on first scene
+    textClips.push({
+      id: generateId(),
+      text: dateOverlay,
+      start: 0.5,
+      end: 4,
+      font: "Serif",
+      size: 180,
+      color: "#F5F0E6",
+      x: "(w-text_w)/2",
+      y: "(h-text_h)/2",
+      box: false,
+      box_color: "#000000",
+      box_opacity: 0,
+      textType: "era_splash",
+      shadow: true,
+      shadowColor: "#000000",
+      shadowOffset: 6,
+      animation: "fade_in",
+      boxPadding: 0,
+    } as any);
+  }
 
   for (const chapter of chapters) {
     const chapterStartTime = currentTime;

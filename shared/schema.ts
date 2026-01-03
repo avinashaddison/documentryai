@@ -28,6 +28,7 @@ export const projects = pgTable("projects", {
   state: text("state").notNull().default("CREATED"), // CREATED | RESEARCH_DONE | SCRIPT_DONE | IMAGES_DONE | AUDIO_DONE | EDITOR_APPROVED | RENDERED
   currentStep: integer("current_step").notNull().default(0),
   progress: integer("progress").notNull().default(0),
+  renderedVideoUrl: text("rendered_video_url"), // URL to the auto-rendered video
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

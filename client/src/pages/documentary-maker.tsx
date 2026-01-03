@@ -36,7 +36,10 @@ import {
   Settings,
   Search,
   ExternalLink,
-  Users
+  Users,
+  Download,
+  Pencil,
+  Video
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
@@ -109,6 +112,7 @@ export default function DocumentaryMaker() {
   const [currentStep, setCurrentStep] = useState<GenerationStep>("idle");
   const [progress, setProgress] = useState(0);
   const [totalChapters, setTotalChapters] = useState(5);
+  const [renderedVideoUrl, setRenderedVideoUrl] = useState<string | null>(null);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [editingChapterValue, setEditingChapterValue] = useState("");
   
@@ -441,9 +445,12 @@ export default function DocumentaryMaker() {
           }
           
           // Determine current step based on project status
-          if (project.status === "RENDERED") {
+          if (project.status === "RENDERED" || project.state === "RENDERED") {
             setCurrentStep("complete");
             setProgress(100);
+            if (project.renderedVideoUrl) {
+              setRenderedVideoUrl(project.renderedVideoUrl);
+            }
           } else if (project.status === "AUDIO_DONE" || project.status === "EDITOR_APPROVED") {
             setCurrentStep("idle");
             setProgress(90);
@@ -1962,6 +1969,64 @@ export default function DocumentaryMaker() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Rendered Video Section */}
+        {renderedVideoUrl && currentStep === "complete" && (
+          <div className="bg-gradient-to-br from-card via-card to-primary/5 border border-primary/30 rounded-xl p-6 space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                <Video className="h-5 w-5 text-primary" />
+                Your Documentary is Ready
+              </h2>
+              <Badge variant="outline" className="text-green-400 border-green-400/30 bg-green-400/10">
+                <Check className="h-3 w-3 mr-1" />
+                Auto-Edited
+              </Badge>
+            </div>
+            
+            <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
+              <video
+                controls
+                className="w-full h-full"
+                src={renderedVideoUrl}
+                poster={Object.values(generatedImages)[0] || undefined}
+                data-testid="video-rendered-documentary"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            
+            <div className="flex gap-3">
+              <a
+                href={renderedVideoUrl}
+                download={`documentary_${projectId}.mp4`}
+                className="flex-1"
+              >
+                <Button 
+                  className="w-full h-12 gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-lg font-semibold"
+                  data-testid="button-download-video"
+                >
+                  <Download className="h-5 w-5" />
+                  Download Video
+                </Button>
+              </a>
+              
+              <Button
+                onClick={() => navigate(`/editor/${projectId}`)}
+                variant="outline"
+                className="h-12 gap-2 border-primary/30 hover:bg-primary/10"
+                data-testid="button-edit-video"
+              >
+                <Pencil className="h-5 w-5" />
+                Edit in Timeline
+              </Button>
+            </div>
+            
+            <p className="text-sm text-muted-foreground text-center">
+              Your documentary has been automatically edited with chapter titles, Ken Burns effects, and color grading.
+            </p>
           </div>
         )}
 
