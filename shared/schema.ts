@@ -237,6 +237,8 @@ export const TimelineVideoClipSchema = z.object({
   fade_in: z.number().optional().default(0),
   fade_out: z.number().optional().default(0),
   blur: z.boolean().optional().default(false),
+  // Documentary-style color grading
+  colorGrade: z.enum(["none", "grayscale", "sepia", "vintage", "warm", "cool"]).optional().default("none"),
 });
 
 export const TimelineAudioClipSchema = z.object({
@@ -282,6 +284,13 @@ export const TimelineTextClipSchema = z.object({
   box: z.boolean().optional().default(false),
   box_color: z.string().optional().default("#000000"),
   box_opacity: z.number().min(0).max(1).optional().default(0.5),
+  // Documentary caption styling
+  textType: z.enum(["caption", "chapter_title", "date_label", "location_label"]).optional().default("caption"),
+  shadow: z.boolean().optional().default(false),
+  shadowColor: z.string().optional().default("#000000"),
+  shadowOffset: z.number().optional().default(2),
+  animation: z.enum(["none", "fade_in", "typewriter"]).optional().default("none"),
+  boxPadding: z.number().optional().default(10),
 });
 
 export const TimelineSchema = z.object({

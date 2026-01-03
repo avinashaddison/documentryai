@@ -81,19 +81,49 @@ function generateKenBurnsFilter(effect: string, duration: number, index: number,
   return effects[effect] || effects.none;
 }
 
+// Documentary-style color grading filters
+function generateColorGradeFilter(colorGrade: string): string {
+  const grades: Record<string, string> = {
+    none: "",
+    grayscale: "colorchannelmixer=.3:.4:.3:0:.3:.4:.3:0:.3:.4:.3",
+    sepia: "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131,eq=saturation=0.8",
+    vintage: "curves=vintage,eq=saturation=0.85:contrast=1.1",
+    warm: "colortemperature=temperature=6500,eq=saturation=1.1:contrast=1.05",
+    cool: "colortemperature=temperature=8500,eq=saturation=0.95",
+  };
+  
+  return grades[colorGrade] || "";
+}
+
 function generateTextFilter(clip: TimelineTextClip): string {
   const escapedText = clip.text.replace(/'/g, "'\\''").replace(/:/g, "\\:");
   const size = clip.size || 48;
   const color = clip.color || "white";
   const x = clip.x || "(w-text_w)/2";
   const y = clip.y || "h-120";
+  const boxPadding = (clip as any).boxPadding || 10;
   
-  let filter = `drawtext=text='${escapedText}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:fontsize=${size}:fontcolor=${color}:x=${x}:y=${y}`;
+  // Choose font based on text type for documentary style
+  const textType = (clip as any).textType || "caption";
+  let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+  if (textType === "chapter_title" || textType === "date_label") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
+  }
   
+  let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${size}:fontcolor=${color}:x=${x}:y=${y}`;
+  
+  // Add shadow for better readability
+  if ((clip as any).shadow) {
+    const shadowColor = (clip as any).shadowColor || "black";
+    const shadowOffset = (clip as any).shadowOffset || 2;
+    filter += `:shadowcolor=${shadowColor}:shadowx=${shadowOffset}:shadowy=${shadowOffset}`;
+  }
+  
+  // Add box background
   if (clip.box) {
     const boxColor = clip.box_color || "black";
     const boxOpacity = clip.box_opacity || 0.5;
-    filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=10`;
+    filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=${boxPadding}`;
   }
   
   filter += `:enable='between(t,${clip.start},${clip.end})'`;
@@ -196,7 +226,16 @@ export async function renderTimeline(
       const effect = clip.effect || "none";
       const kenBurns = generateKenBurnsFilter(effect, clip.duration, index, fps);
       
-      filterComplex += `[${inputIndex}:v]${kenBurns},format=yuva420p`;
+      filterComplex += `[${inputIndex}:v]${kenBurns}`;
+      
+      // Apply color grading (documentary-style)
+      const colorGrade = (clip as any).colorGrade || "none";
+      const colorGradeFilter = generateColorGradeFilter(colorGrade);
+      if (colorGradeFilter) {
+        filterComplex += `,${colorGradeFilter}`;
+      }
+      
+      filterComplex += `,format=yuva420p`;
       
       if (clip.fade_in && clip.fade_in > 0) {
         filterComplex += `,fade=t=in:st=0:d=${clip.fade_in}:alpha=1`;

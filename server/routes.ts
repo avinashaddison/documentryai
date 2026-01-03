@@ -22,6 +22,7 @@ import { objectStorageClient } from "./replit_integrations/object_storage/object
 import { conductFullResearch } from "./research-service";
 import { sseBroadcaster } from "./sse-broadcaster";
 import { renderTimeline } from "./timeline-renderer";
+import { buildTimelineFromAssets, buildDocumentaryTimeline } from "./auto-editor";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -1607,6 +1608,127 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("[TimelineRender] Error:", error);
       res.status(500).json({ error: error.message || "Timeline rendering failed" });
+    }
+  });
+
+  // Auto-render documentary with full editing (chapter titles, captions, color grading)
+  app.post("/api/auto-render", async (req, res) => {
+    try {
+      const { projectId, style, colorGrade, addChapterTitles, addCaptions, bgmUrl } = req.body;
+      
+      if (!projectId) {
+        res.status(400).json({ error: "Missing projectId" });
+        return;
+      }
+      
+      console.log(`[AutoRender] Starting auto-render for project ${projectId}`);
+      
+      // Get project data
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+      
+      // Get all generated assets for this project
+      const assets = await storage.getGeneratedAssets(projectId);
+      if (!assets || assets.length === 0) {
+        res.status(400).json({ error: "No generated assets found for this project" });
+        return;
+      }
+      
+      // Get chapter data
+      const chapters = await storage.getChaptersByProject(projectId);
+      const chapterTitles: Record<number, string> = {};
+      for (const ch of chapters) {
+        chapterTitles[ch.chapterNumber] = ch.content.split('\n')[0]?.replace(/^#+\s*/, '') || `Chapter ${ch.chapterNumber}`;
+      }
+      
+      // Build asset list for timeline
+      const assetList = assets.map(asset => ({
+        chapterNumber: asset.chapterNumber,
+        chapterTitle: chapterTitles[asset.chapterNumber],
+        sceneNumber: asset.sceneNumber,
+        imageUrl: asset.assetType === 'image' ? asset.assetUrl : '',
+        audioUrl: asset.assetType === 'audio' ? asset.assetUrl : undefined,
+        narration: asset.narration || undefined,
+        duration: asset.duration ? asset.duration / 1000 : 5,
+      })).filter(a => a.imageUrl);
+      
+      // Merge audio into scenes
+      const sceneMap = new Map<string, any>();
+      for (const asset of assetList) {
+        const key = `${asset.chapterNumber}-${asset.sceneNumber}`;
+        if (!sceneMap.has(key)) {
+          sceneMap.set(key, asset);
+        } else {
+          const existing = sceneMap.get(key);
+          if (!existing.imageUrl && asset.imageUrl) existing.imageUrl = asset.imageUrl;
+          if (!existing.audioUrl && asset.audioUrl) existing.audioUrl = asset.audioUrl;
+          if (!existing.narration && asset.narration) existing.narration = asset.narration;
+        }
+      }
+      
+      // Get audio URLs
+      for (const asset of assets) {
+        if (asset.assetType === 'audio') {
+          const key = `${asset.chapterNumber}-${asset.sceneNumber}`;
+          if (sceneMap.has(key)) {
+            sceneMap.get(key).audioUrl = asset.assetUrl;
+            if (asset.duration) {
+              sceneMap.get(key).duration = asset.duration / 1000;
+            }
+          }
+        }
+      }
+      
+      const mergedAssets = Array.from(sceneMap.values());
+      
+      console.log(`[AutoRender] Building timeline from ${mergedAssets.length} scenes`);
+      
+      // Build timeline with auto-editing
+      const timeline = buildTimelineFromAssets(
+        projectId,
+        project.title,
+        mergedAssets,
+        {
+          style: style || "documentary",
+          colorGrade: colorGrade,
+          addChapterTitles: addChapterTitles !== false,
+          addCaptions: addCaptions !== false,
+          bgmUrl: bgmUrl,
+        }
+      );
+      
+      console.log(`[AutoRender] Timeline built: ${timeline.duration}s duration`);
+      console.log(`[AutoRender] Video clips: ${timeline.tracks.video.length}, Audio clips: ${timeline.tracks.audio.length}, Text clips: ${timeline.tracks.text.length}`);
+      
+      // Render the timeline
+      const outputName = `auto_documentary_${projectId}_${Date.now()}`;
+      const result = await renderTimeline(timeline, outputName, (progress) => {
+        console.log(`[AutoRender] ${progress.status}: ${progress.message} (${progress.progress}%)`);
+      });
+      
+      if (result.success) {
+        // Update project status
+        await storage.updateProject(projectId, { status: "RENDERED" });
+        
+        res.json({
+          success: true,
+          videoUrl: result.objectStorageUrl || `/generated_videos/${outputName}.mp4`,
+          objectStorageUrl: result.objectStorageUrl,
+          timeline: timeline,
+          message: "Documentary auto-rendered successfully with full editing"
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error || "Auto-render failed" 
+        });
+      }
+    } catch (error: any) {
+      console.error("[AutoRender] Error:", error);
+      res.status(500).json({ error: error.message || "Auto-render failed" });
     }
   });
 
