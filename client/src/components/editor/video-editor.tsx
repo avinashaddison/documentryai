@@ -642,29 +642,36 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     });
   };
 
-  const handleAIEnhance = async () => {
-    if (timeline.tracks.video.length === 0) return;
-    
-    setIsAIEnhancing(true);
-    try {
-      const response = await fetch('/api/timeline/ai-edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+  const aiEnhanceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/timeline/ai-edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timeline, projectId }),
       });
-      
-      const data = await response.json();
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "AI enhancement failed" }));
+        throw new Error(error.error || "AI enhancement failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
       if (data.success && data.timeline) {
         setTimeline(data.timeline);
-        console.log('[AI Enhance] Edit plan:', data.editPlan);
-      } else {
-        console.error('[AI Enhance] Error:', data.error);
+        console.log("[AI Enhance] Edit plan applied:", data.editPlan);
       }
-    } catch (err) {
-      console.error('[AI Enhance] Failed:', err);
-    } finally {
-      setIsAIEnhancing(false);
-    }
+    },
+    onError: (error) => {
+      console.error("[AI Enhance] Failed:", error.message);
+    },
+  });
+
+  const handleAIEnhance = () => {
+    if (timeline.tracks.video.length === 0) return;
+    setIsAIEnhancing(true);
+    aiEnhanceMutation.mutate(undefined, {
+      onSettled: () => setIsAIEnhancing(false),
+    });
   };
 
   // Get the current video clip at the playhead position (must be before conditional returns)
