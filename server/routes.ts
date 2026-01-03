@@ -23,6 +23,7 @@ import { conductFullResearch } from "./research-service";
 import { sseBroadcaster } from "./sse-broadcaster";
 import { renderTimeline } from "./timeline-renderer";
 import { buildTimelineFromAssets, buildDocumentaryTimeline } from "./auto-editor";
+import { generateAIEditPlan, applyEditPlanToTimeline } from "./ai-editor";
 
 async function downloadAudioFromStorage(objectPath: string, localPath: string): Promise<boolean> {
   try {
@@ -1729,6 +1730,76 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("[AutoRender] Error:", error);
       res.status(500).json({ error: error.message || "Auto-render failed" });
+    }
+  });
+
+  // AI-powered timeline editing - Claude generates edit plan
+  app.post("/api/timeline/ai-edit", async (req, res) => {
+    try {
+      const { timeline, projectId } = req.body;
+      
+      if (!timeline) {
+        res.status(400).json({ error: "Missing timeline data" });
+        return;
+      }
+      
+      const parseResult = TimelineSchema.safeParse(timeline);
+      if (!parseResult.success) {
+        res.status(400).json({ 
+          error: "Invalid timeline format",
+          details: fromError(parseResult.error).toString()
+        });
+        return;
+      }
+      
+      console.log("[AI Edit] Generating AI edit plan for timeline with", parseResult.data.tracks.video.length, "clips");
+      
+      // Get documentary context if project ID provided
+      let context = {
+        title: "Documentary",
+        chapters: [] as any[]
+      };
+      
+      if (projectId) {
+        const project = await storage.getProject(projectId);
+        if (project) {
+          context.title = project.title;
+          
+          const chapters = await storage.getChaptersByProject(projectId);
+          const assets = await storage.getGeneratedAssets(projectId);
+          
+          context.chapters = chapters.map(ch => {
+            const chapterAssets = assets.filter(a => a.chapterNumber === ch.chapterNumber);
+            return {
+              title: ch.content.split('\n')[0]?.replace(/^#+\s*/, '') || `Chapter ${ch.chapterNumber}`,
+              scenes: chapterAssets
+                .filter(a => a.assetType === 'audio' && a.narration)
+                .map(a => ({
+                  narration: a.narration || '',
+                  imagePrompt: a.prompt || '',
+                })),
+            };
+          });
+        }
+      }
+      
+      // Generate AI edit plan using Claude
+      const editPlan = await generateAIEditPlan(parseResult.data, context);
+      
+      // Apply edit plan to timeline
+      const enhancedTimeline = applyEditPlanToTimeline(parseResult.data, editPlan, context);
+      
+      console.log("[AI Edit] Applied", editPlan.clipEdits.length, "clip edits");
+      
+      res.json({
+        success: true,
+        timeline: enhancedTimeline,
+        editPlan: editPlan,
+        message: `AI enhanced ${editPlan.clipEdits.length} clips with documentary styling`
+      });
+    } catch (error: any) {
+      console.error("[AI Edit] Error:", error);
+      res.status(500).json({ error: error.message || "AI editing failed" });
     }
   });
 

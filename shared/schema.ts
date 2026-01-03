@@ -317,3 +317,33 @@ export type TimelineVideoClip = z.infer<typeof TimelineVideoClipSchema>;
 export type TimelineAudioClip = z.infer<typeof TimelineAudioClipSchema>;
 export type TimelineTextClip = z.infer<typeof TimelineTextClipSchema>;
 export type Timeline = z.infer<typeof TimelineSchema>;
+
+// AI Edit Plan Schema - Claude generates these, backend converts to FFmpeg
+export const AIClipEditSchema = z.object({
+  clipIndex: z.number().describe("Index of the clip to edit (0-based)"),
+  layoutType: LayoutTypeSchema.optional().describe("Documentary layout: era_splash, letterbox, quote_card, chapter_title, or standard"),
+  effect: z.enum(["none", "kenburns", "zoom_in", "zoom_out", "pan_left", "pan_right"]).optional(),
+  colorGrade: z.enum(["none", "grayscale", "sepia", "vintage", "warm", "cool"]).optional(),
+  textOverlay: z.object({
+    text: z.string(),
+    position: z.enum(["center", "top-left", "top-right", "bottom-left", "bottom-right", "bottom-center"]),
+    style: z.enum(["era_splash", "chapter_title", "quote_card", "caption", "date_label"]),
+  }).optional(),
+  transitionIn: z.enum(["none", "fade", "dissolve"]).optional(),
+  transitionOut: z.enum(["none", "fade", "dissolve"]).optional(),
+  pacing: z.enum(["slow", "normal", "fast"]).optional().describe("Affects duration multiplier"),
+  emotionalTone: z.enum(["dramatic", "somber", "hopeful", "neutral", "tense"]).optional(),
+});
+
+export const AIEditPlanSchema = z.object({
+  overallStyle: z.object({
+    colorGrade: z.enum(["none", "grayscale", "sepia", "vintage"]).default("grayscale"),
+    pacing: z.enum(["slow", "normal", "fast"]).default("normal"),
+    tone: z.string().optional().describe("Overall documentary tone description"),
+  }),
+  clipEdits: z.array(AIClipEditSchema).describe("Specific edits for each clip"),
+  reasoning: z.string().optional().describe("Claude's reasoning for these editing choices"),
+});
+
+export type AIClipEdit = z.infer<typeof AIClipEditSchema>;
+export type AIEditPlan = z.infer<typeof AIEditPlanSchema>;

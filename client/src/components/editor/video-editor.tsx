@@ -113,6 +113,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
   const [resizingClip, setResizingClip] = useState<{ clipId: string; trackType: string; edge: 'left' | 'right'; initialWidth: number; initialStart: number } | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
+  const [isAIEnhancing, setIsAIEnhancing] = useState(false);
   const [activeSidebarTool, setActiveSidebarTool] = useState<string>('video');
   const [projectLoaded, setProjectLoaded] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -641,6 +642,31 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     });
   };
 
+  const handleAIEnhance = async () => {
+    if (timeline.tracks.video.length === 0) return;
+    
+    setIsAIEnhancing(true);
+    try {
+      const response = await fetch('/api/timeline/ai-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeline, projectId }),
+      });
+      
+      const data = await response.json();
+      if (data.success && data.timeline) {
+        setTimeline(data.timeline);
+        console.log('[AI Enhance] Edit plan:', data.editPlan);
+      } else {
+        console.error('[AI Enhance] Error:', data.error);
+      }
+    } catch (err) {
+      console.error('[AI Enhance] Failed:', err);
+    } finally {
+      setIsAIEnhancing(false);
+    }
+  };
+
   // Get the current video clip at the playhead position (must be before conditional returns)
   const getCurrentVideoClip = useCallback(() => {
     return timeline.tracks.video.find(clip => 
@@ -864,6 +890,26 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         </div>
         
         <div className="flex items-center gap-2 relative z-10">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 border-magenta-500/30 text-magenta-400 hover:bg-magenta-500/10 hover:border-magenta-500/50 gap-1.5"
+            onClick={handleAIEnhance}
+            disabled={isAIEnhancing || timeline.tracks.video.length === 0}
+            data-testid="button-ai-enhance"
+          >
+            {isAIEnhancing ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Enhancing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                AI Enhance
+              </>
+            )}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
