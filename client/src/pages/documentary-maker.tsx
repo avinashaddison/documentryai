@@ -1052,7 +1052,7 @@ export default function DocumentaryMaker() {
             </div>
             <div className="flex items-center justify-center gap-4 mt-3">
               <p className="text-sm text-orange-300 font-medium">
-                {currentStep === "research" && "Researching topic with Perplexity AI..."}
+                {currentStep === "research" && `Researching topic with ${config.researchMethod === "claude" ? "Claude Opus 4.5" : "Perplexity AI"}...`}
                 {currentStep === "framework" && "Generating documentary framework with Claude..."}
                 {currentStep === "outline" && "Creating chapter outline..."}
                 {currentStep === "chapters" && `Generating chapter scripts (${generatedChapters.length}/${chapters.length})...`}
