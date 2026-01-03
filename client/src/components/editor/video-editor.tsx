@@ -109,17 +109,46 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
       if (!projectId) return null;
       const [projectRes, chaptersRes, assetsRes] = await Promise.all([
         fetch(`/api/projects/${projectId}`),
-        fetch(`/api/projects/${projectId}/chapters`),
-        fetch(`/api/projects/${projectId}/assets`),
+        fetch(`/api/projects/${projectId}/generated-chapters`),
+        fetch(`/api/projects/${projectId}/generated-assets`),
       ]);
       
       if (!projectRes.ok) throw new Error("Failed to load project");
       
       const project = await projectRes.json();
-      const chapters = chaptersRes.ok ? await chaptersRes.json() : [];
-      const assets = assetsRes.ok ? await assetsRes.json() : [];
+      const chaptersData = chaptersRes.ok ? await chaptersRes.json() : { chapters: [] };
+      const assetsData = assetsRes.ok ? await assetsRes.json() : { images: {}, audio: {} };
       
-      return { project, chapters, assets };
+      // Transform assets from key-value format to array format
+      const assets: any[] = [];
+      if (assetsData.images) {
+        Object.entries(assetsData.images).forEach(([key, url]) => {
+          const match = key.match(/ch(\d+)_sc(\d+)/);
+          if (match) {
+            assets.push({
+              chapterNumber: parseInt(match[1]),
+              sceneNumber: parseInt(match[2]),
+              assetType: "image",
+              assetUrl: url,
+            });
+          }
+        });
+      }
+      if (assetsData.audio) {
+        Object.entries(assetsData.audio).forEach(([key, url]) => {
+          const match = key.match(/ch(\d+)_sc(\d+)/);
+          if (match) {
+            assets.push({
+              chapterNumber: parseInt(match[1]),
+              sceneNumber: parseInt(match[2]),
+              assetType: "audio",
+              assetUrl: url,
+            });
+          }
+        });
+      }
+      
+      return { project, chapters: chaptersData.chapters || [], assets };
     },
     enabled: !!projectId,
   });

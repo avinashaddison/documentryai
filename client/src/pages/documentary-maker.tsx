@@ -824,7 +824,7 @@ export default function DocumentaryMaker() {
         generatedAudio,
       };
       sessionStorage.setItem("documentaryEditorData", JSON.stringify(editorData));
-      navigate("/documentary-editor");
+      navigate(`/documentary-editor/${projectId}`);
     }
   };
 
