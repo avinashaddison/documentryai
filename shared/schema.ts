@@ -229,6 +229,10 @@ export * from "./models/chat";
 // Timeline Editor JSON Schema - Single Source of Truth
 // This is the immutable data model for the video editor
 
+// Layout types for professional documentary editing
+export const LayoutTypeSchema = z.enum(["standard", "era_splash", "letterbox", "quote_card", "chapter_title"]);
+export type LayoutType = z.infer<typeof LayoutTypeSchema>;
+
 export const TimelineVideoClipSchema = z.object({
   id: z.string(),
   src: z.string(),
@@ -240,6 +244,10 @@ export const TimelineVideoClipSchema = z.object({
   blur: z.boolean().optional().default(false),
   // Documentary-style color grading
   colorGrade: z.enum(["none", "grayscale", "sepia", "vintage", "warm", "cool"]).optional().default("none"),
+  // Documentary layout type
+  layoutType: LayoutTypeSchema.optional().default("standard"),
+  // Caption for letterbox layouts
+  letterboxCaption: z.string().optional(),
 });
 
 export const TimelineAudioClipSchema = z.object({

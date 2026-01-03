@@ -1,8 +1,21 @@
 import path from "path";
 import fs from "fs";
 import { spawn } from "child_process";
-import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip } from "@shared/schema";
+import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip, LayoutType } from "@shared/schema";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
+
+// Escape text for FFmpeg drawtext filter - handles all special characters
+function escapeForDrawtext(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\\/g, "\\\\\\\\")  // Backslash
+    .replace(/'/g, "'\\''")       // Single quote
+    .replace(/:/g, "\\:")         // Colon
+    .replace(/%/g, "%%")          // Percent sign
+    .replace(/\[/g, "\\[")        // Brackets
+    .replace(/\]/g, "\\]")
+    .replace(/\n/g, "\\n");       // Newlines
+}
 
 interface RenderProgress {
   status: "pending" | "downloading" | "rendering" | "uploading" | "complete" | "failed";
@@ -119,7 +132,7 @@ function generateColorGradeFilter(colorGrade: string): string {
 }
 
 function generateTextFilter(clip: TimelineTextClip): string {
-  const escapedText = clip.text.replace(/'/g, "'\\''").replace(/:/g, "\\:").replace(/\n/g, "\\n");
+  const escapedText = escapeForDrawtext(clip.text);
   const size = clip.size || 48;
   const color = clip.color || "white";
   const x = clip.x || "(w-text_w)/2";
@@ -131,40 +144,39 @@ function generateTextFilter(clip: TimelineTextClip): string {
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
   // Use serif fonts for titles, dates, and era splashes (like the "1945" style)
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label") {
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label" || textType === "quote_card") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
   }
   
-  // For era splash (big year like "1945"), use special styling
+  // Determine font size based on text type for proper documentary styling
   let actualSize = size;
   if (textType === "era_splash") {
-    actualSize = 200; // Large dramatic year text
+    actualSize = 220; // Very large dramatic year text like "1945"
   } else if (textType === "chapter_title") {
-    actualSize = 64; // Medium chapter titles
+    actualSize = 56; // Chapter titles like "Encirclement and Denial"
+  } else if (textType === "quote_card") {
+    actualSize = 36; // Quote cards in upper-left
   } else if (textType === "caption") {
-    actualSize = 42; // Caption/quote text
+    actualSize = 40;
   }
   
   let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${actualSize}:fontcolor=${color}:x=${x}:y=${y}`;
   
   // Add shadow for better readability - documentary style uses heavier shadows
-  if ((clip as any).shadow) {
+  if ((clip as any).shadow || textType === "era_splash" || textType === "chapter_title") {
     const shadowColor = (clip as any).shadowColor || "black";
-    const shadowOffset = textType === "era_splash" ? 8 : ((clip as any).shadowOffset || 3);
+    let shadowOffset = 3;
+    if (textType === "era_splash") shadowOffset = 10;
+    else if (textType === "chapter_title") shadowOffset = 4;
     filter += `:shadowcolor=${shadowColor}:shadowx=${shadowOffset}:shadowy=${shadowOffset}`;
   }
   
-  // Add box background for captions
-  if (clip.box) {
-    const boxColor = clip.box_color || "black";
-    const boxOpacity = clip.box_opacity || 0.6;
+  // Add box background for quote cards and captions
+  if (clip.box || textType === "quote_card") {
+    const boxColor = clip.box_color || "#F5F0E6";
+    const boxOpacity = clip.box_opacity || 0.92;
     filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=${boxPadding}`;
   }
-  
-  // Add fade in/out effect for text
-  const fadeIn = 0.5;
-  const fadeOut = 0.3;
-  const duration = clip.end - clip.start;
   
   filter += `:enable='between(t,${clip.start},${clip.end})'`;
   
@@ -267,15 +279,33 @@ export async function renderTimeline(
       const inputIndex = i + 1;
       const effect = clip.effect || "none";
       const kenBurns = generateKenBurnsFilter(effect, clip.duration, index, fps);
+      const layoutType: LayoutType = clip.layoutType || "standard";
       
-      // Scale image first, loop it, then apply zoompan for Ken Burns animation
+      // Base scaling and Ken Burns
       filterComplex += `[${inputIndex}:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,loop=loop=-1:size=1:start=0,${kenBurns}`;
       
-      // Apply color grading (documentary-style)
-      const colorGrade = (clip as any).colorGrade || "none";
+      // Apply color grading (documentary-style - always grayscale for B&W)
+      const colorGrade = (clip as any).colorGrade || "grayscale";
       const colorGradeFilter = generateColorGradeFilter(colorGrade);
       if (colorGradeFilter) {
         filterComplex += `,${colorGradeFilter}`;
+      }
+      
+      // Apply layout-specific compositing
+      if (layoutType === "letterbox") {
+        // Add black letterbox bars (140px top and bottom)
+        filterComplex += `,drawbox=x=0:y=0:w=1920:h=140:c=black:t=fill`;
+        filterComplex += `,drawbox=x=0:y=940:w=1920:h=140:c=black:t=fill`;
+        
+        // Add caption text at bottom center if available
+        const letterboxCaption = clip.letterboxCaption;
+        if (letterboxCaption) {
+          const escapedCaption = escapeForDrawtext(letterboxCaption);
+          filterComplex += `,drawtext=text='${escapedCaption}':fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf:fontsize=36:fontcolor=#F5F0E6:x=(w-text_w)/2:y=980:shadowcolor=black:shadowx=2:shadowy=2`;
+        }
+      } else if (layoutType === "era_splash") {
+        // Dark overlay for dramatic era splash effect
+        filterComplex += `,colorlevels=rimax=0.7:gimax=0.7:bimax=0.7`;
       }
       
       filterComplex += `,format=yuva420p`;

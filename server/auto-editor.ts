@@ -1,4 +1,4 @@
-import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip } from "@shared/schema";
+import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip, LayoutType } from "@shared/schema";
 
 interface ChapterData {
   chapterNumber: number;
@@ -12,9 +12,11 @@ interface SceneData {
   audioUrl?: string;
   narration?: string;
   duration: number;
+  layoutType?: LayoutType;
   metadata?: {
     date?: string;
     location?: string;
+    caption?: string;
   };
 }
 
@@ -88,6 +90,35 @@ function extractEraFromTitle(title: string): string | null {
   }
   
   return null;
+}
+
+// Generate caption for letterbox scenes
+function extractLetterboxCaption(scene: SceneData, chapterTitle: string): string {
+  // Try to use scene metadata first
+  if (scene.metadata?.caption) {
+    return scene.metadata.caption;
+  }
+  
+  // Generate from date + location
+  if (scene.metadata?.date && scene.metadata?.location) {
+    return `${scene.metadata.location}, ${scene.metadata.date}`;
+  }
+  
+  // Extract key phrase from narration for letterbox caption
+  if (scene.narration) {
+    const firstSentence = scene.narration.split(/[.!?]/)[0]?.trim();
+    if (firstSentence && firstSentence.length < 50) {
+      return firstSentence;
+    }
+    // Use a noun phrase from the chapter title
+    const shortTitle = chapterTitle.split(/[-:]/)[0]?.trim() || "";
+    if (shortTitle.length < 40) {
+      const year = extractYearFromTitle(scene.narration || chapterTitle);
+      return year ? `${shortTitle}, ${year}` : shortTitle;
+    }
+  }
+  
+  return chapterTitle.split(/[-:]/)[0]?.trim() || "Documentary";
 }
 
 export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
@@ -170,6 +201,22 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
 
     for (const scene of chapter.scenes) {
       const effect = cycleKenBurnsEffect(sceneIndex);
+      
+      // Determine layout type based on scene position and content
+      let layoutType: LayoutType = scene.layoutType || "standard";
+      
+      // First scene of first chapter gets era splash if we have a year
+      if (sceneIndex === 0 && dateOverlay) {
+        layoutType = "era_splash";
+      }
+      // Every 3rd scene gets letterbox for variety
+      else if (sceneIndex > 0 && sceneIndex % 3 === 0) {
+        layoutType = "letterbox";
+      }
+      // Scenes with strong narration get quote cards occasionally
+      else if (sceneIndex % 4 === 2 && scene.narration && scene.narration.length > 50) {
+        layoutType = "quote_card";
+      }
 
       videoClips.push({
         id: generateId(),
@@ -181,6 +228,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         fade_out: 0.3,
         blur: false,
         colorGrade: autoColorGrade,
+        layoutType: layoutType,
+        letterboxCaption: scene.metadata?.caption || (layoutType === "letterbox" ? extractLetterboxCaption(scene, chapter.title) : undefined),
       } as any);
 
       if (scene.audioUrl) {
@@ -197,37 +246,34 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         });
       }
       
-      // Add caption overlay for key narration moments (like quote boxes)
-      if (addCaptions && scene.narration) {
-        // Extract a short, impactful quote from the narration (first sentence or key phrase)
+      // Add quote card overlay for selected scenes
+      if (layoutType === "quote_card" && scene.narration) {
         const sentences = scene.narration.split(/[.!?]+/).filter(s => s.trim().length > 10);
         if (sentences.length > 0) {
-          // Take the most impactful sentence (usually shorter ones work better)
           let caption = sentences[0].trim();
-          if (caption.length > 80) {
-            // Truncate to ~60 chars at word boundary
-            caption = caption.substring(0, 60).replace(/\s+\S*$/, "") + "...";
+          if (caption.length > 70) {
+            caption = caption.substring(0, 65).replace(/\s+\S*$/, "") + "...";
           }
           
           textClips.push({
             id: generateId(),
             text: caption,
-            start: currentTime + 1,
-            end: currentTime + Math.min(scene.duration - 1, 6),
+            start: currentTime + 0.8,
+            end: currentTime + Math.min(scene.duration - 0.5, 5),
             font: "Serif",
-            size: 42,
-            color: "#1a1a1a",
-            x: "80",
-            y: "80",
+            size: 38,
+            color: "#2a2a2a",
+            x: "60",
+            y: "60",
             box: true,
             box_color: "#F5F0E6",
-            box_opacity: 0.92,
-            textType: "caption",
+            box_opacity: 0.95,
+            textType: "quote_card",
             shadow: false,
             shadowColor: "#000000",
             shadowOffset: 0,
             animation: "none",
-            boxPadding: 18,
+            boxPadding: 24,
           } as any);
         }
       }
