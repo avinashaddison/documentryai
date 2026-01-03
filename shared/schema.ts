@@ -328,7 +328,7 @@ export const AIClipEditSchema = z.object({
     text: z.string(),
     position: z.enum(["center", "top-left", "top-right", "bottom-left", "bottom-right", "bottom-center"]),
     style: z.enum(["era_splash", "chapter_title", "quote_card", "caption", "date_label"]),
-  }).optional(),
+  }).nullable().optional(),
   transitionIn: z.enum(["none", "fade", "dissolve"]).optional(),
   transitionOut: z.enum(["none", "fade", "dissolve"]).optional(),
   pacing: z.enum(["slow", "normal", "fast"]).optional().describe("Affects duration multiplier"),
