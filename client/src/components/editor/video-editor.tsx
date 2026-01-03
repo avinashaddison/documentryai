@@ -906,18 +906,19 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                         </div>
 
                         {/* Clips */}
-                        {clips.map(clip => {
+                        {clips.map((clip, clipIndex) => {
                           const clipDuration = getClipDuration(clip);
                           const isSelected = selectedClipId === clip.id;
+                          const isEvenClip = clipIndex % 2 === 0;
                           
                           return (
                             <div
                               key={clip.id}
                               className={cn(
                                 "absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing transition-all group",
-                                clip.type === 'video' && "bg-blue-600/80 border border-blue-400/40",
-                                clip.type === 'audio' && "bg-green-600/80 border border-green-400/40",
-                                clip.type === 'text' && "bg-orange-600/80 border border-orange-400/40",
+                                clip.type === 'video' && (isEvenClip ? "bg-blue-600/90 border-r-2 border-blue-300" : "bg-blue-500/70 border-r-2 border-blue-400"),
+                                clip.type === 'audio' && (isEvenClip ? "bg-green-600/90 border-r-2 border-green-300" : "bg-green-500/70 border-r-2 border-green-400"),
+                                clip.type === 'text' && "bg-orange-600/80 border-2 border-orange-300/60",
                                 isSelected && "ring-2 ring-white ring-offset-1 ring-offset-[#13181e]",
                                 draggingClip?.clipId === clip.id && "opacity-70",
                                 !track.locked && "hover:brightness-110"
@@ -940,7 +941,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                               <div className="h-full flex items-center overflow-hidden px-2">
                                 <GripVertical className="h-3 w-3 text-white/40 flex-shrink-0 mr-1" />
                                 <span className="text-[10px] text-white truncate font-medium">
-                                  {clip.type === 'video' && `Scene ${timeline.tracks.video.indexOf(clip as TimelineVideoClip) + 1}`}
+                                  {clip.type === 'video' && `Scene ${timeline.tracks.video.findIndex(v => v.id === clip.id) + 1}`}
                                   {clip.type === 'audio' && (clip as TimelineAudioClip).src.split('/').pop()}
                                   {clip.type === 'text' && (clip as TimelineTextClip).text}
                                 </span>
