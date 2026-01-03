@@ -7,6 +7,7 @@ import {
   Undo, 
   Redo,
   Scissors,
+  Copy,
   Eye,
   EyeOff,
   Lock,
@@ -595,45 +596,230 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
   const currentVideoClip = getCurrentVideoClip();
   const hasContent = timeline.tracks.video.length > 0 || timeline.tracks.audio.length > 0;
 
+  // Split clip at playhead - works for video, audio, and text clips
+  const splitClipAtPlayhead = useCallback(() => {
+    // Try video clips
+    const videoClip = timeline.tracks.video.find(clip => 
+      currentTime > clip.start && currentTime < clip.start + clip.duration
+    );
+    if (videoClip) {
+      const splitPoint = currentTime - videoClip.start;
+      const firstPart = { ...videoClip, duration: splitPoint };
+      const secondPart = { 
+        ...videoClip, 
+        id: generateId(), 
+        start: currentTime, 
+        duration: videoClip.duration - splitPoint 
+      };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          video: prev.tracks.video
+            .filter(c => c.id !== videoClip.id)
+            .concat([firstPart, secondPart])
+            .sort((a, b) => a.start - b.start),
+        },
+      }));
+      return;
+    }
+
+    // Try audio clips
+    const audioClip = timeline.tracks.audio.find(clip => 
+      currentTime > clip.start && currentTime < clip.start + (clip.duration || 10)
+    );
+    if (audioClip) {
+      const clipDuration = audioClip.duration || 10;
+      const splitPoint = currentTime - audioClip.start;
+      const firstPart = { ...audioClip, duration: splitPoint };
+      const secondPart = { 
+        ...audioClip, 
+        id: generateId(), 
+        start: currentTime, 
+        duration: clipDuration - splitPoint 
+      };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          audio: prev.tracks.audio
+            .filter(c => c.id !== audioClip.id)
+            .concat([firstPart, secondPart])
+            .sort((a, b) => a.start - b.start),
+        },
+      }));
+      return;
+    }
+
+    // Try text clips
+    const textClip = timeline.tracks.text.find(clip => 
+      currentTime > clip.start && currentTime < clip.end
+    );
+    if (textClip) {
+      const firstPart = { ...textClip, end: currentTime };
+      const secondPart = { 
+        ...textClip, 
+        id: generateId(), 
+        start: currentTime 
+      };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          text: prev.tracks.text
+            .filter(c => c.id !== textClip.id)
+            .concat([firstPart, secondPart])
+            .sort((a, b) => a.start - b.start),
+        },
+      }));
+    }
+  }, [currentTime, timeline.tracks.video, timeline.tracks.audio, timeline.tracks.text]);
+
+  // Duplicate selected clip - works for video, audio, and text clips
+  const duplicateClip = useCallback(() => {
+    if (!selectedClipId) return;
+    
+    // Try video clips
+    const videoClip = timeline.tracks.video.find(c => c.id === selectedClipId);
+    if (videoClip) {
+      const newClip = { ...videoClip, id: generateId(), start: videoClip.start + videoClip.duration };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          video: [...prev.tracks.video, newClip].sort((a, b) => a.start - b.start),
+        },
+      }));
+      return;
+    }
+
+    // Try audio clips
+    const audioClip = timeline.tracks.audio.find(c => c.id === selectedClipId);
+    if (audioClip) {
+      const clipDuration = audioClip.duration || 10;
+      const newClip = { ...audioClip, id: generateId(), start: audioClip.start + clipDuration };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          audio: [...prev.tracks.audio, newClip].sort((a, b) => a.start - b.start),
+        },
+      }));
+      return;
+    }
+
+    // Try text clips
+    const textClip = timeline.tracks.text.find(c => c.id === selectedClipId);
+    if (textClip) {
+      const clipDuration = textClip.end - textClip.start;
+      const newClip = { ...textClip, id: generateId(), start: textClip.end, end: textClip.end + clipDuration };
+      setTimeline(prev => ({
+        ...prev,
+        tracks: {
+          ...prev.tracks,
+          text: [...prev.tracks.text, newClip].sort((a, b) => a.start - b.start),
+        },
+      }));
+    }
+  }, [selectedClipId, timeline.tracks.video, timeline.tracks.audio, timeline.tracks.text]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          setIsPlaying(prev => !prev);
+          break;
+        case 'KeyS':
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            splitClipAtPlayhead();
+          }
+          break;
+        case 'KeyD':
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            duplicateClip();
+          }
+          break;
+        case 'Delete':
+        case 'Backspace':
+          if (selectedClip) {
+            e.preventDefault();
+            deleteClip(selectedClip.id, selectedClip.type);
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          setCurrentTime(prev => Math.max(0, prev - (e.shiftKey ? 1 : 0.1)));
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          setCurrentTime(prev => Math.min(timeline.duration, prev + (e.shiftKey ? 1 : 0.1)));
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [splitClipAtPlayhead, duplicateClip, selectedClip, deleteClip, timeline.duration]);
+
   if (isLoadingProject) {
     return (
-      <div className="flex flex-col h-full bg-[#0f1419] text-white items-center justify-center" data-testid="video-editor-loading">
+      <div className="flex flex-col h-full bg-[#080a0f] text-white items-center justify-center" data-testid="video-editor-loading">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center animate-pulse">
+          <div className="w-16 h-16 mx-auto rounded-xl gradient-cyan-purple flex items-center justify-center animate-neon-pulse">
             <Wand2 className="h-8 w-8 text-white" />
           </div>
-          <p className="text-gray-400">Loading project...</p>
+          <p className="neon-text-cyan">Loading project...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0f1419] text-white select-none" data-testid="video-editor">
+    <div className="flex flex-col h-full bg-[#080a0f] text-white select-none" data-testid="video-editor">
       
-      {/* Top Header Bar */}
-      <div className="h-12 bg-[#1a1f26] border-b border-[#2a3441] flex items-center px-4 gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
-            <Wand2 className="h-3.5 w-3.5 text-white" />
+      {/* Top Header Bar - Neon Theme */}
+      <div className="h-14 bg-gradient-to-r from-[#0d1117] via-[#161b22] to-[#0d1117] border-b border-cyan-500/20 flex items-center px-4 gap-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-magenta-500/5"></div>
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-8 h-8 gradient-cyan-purple rounded-lg flex items-center justify-center neon-glow-cyan">
+            <Wand2 className="h-4 w-4 text-white" />
           </div>
-          <span className="text-sm font-semibold">Timeline Editor</span>
+          <div>
+            <span className="text-sm font-bold neon-text-cyan">NEON EDITOR</span>
+            <span className="text-xs text-gray-500 ml-2">Pro</span>
+          </div>
         </div>
         
         <div className="flex-1" />
         
-        <div className="flex items-center gap-2">
+        {/* Keyboard shortcuts hint */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 relative z-10">
+          <span className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10">Space</span>
+          <span>Play</span>
+          <span className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10 ml-2">S</span>
+          <span>Split</span>
+          <span className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10 ml-2">D</span>
+          <span>Duplicate</span>
+        </div>
+        
+        <div className="flex items-center gap-2 relative z-10">
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-8 border-[#2a3441] text-gray-300"
+            className="h-8 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/50"
             onClick={() => console.log("Timeline JSON:", JSON.stringify(timeline, null, 2))}
             data-testid="button-export-json"
           >
             Export JSON
           </Button>
           <Button 
-            className="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+            className="h-8 px-4 gradient-cyan-purple text-white text-sm font-medium neon-glow-cyan"
             onClick={handleRender}
             disabled={isRendering}
             data-testid="button-render"
@@ -655,41 +841,72 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* Left Sidebar - Tools */}
-        <div className="w-12 bg-[#1a1f26] border-r border-[#2a3441] flex flex-col items-center py-2 gap-1">
+        {/* Left Sidebar - Tools - Neon Theme */}
+        <div className="w-14 bg-gradient-to-b from-[#0d1117] to-[#080a0f] border-r border-cyan-500/10 flex flex-col items-center py-3 gap-1.5">
           {sidebarTools.map((tool) => (
             <Tooltip key={tool.id}>
               <TooltipTrigger asChild>
                 <button 
                   onClick={() => setActiveSidebarTool(activeSidebarTool === tool.id ? '' : tool.id)}
                   className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                    activeSidebarTool === tool.id ? "bg-blue-500/20 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200",
+                    activeSidebarTool === tool.id 
+                      ? "bg-cyan-500/20 text-cyan-400 neon-border-cyan" 
+                      : "text-gray-500 hover:bg-white/5 hover:text-cyan-300"
                   )}
                   data-testid={`tool-${tool.id}`}
                 >
                   <tool.icon className="h-5 w-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">{tool.label}</TooltipContent>
+              <TooltipContent side="right" className="bg-[#161b22] border-cyan-500/20 text-cyan-400">{tool.label}</TooltipContent>
             </Tooltip>
           ))}
+          
+          <div className="flex-1" />
+          
+          {/* Split and Duplicate tools */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={splitClipAtPlayhead}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-magenta-500/10 hover:text-magenta-400 transition-all"
+                data-testid="tool-split"
+              >
+                <Scissors className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#161b22] border-magenta-500/20">Split (S)</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={duplicateClip}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 hover:bg-purple-500/10 hover:text-purple-400 transition-all"
+                data-testid="tool-duplicate"
+              >
+                <Copy className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#161b22] border-purple-500/20">Duplicate (D)</TooltipContent>
+          </Tooltip>
         </div>
 
-        {/* SFX Library Panel */}
+        {/* SFX Library Panel - Neon Theme */}
         {activeSidebarTool === 'sfx' && (
-          <div className="w-64 bg-[#1a1f26] border-r border-[#2a3441] flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-[#2a3441]">
+          <div className="w-64 bg-gradient-to-b from-[#0d1117] to-[#080a0f] border-r border-cyan-500/10 flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-cyan-500/10">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Volume2 className="h-4 w-4 text-blue-400" />
-                Sound Effects
+                <Volume2 className="h-4 w-4 text-green-400" />
+                <span className="neon-text-green">Sound Effects</span>
               </h3>
-              <p className="text-xs text-gray-500 mt-1">Click to add at playhead position</p>
+              <p className="text-xs text-gray-500 mt-1">Click to add at playhead</p>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
               {sfxCategories.map(category => (
                 <div key={category} className="mb-3">
-                  <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider px-2 mb-1.5">
+                  <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider px-2 mb-1.5">
                     {category}
                   </h4>
                   <div className="space-y-1">
@@ -697,16 +914,16 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                       <button
                         key={sfx.id}
                         onClick={() => addSfxToTimeline(sfx)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-[#242c38] hover:bg-[#2d3847] transition-colors group"
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-md bg-green-500/5 border border-green-500/10 hover:bg-green-500/15 hover:border-green-500/30 transition-all group"
                         data-testid={`sfx-${sfx.id}`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500/30 to-pink-500/30 flex items-center justify-center">
-                            <Volume2 className="h-3 w-3 text-purple-400" />
+                          <div className="w-6 h-6 rounded bg-gradient-to-br from-green-500/30 to-cyan-500/30 flex items-center justify-center">
+                            <Volume2 className="h-3 w-3 text-green-400" />
                           </div>
-                          <span className="text-sm text-gray-200">{sfx.name}</span>
+                          <span className="text-sm text-gray-300 group-hover:text-green-400">{sfx.name}</span>
                         </div>
-                        <span className="text-xs text-gray-500 group-hover:text-gray-400">{sfx.duration}s</span>
+                        <span className="text-xs text-gray-500 group-hover:text-green-400/60">{sfx.duration}s</span>
                       </button>
                     ))}
                   </div>
@@ -716,18 +933,242 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
           </div>
         )}
 
+        {/* Audio Mixing Panel - Neon Theme */}
+        {activeSidebarTool === 'audio' && (
+          <div className="w-72 bg-gradient-to-b from-[#0d1117] to-[#080a0f] border-r border-cyan-500/10 flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-cyan-500/10">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Music className="h-4 w-4 text-green-400" />
+                <span className="text-green-400">Audio Mixer</span>
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Adjust audio levels</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {/* Master Volume */}
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-green-400">Master Volume</span>
+                  <span className="text-xs text-green-400 font-mono">80%</span>
+                </div>
+                <Slider defaultValue={[80]} min={0} max={100} className="cursor-pointer" />
+              </div>
+              
+              {/* Voiceover Track */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Voiceover</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Slider defaultValue={[100]} min={0} max={100} className="cursor-pointer" />
+                    </div>
+                    <span className="text-xs text-gray-400 w-12 text-right">100%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Fade In</span>
+                    <div className="flex-1">
+                      <Slider defaultValue={[0.5]} min={0} max={3} step={0.1} className="cursor-pointer" />
+                    </div>
+                    <span className="text-xs text-gray-400 w-10 text-right">0.5s</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Fade Out</span>
+                    <div className="flex-1">
+                      <Slider defaultValue={[0.5]} min={0} max={3} step={0.1} className="cursor-pointer" />
+                    </div>
+                    <span className="text-xs text-gray-400 w-10 text-right">0.5s</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Background Music */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Background Music</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <Slider defaultValue={[30]} min={0} max={100} className="cursor-pointer" />
+                    </div>
+                    <span className="text-xs text-gray-400 w-12 text-right">30%</span>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 rounded border-cyan-500/30 bg-transparent text-cyan-500" defaultChecked />
+                    <span className="text-xs text-gray-400">Auto-duck during voiceover</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Sound Effects */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Sound Effects</h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Slider defaultValue={[80]} min={0} max={100} className="cursor-pointer" />
+                  </div>
+                  <span className="text-xs text-gray-400 w-12 text-right">80%</span>
+                </div>
+              </div>
+              
+              {/* Audio Waveform Preview */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Waveform</h4>
+                <div className="h-16 rounded-md bg-[#0a0d12] border border-green-500/10 flex items-center justify-center overflow-hidden">
+                  <div className="flex items-center gap-0.5 h-full py-2">
+                    {Array.from({ length: 40 }).map((_, i) => (
+                      <div 
+                        key={i}
+                        className="w-1 bg-green-500/60 rounded-full"
+                        style={{ height: `${Math.random() * 80 + 20}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Effects Panel - Neon Theme */}
+        {activeSidebarTool === 'effects' && (
+          <div className="w-72 bg-gradient-to-b from-[#0d1117] to-[#080a0f] border-r border-cyan-500/10 flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-cyan-500/10">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                <span className="text-purple-400">Visual Effects</span>
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Apply effects to selected clip</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {/* Color Filters */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Color Filters</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'none', name: 'None', color: 'gray' },
+                    { id: 'vintage', name: 'Vintage', color: 'amber' },
+                    { id: 'noir', name: 'Noir', color: 'gray' },
+                    { id: 'warm', name: 'Warm', color: 'orange' },
+                    { id: 'cold', name: 'Cold', color: 'blue' },
+                    { id: 'cinematic', name: 'Cinematic', color: 'cyan' },
+                  ].map(filter => (
+                    <button
+                      key={filter.id}
+                      className={cn(
+                        "px-3 py-2 rounded-md text-xs font-medium transition-all border",
+                        filter.id === 'cinematic' 
+                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                          : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"
+                      )}
+                      data-testid={`filter-${filter.id}`}
+                    >
+                      {filter.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Ken Burns Effects */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Ken Burns Motion</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'none', name: 'None' },
+                    { id: 'zoom_in', name: 'Zoom In' },
+                    { id: 'zoom_out', name: 'Zoom Out' },
+                    { id: 'pan_left', name: 'Pan Left' },
+                    { id: 'pan_right', name: 'Pan Right' },
+                    { id: 'kenburns', name: 'Full KB' },
+                  ].map(effect => (
+                    <button
+                      key={effect.id}
+                      className="px-3 py-2 rounded-md text-xs font-medium transition-all border bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:border-purple-500/40"
+                      data-testid={`effect-${effect.id}`}
+                    >
+                      {effect.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Brightness/Contrast */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-3">Adjustments</h4>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">Brightness</span>
+                      <span className="text-xs text-cyan-400">100%</span>
+                    </div>
+                    <Slider defaultValue={[100]} min={0} max={200} className="cursor-pointer" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">Contrast</span>
+                      <span className="text-xs text-cyan-400">100%</span>
+                    </div>
+                    <Slider defaultValue={[100]} min={0} max={200} className="cursor-pointer" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">Saturation</span>
+                      <span className="text-xs text-cyan-400">100%</span>
+                    </div>
+                    <Slider defaultValue={[100]} min={0} max={200} className="cursor-pointer" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">Blur</span>
+                      <span className="text-xs text-cyan-400">0px</span>
+                    </div>
+                    <Slider defaultValue={[0]} min={0} max={20} className="cursor-pointer" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Transitions */}
+              <div>
+                <h4 className="text-xs font-medium text-cyan-400/60 uppercase tracking-wider mb-2">Transitions</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'cut', name: 'Cut' },
+                    { id: 'crossfade', name: 'Crossfade' },
+                    { id: 'fade_black', name: 'Fade Black' },
+                    { id: 'fade_white', name: 'Fade White' },
+                    { id: 'wipe_left', name: 'Wipe Left' },
+                    { id: 'wipe_right', name: 'Wipe Right' },
+                  ].map(transition => (
+                    <button
+                      key={transition.id}
+                      className="px-3 py-2 rounded-md text-xs font-medium transition-all border bg-magenta-500/10 border-magenta-500/20 text-magenta-400 hover:bg-magenta-500/20 hover:border-magenta-500/40"
+                      data-testid={`transition-${transition.id}`}
+                    >
+                      {transition.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           
-          {/* Video Preview Area */}
-          <div className="flex-1 bg-[#0a0e13] flex items-center justify-center p-4 min-h-[300px]">
+          {/* Video Preview Area - Neon Theme */}
+          <div className="flex-1 bg-[#050709] flex items-center justify-center p-4 min-h-[300px] relative">
+            {/* Neon grid background */}
+            <div className="absolute inset-0 opacity-20" style={{
+              backgroundImage: `linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px)`,
+              backgroundSize: '40px 40px'
+            }} />
+            
             <div 
-              className="relative bg-[#1e2838] rounded-lg overflow-hidden shadow-2xl"
+              className="relative rounded-lg overflow-hidden neon-border-cyan"
               style={{ 
                 aspectRatio: aspectRatio === "16:9" ? "16/9" : aspectRatio === "9:16" ? "9/16" : "1/1",
                 maxHeight: "100%",
                 maxWidth: aspectRatio === "9:16" ? "300px" : "100%",
-                width: aspectRatio === "9:16" ? "auto" : "min(100%, 800px)"
+                width: aspectRatio === "9:16" ? "auto" : "min(100%, 800px)",
+                background: "linear-gradient(180deg, #0d1117 0%, #080a0f 100%)"
               }}
               data-testid="video-preview"
             >
@@ -749,17 +1190,17 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center space-y-4">
-                    <div className="w-20 h-20 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <div className="w-20 h-20 mx-auto rounded-xl gradient-cyan-purple flex items-center justify-center neon-glow-cyan">
                       <Play className="h-10 w-10 text-white ml-1" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">
+                      <h2 className="text-xl font-bold neon-text-cyan">
                         {projectData?.project?.title || "Timeline Preview"}
                       </h2>
                       {hasContent ? (
-                        <p className="text-sm text-gray-400 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
+                        <p className="text-sm text-cyan-400/60 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
                       ) : (
-                        <p className="text-sm text-amber-400 mt-1">
+                        <p className="text-sm text-magenta-400 mt-1">
                           {projectId ? "No generated content yet. Complete the documentary generation first." : "Add clips to the timeline to get started."}
                         </p>
                       )}
@@ -781,41 +1222,64 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             </div>
           </div>
 
-          {/* Timeline Section */}
-          <div className="h-[45%] min-h-[280px] flex flex-col bg-[#13181e] border-t border-[#2a3441]">
+          {/* Timeline Section - Neon Theme */}
+          <div className="h-[45%] min-h-[280px] flex flex-col bg-gradient-to-b from-[#0a0d12] to-[#080a0f] border-t border-cyan-500/20">
             
-            {/* Timeline Toolbar */}
-            <div className="h-10 bg-[#1a1f26] border-b border-[#2a3441] flex items-center px-3 gap-2">
+            {/* Timeline Toolbar - Neon Theme */}
+            <div className="h-12 bg-gradient-to-r from-[#0d1117] via-[#101419] to-[#0d1117] border-b border-cyan-500/10 flex items-center px-3 gap-2">
               {/* Undo/Redo */}
               <div className="flex items-center gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white hover:bg-white/10" data-testid="button-undo">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10" data-testid="button-undo">
                       <Undo className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Undo</TooltipContent>
+                  <TooltipContent className="bg-[#161b22] border-cyan-500/20">Undo</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white hover:bg-white/10" data-testid="button-redo">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10" data-testid="button-redo">
                       <Redo className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Redo</TooltipContent>
+                  <TooltipContent className="bg-[#161b22] border-cyan-500/20">Redo</TooltipContent>
                 </Tooltip>
               </div>
 
-              <div className="w-px h-5 bg-[#2a3441]" />
+              <div className="w-px h-6 bg-cyan-500/20" />
 
               {/* Scissors */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white hover:bg-white/10" data-testid="button-cut">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-gray-500 hover:text-magenta-400 hover:bg-magenta-500/10" 
+                    onClick={splitClipAtPlayhead}
+                    data-testid="button-cut"
+                  >
                     <Scissors className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Split (S)</TooltipContent>
+                <TooltipContent className="bg-[#161b22] border-magenta-500/20">Split (S)</TooltipContent>
+              </Tooltip>
+              
+              {/* Duplicate */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-gray-500 hover:text-purple-400 hover:bg-purple-500/10" 
+                    onClick={duplicateClip}
+                    disabled={!selectedClip}
+                    data-testid="button-duplicate"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-[#161b22] border-purple-500/20">Duplicate (D)</TooltipContent>
               </Tooltip>
               
               {/* Delete */}
@@ -824,7 +1288,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-7 w-7 text-gray-400 hover:text-red-400 hover:bg-white/10"
+                    className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-500/10"
                     onClick={() => selectedClip && deleteClip(selectedClip.id, selectedClip.type)}
                     disabled={!selectedClip}
                     data-testid="button-delete"
@@ -832,48 +1296,54 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
+                <TooltipContent className="bg-[#161b22] border-red-500/20">Delete</TooltipContent>
               </Tooltip>
 
               <div className="flex-1" />
 
-              {/* Play/Pause */}
+              {/* Play/Pause - Neon Glow */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 text-white hover:bg-white/10"
+                className={cn(
+                  "h-10 w-10 rounded-full transition-all",
+                  isPlaying 
+                    ? "text-magenta-400 bg-magenta-500/20 neon-border-magenta" 
+                    : "text-cyan-400 hover:bg-cyan-500/20 hover:neon-border-cyan"
+                )}
                 onClick={() => setIsPlaying(!isPlaying)}
                 data-testid="button-play-pause"
               >
-                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+                {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current ml-0.5" />}
               </Button>
 
-              {/* Timecode Display */}
-              <div className="text-sm font-mono text-gray-300 min-w-[140px] text-center" data-testid="text-timecode">
-                <span className="text-white">{formatTime(currentTime)}</span>
-                <span className="text-gray-500"> / {formatTime(timeline.duration)}</span>
+              {/* Timecode Display - Neon */}
+              <div className="text-sm font-mono min-w-[160px] text-center px-3 py-1.5 rounded-md bg-[#0d1117] border border-cyan-500/20" data-testid="text-timecode">
+                <span className="neon-text-cyan">{formatTime(currentTime)}</span>
+                <span className="text-gray-600"> / </span>
+                <span className="text-gray-400">{formatTime(timeline.duration)}</span>
               </div>
 
               <div className="flex-1" />
 
               {/* Aspect Ratio */}
               <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                <SelectTrigger className="w-16 h-7 bg-[#2a3441] border-0 text-xs text-gray-300">
+                <SelectTrigger className="w-20 h-8 bg-[#0d1117] border-cyan-500/20 text-xs text-cyan-400">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#0d1117] border-cyan-500/20">
                   <SelectItem value="16:9">16:9</SelectItem>
                   <SelectItem value="9:16">9:16</SelectItem>
                   <SelectItem value="1:1">1:1</SelectItem>
                 </SelectContent>
               </Select>
 
-              {/* Zoom Controls */}
+              {/* Zoom Controls - Neon */}
               <div className="flex items-center gap-1.5 ml-2">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 text-gray-400 hover:text-white"
+                  className="h-7 w-7 text-gray-500 hover:text-cyan-400"
                   onClick={() => setZoom(Math.max(50, zoom - 25))}
                   data-testid="button-zoom-out"
                 >
@@ -895,19 +1365,21 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 text-gray-400 hover:text-white"
+                  className="h-7 w-7 text-gray-500 hover:text-cyan-400"
                   onClick={() => setZoom(Math.min(200, zoom + 25))}
                   data-testid="button-zoom-in"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
+                
+                <span className="text-xs text-gray-500 min-w-[32px]">{zoom}%</span>
               </div>
 
               {/* Properties Button */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={cn("h-7 w-7 ml-2", selectedClip ? "text-blue-400" : "text-gray-400")}
+                className={cn("h-8 w-8 ml-2", selectedClip ? "text-cyan-400 neon-border-cyan" : "text-gray-500")}
                 onClick={() => setPropertiesPanelOpen(true)}
                 disabled={!selectedClip}
                 data-testid="button-properties"
@@ -919,34 +1391,34 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             {/* Timeline Area */}
             <div className="flex-1 flex overflow-hidden">
               
-              {/* Track Headers */}
-              <div className="w-[140px] bg-[#1a1f26] border-r border-[#2a3441] flex flex-col flex-shrink-0">
+              {/* Track Headers - Neon Theme */}
+              <div className="w-[140px] bg-gradient-to-b from-[#0d1117] to-[#080a0f] border-r border-cyan-500/10 flex flex-col flex-shrink-0">
                 {/* Ruler spacer */}
-                <div className="h-6 border-b border-[#2a3441]" />
+                <div className="h-7 border-b border-cyan-500/10" />
                 
                 {/* Track controls */}
                 {tracks.map((track, index) => (
                   <div 
                     key={track.id} 
-                    className="h-12 border-b border-[#2a3441] flex items-center px-2 gap-2"
+                    className="h-12 border-b border-cyan-500/5 flex items-center px-2 gap-2 hover:bg-white/5 transition-colors"
                     data-testid={`track-header-${track.id}`}
                   >
                     <div className={cn(
                       "w-7 h-7 rounded flex items-center justify-center",
-                      track.type === 'video' ? "bg-blue-600/20 text-blue-400" :
-                      track.type === 'audio' ? "bg-green-600/20 text-green-400" :
-                      "bg-orange-600/20 text-orange-400"
+                      track.type === 'video' ? "bg-cyan-500/20 text-cyan-400" :
+                      track.type === 'audio' ? "bg-green-500/20 text-green-400" :
+                      "bg-magenta-500/20 text-magenta-400"
                     )}>
                       {track.type === 'video' && <ImageIcon className="h-3.5 w-3.5" />}
                       {track.type === 'audio' && <Volume2 className="h-3.5 w-3.5" />}
                       {track.type === 'text' && <Type className="h-3.5 w-3.5" />}
                     </div>
-                    <span className="text-xs text-gray-300 flex-1">{track.label}</span>
+                    <span className="text-xs text-gray-400 flex-1">{track.label}</span>
                     <div className="flex items-center gap-0.5 opacity-60 hover:opacity-100">
-                      <button className="p-1 text-gray-400 hover:text-white" data-testid={`button-visibility-${track.id}`}>
+                      <button className="p-1 text-gray-500 hover:text-cyan-400 transition-colors" data-testid={`button-visibility-${track.id}`}>
                         {track.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                       </button>
-                      <button className="p-1 text-gray-400 hover:text-white" data-testid={`button-lock-${track.id}`}>
+                      <button className="p-1 text-gray-500 hover:text-cyan-400 transition-colors" data-testid={`button-lock-${track.id}`}>
                         {track.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                       </button>
                     </div>
@@ -954,14 +1426,14 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 ))}
               </div>
 
-              {/* Timeline Tracks */}
+              {/* Timeline Tracks - Neon Theme */}
               <div 
                 ref={timelineRef}
-                className="flex-1 overflow-x-auto overflow-y-hidden relative"
+                className="flex-1 overflow-x-auto overflow-y-hidden relative bg-[#080a0f]"
                 onClick={handleTimelineClick}
               >
-                {/* Time Ruler */}
-                <div className="h-6 bg-[#1a1f26] border-b border-[#2a3441] sticky top-0 z-20">
+                {/* Time Ruler - Neon */}
+                <div className="h-7 bg-gradient-to-r from-[#0d1117] via-[#101419] to-[#0d1117] border-b border-cyan-500/10 sticky top-0 z-20">
                   <div style={{ width: (timeline.duration + 4) * pixelsPerSecond }} className="relative h-full">
                     {generateTimeMarkers().map((time) => (
                       <div 
@@ -969,10 +1441,10 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                         className="absolute bottom-0 flex flex-col items-center"
                         style={{ left: time * pixelsPerSecond }}
                       >
-                        <span className="text-[10px] text-gray-500 font-mono">
+                        <span className="text-[10px] text-cyan-400/60 font-mono">
                           {time}s
                         </span>
-                        <div className="w-px h-1.5 bg-gray-600 mt-0.5" />
+                        <div className="w-px h-2 bg-cyan-500/30 mt-0.5" />
                       </div>
                     ))}
                   </div>
@@ -981,13 +1453,13 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                 {/* Tracks Content */}
                 <div className="relative" style={{ width: (timeline.duration + 4) * pixelsPerSecond }}>
                   
-                  {/* Playhead */}
+                  {/* Playhead - Neon Magenta Glow */}
                   <div 
-                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none"
+                    className="absolute top-0 bottom-0 w-0.5 z-30 pointer-events-none editor-playhead animate-playhead-glow"
                     style={{ left: currentTime * pixelsPerSecond }}
                     data-testid="playhead"
                   >
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[7px] border-l-transparent border-r-transparent border-t-red-500" />
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#ff00ff] rotate-45 neon-glow-magenta" />
                   </div>
 
                   {/* Track rows */}
@@ -1000,23 +1472,23 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                       <div 
                         key={track.id} 
                         className={cn(
-                          "h-12 border-b border-[#2a3441] relative",
+                          "h-12 border-b border-cyan-500/5 relative",
                           track.locked && "opacity-50"
                         )}
                         data-testid={`track-${track.id}`}
                       >
-                        {/* Grid lines */}
-                        <div className="absolute inset-0 opacity-10">
+                        {/* Grid lines - Neon */}
+                        <div className="absolute inset-0 opacity-20">
                           {generateTimeMarkers().map((time) => (
                             <div 
                               key={time}
-                              className="absolute top-0 bottom-0 w-px bg-gray-500"
+                              className="absolute top-0 bottom-0 w-px bg-cyan-500/20"
                               style={{ left: time * pixelsPerSecond }}
                             />
                           ))}
                         </div>
 
-                        {/* Clips */}
+                        {/* Clips - Neon Theme */}
                         {clips.map((clip, clipIndex) => {
                           const clipDuration = getClipDuration(clip);
                           const isSelected = selectedClipId === clip.id;
@@ -1026,13 +1498,13 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                             <div
                               key={clip.id}
                               className={cn(
-                                "absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing transition-all group",
-                                clip.type === 'video' && (isEvenClip ? "bg-blue-600/90 border-r-2 border-blue-300" : "bg-blue-500/70 border-r-2 border-blue-400"),
-                                clip.type === 'audio' && (isEvenClip ? "bg-green-600/90 border-r-2 border-green-300" : "bg-green-500/70 border-r-2 border-green-400"),
-                                clip.type === 'text' && "bg-orange-600/80 border-2 border-orange-300/60",
-                                isSelected && "ring-2 ring-white ring-offset-1 ring-offset-[#13181e]",
-                                draggingClip?.clipId === clip.id && "opacity-70",
-                                !track.locked && "hover:brightness-110"
+                                "absolute top-1 bottom-1 rounded-md cursor-grab active:cursor-grabbing transition-all group",
+                                clip.type === 'video' && "editor-clip-video",
+                                clip.type === 'audio' && "editor-clip-audio",
+                                clip.type === 'text' && "editor-clip-text",
+                                isSelected && "editor-clip-selected ring-1 ring-cyan-400",
+                                draggingClip?.clipId === clip.id && "opacity-70 scale-[1.02]",
+                                !track.locked && "hover:brightness-125"
                               )}
                               style={{
                                 left: clip.start * pixelsPerSecond,
@@ -1057,7 +1529,7 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                                   {clip.type === 'text' && (clip as TimelineTextClip).text}
                                 </span>
                                 {clip.type === 'video' && (clip as TimelineVideoClip).effect !== 'none' && (
-                                  <span className="ml-auto text-[8px] text-white/60 bg-white/10 px-1 rounded">
+                                  <span className="ml-auto text-[8px] text-cyan-300 bg-cyan-500/20 px-1.5 py-0.5 rounded">
                                     {(clip as TimelineVideoClip).effect}
                                   </span>
                                 )}
