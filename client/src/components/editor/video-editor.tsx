@@ -443,6 +443,81 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     }
   }, [draggingClip, resizingClip, handleDragMove, handleResizeMove, handleDragEnd]);
 
+  // Audio element refs for playback
+  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const playbackIntervalRef = useRef<number | null>(null);
+
+  // Playback effect - advance time and manage audio
+  useEffect(() => {
+    if (isPlaying) {
+      const startTime = Date.now();
+      const startPlaybackTime = currentTime;
+      
+      playbackIntervalRef.current = window.setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const newTime = startPlaybackTime + elapsed;
+        
+        if (newTime >= timeline.duration) {
+          setCurrentTime(0);
+          setIsPlaying(false);
+        } else {
+          setCurrentTime(newTime);
+        }
+      }, 33); // ~30fps update
+      
+      // Start playing audio clips that are at the current position
+      timeline.tracks.audio.forEach(clip => {
+        if (currentTime >= clip.start && currentTime < clip.start + (clip.duration || 10)) {
+          let audio = audioRefs.current.get(clip.id);
+          if (!audio) {
+            audio = new Audio(clip.src);
+            audio.volume = clip.volume || 1.0;
+            audioRefs.current.set(clip.id, audio);
+          }
+          if (audio.paused) {
+            const offset = currentTime - clip.start;
+            audio.currentTime = offset;
+            audio.play().catch(() => {});
+          }
+        }
+      });
+      
+      return () => {
+        if (playbackIntervalRef.current) {
+          clearInterval(playbackIntervalRef.current);
+        }
+      };
+    } else {
+      // Pause all audio when playback stops
+      audioRefs.current.forEach(audio => {
+        audio.pause();
+      });
+    }
+  }, [isPlaying]);
+
+  // Update audio playback based on current time
+  useEffect(() => {
+    if (isPlaying) {
+      timeline.tracks.audio.forEach(clip => {
+        const clipEnd = clip.start + (clip.duration || 10);
+        const audio = audioRefs.current.get(clip.id);
+        
+        if (currentTime >= clip.start && currentTime < clipEnd) {
+          if (!audio) {
+            const newAudio = new Audio(clip.src);
+            newAudio.volume = clip.volume || 1.0;
+            audioRefs.current.set(clip.id, newAudio);
+            const offset = currentTime - clip.start;
+            newAudio.currentTime = offset;
+            newAudio.play().catch(() => {});
+          }
+        } else if (audio && !audio.paused) {
+          audio.pause();
+        }
+      });
+    }
+  }, [currentTime, isPlaying, timeline.tracks.audio]);
+
   const generateTimeMarkers = () => {
     const markers = [];
     const interval = zoom > 150 ? 1 : zoom > 80 ? 2 : 5;
