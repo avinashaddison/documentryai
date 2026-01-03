@@ -1896,7 +1896,7 @@ export default function DocumentaryMaker() {
 
             {/* Action Buttons */}
             <div className="pt-4 border-t border-border flex gap-3">
-              {currentStep === "complete" ? (
+              {currentStep === "complete" || (projectId && Object.keys(generatedImages).length > 0) ? (
                 <Button
                   onClick={handleContinueToEditor}
                   className="flex-1 h-12 gap-2 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-lg font-semibold"
