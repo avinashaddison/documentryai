@@ -270,13 +270,44 @@ export async function renderTimeline(
       const audioInputOffset = 1 + localVideoClips.length;
       const audioMerge: string[] = [];
       
+      // Find narration clips for ducking
+      const narrationClips = localAudioClips
+        .filter(({ clip }) => (clip as any).audioType === "narration")
+        .map(({ clip }) => ({ start: clip.start, end: clip.start + (clip.duration || 0) }));
+      
       for (let i = 0; i < localAudioClips.length; i++) {
         const { clip } = localAudioClips[i];
         const inputIndex = audioInputOffset + i;
-        const vol = clip.volume ?? 1.0;
+        const baseVol = clip.volume ?? 1.0;
         const delayMs = Math.floor(clip.start * 1000);
+        const audioType = (clip as any).audioType;
+        const shouldDuck = clip.ducking && audioType === "music" && narrationClips.length > 0;
         
-        filterComplex += `; [${inputIndex}:a]adelay=${delayMs}|${delayMs},volume=${vol}`;
+        filterComplex += `; [${inputIndex}:a]adelay=${delayMs}|${delayMs}`;
+        
+        if (shouldDuck) {
+          // Build volume expression that ducks during narration
+          // Ducked volume is 30% of base, transitions over 0.3s
+          const duckVol = baseVol * 0.3;
+          let volumeExpr = `${baseVol}`;
+          
+          // Build dynamic volume expression
+          const conditions: string[] = [];
+          for (const narr of narrationClips) {
+            // Duck from 0.5s before narration starts to 0.3s after it ends
+            const duckStart = Math.max(0, narr.start - 0.5);
+            const duckEnd = narr.end + 0.3;
+            conditions.push(`between(t,${duckStart},${duckEnd})`);
+          }
+          
+          if (conditions.length > 0) {
+            volumeExpr = `if(${conditions.join("+")},${duckVol},${baseVol})`;
+          }
+          
+          filterComplex += `,volume='${volumeExpr}':eval=frame`;
+        } else {
+          filterComplex += `,volume=${baseVol}`;
+        }
         
         if (clip.fade_in && clip.fade_in > 0) {
           filterComplex += `,afade=t=in:st=0:d=${clip.fade_in}`;
