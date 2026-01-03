@@ -323,7 +323,10 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
 
   const renderMutation = useMutation({
     mutationFn: async () => {
-      const renderName = `timeline_video_${Date.now()}`;
+      // Use project ID in name so it shows up in Saved Videos
+      const renderName = projectId 
+        ? `project_${projectId}_documentary` 
+        : `timeline_video_${Date.now()}`;
       
       setShowRenderModal(true);
       setRenderProgress(0);

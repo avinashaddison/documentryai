@@ -34,10 +34,18 @@ async function downloadAsset(url: string, localPath: string): Promise<boolean> {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // Handle /public/audio/ paths - these are stored in object storage
+    // Handle /public/audio/ paths - check local files first, then object storage
     if (url.startsWith("/public/audio/") || url.startsWith("/public/")) {
+      // First, check if file exists locally (remove leading slash)
+      const localFilePath = url.replace(/^\//, "");
+      if (fs.existsSync(localFilePath)) {
+        await fs.promises.copyFile(localFilePath, localPath);
+        console.log(`[TimelineRenderer] Copied from local: ${localFilePath}`);
+        return true;
+      }
+      
+      // Then try object storage
       try {
-        // Remove leading slash to get object storage path
         const objectPath = url.replace(/^\//, "");
         const bucket = objectStorageClient.bucket("replit-objstore");
         const file = bucket.file(objectPath);
@@ -51,6 +59,7 @@ async function downloadAsset(url: string, localPath: string): Promise<boolean> {
       } catch (e) {
         console.error(`[TimelineRenderer] Object storage download failed for ${url}:`, e);
       }
+      console.error(`[TimelineRenderer] Audio file not found: ${url}`);
       return false;
     }
 
