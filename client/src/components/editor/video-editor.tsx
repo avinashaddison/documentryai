@@ -510,6 +510,16 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     });
   };
 
+  // Get the current video clip at the playhead position (must be before conditional returns)
+  const getCurrentVideoClip = useCallback(() => {
+    return timeline.tracks.video.find(clip => 
+      currentTime >= clip.start && currentTime < clip.start + clip.duration
+    );
+  }, [timeline.tracks.video, currentTime]);
+
+  const currentVideoClip = getCurrentVideoClip();
+  const hasContent = timeline.tracks.video.length > 0 || timeline.tracks.audio.length > 0;
+
   if (isLoadingProject) {
     return (
       <div className="flex flex-col h-full bg-[#0f1419] text-white items-center justify-center" data-testid="video-editor-loading">
@@ -522,8 +532,6 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
       </div>
     );
   }
-
-  const hasContent = timeline.tracks.video.length > 0 || timeline.tracks.audio.length > 0;
 
   return (
     <div className="flex flex-col h-full bg-[#0f1419] text-white select-none" data-testid="video-editor">
@@ -648,25 +656,53 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
               }}
               data-testid="video-preview"
             >
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center space-y-4">
-                  <div className="w-20 h-20 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                    <Play className="h-10 w-10 text-white ml-1" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">
-                      {projectData?.project?.title || "Timeline Preview"}
-                    </h2>
-                    {hasContent ? (
-                      <p className="text-sm text-gray-400 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
-                    ) : (
-                      <p className="text-sm text-amber-400 mt-1">
-                        {projectId ? "No generated content yet. Complete the documentary generation first." : "Add clips to the timeline to get started."}
-                      </p>
-                    )}
+              {currentVideoClip ? (
+                <img 
+                  src={currentVideoClip.src} 
+                  alt="Video frame"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{
+                    transform: currentVideoClip.effect === "zoom_in" 
+                      ? "scale(1.1)" 
+                      : currentVideoClip.effect === "zoom_out" 
+                      ? "scale(0.95)" 
+                      : "scale(1)",
+                    filter: currentVideoClip.blur ? "blur(4px)" : "none",
+                    transition: "transform 0.3s ease-out"
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <div className="w-20 h-20 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Play className="h-10 w-10 text-white ml-1" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {projectData?.project?.title || "Timeline Preview"}
+                      </h2>
+                      {hasContent ? (
+                        <p className="text-sm text-gray-400 mt-1">{formatTime(currentTime)} / {formatTime(timeline.duration)}</p>
+                      ) : (
+                        <p className="text-sm text-amber-400 mt-1">
+                          {projectId ? "No generated content yet. Complete the documentary generation first." : "Add clips to the timeline to get started."}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+              {/* Overlay with timecode when showing image */}
+              {currentVideoClip && (
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-md">
+                    <span className="text-sm font-mono text-white">{formatTime(currentTime)} / {formatTime(timeline.duration)}</span>
+                  </div>
+                  <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-md">
+                    <span className="text-xs text-gray-300">{currentVideoClip.effect !== "none" ? currentVideoClip.effect : "No effect"}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
