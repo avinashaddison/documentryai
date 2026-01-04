@@ -104,25 +104,35 @@ interface ResearchActivity {
   timestamp?: string;
 }
 
-function DirectVideoRenderer({ 
+function AutoVideoRenderer({ 
   projectId, 
   generatedChapters, 
   generatedImages, 
   generatedAudio,
-  onVideoReady 
+  onVideoReady,
+  existingVideoUrl
 }: { 
   projectId: number;
   generatedChapters: ChapterScript[];
   generatedImages: Record<string, string>;
   generatedAudio: Record<string, string>;
   onVideoReady: (url: string) => void;
+  existingVideoUrl?: string | null;
 }) {
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const hasStartedRef = useRef(false);
+  
+  const hasAllAssets = generatedChapters.length > 0 && 
+    Object.keys(generatedImages).length > 0 && 
+    Object.keys(generatedAudio).length > 0;
   
   const startRendering = async () => {
+    if (hasStartedRef.current || existingVideoUrl) return;
+    hasStartedRef.current = true;
+    
     setIsRendering(true);
     setProgress(0);
     setError(null);
@@ -153,6 +163,7 @@ function DirectVideoRenderer({
     } catch (err: any) {
       setError(err.message);
       setIsRendering(false);
+      hasStartedRef.current = false;
     }
   };
   
@@ -170,65 +181,76 @@ function DirectVideoRenderer({
       } else if (data.status === "failed") {
         setError(data.error || "Rendering failed");
         setIsRendering(false);
+        hasStartedRef.current = false;
       } else {
         setTimeout(() => pollRenderJob(jobId), 2000);
       }
     } catch (err: any) {
       setError(err.message);
       setIsRendering(false);
+      hasStartedRef.current = false;
     }
   };
   
-  const hasAllAssets = generatedChapters.length > 0 && 
-    Object.keys(generatedImages).length > 0 && 
-    Object.keys(generatedAudio).length > 0;
+  useEffect(() => {
+    if (hasAllAssets && !existingVideoUrl && !hasStartedRef.current) {
+      startRendering();
+    }
+  }, [hasAllAssets, existingVideoUrl]);
+  
+  if (existingVideoUrl) {
+    return null;
+  }
   
   if (!hasAllAssets) {
-    return (
-      <div className="bg-muted/30 rounded-lg p-4 text-center">
-        <p className="text-muted-foreground text-sm">
-          Waiting for all assets (images & audio) to be generated before video can be created.
-        </p>
-      </div>
-    );
+    return null;
   }
   
   return (
-    <div className="space-y-4">
+    <div className="bg-gradient-to-br from-card via-card to-amber-500/5 border border-amber-500/30 rounded-xl p-6 space-y-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
+          <Video className="h-5 w-5 text-amber-400" />
+          Rendering Video
+        </h2>
+        <Badge variant="outline" className="text-amber-400 border-amber-400/30 bg-amber-400/10">
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          In Progress
+        </Badge>
+      </div>
+      
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
           {error}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-3"
+            onClick={() => {
+              hasStartedRef.current = false;
+              startRendering();
+            }}
+          >
+            Retry
+          </Button>
         </div>
       )}
       
-      {isRendering ? (
+      {isRendering && (
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-white font-medium flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Film className="h-4 w-4 text-amber-400" />
               {statusMessage}
             </span>
             <span className="text-muted-foreground">{Math.round(progress)}%</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-3" />
           <p className="text-xs text-muted-foreground text-center">
-            Creating your documentary with FFmpeg...
+            Creating grayscale documentary with fade transitions...
           </p>
         </div>
-      ) : (
-        <Button
-          onClick={startRendering}
-          className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg shadow-green-500/25"
-          data-testid="button-create-video"
-        >
-          <Video className="h-6 w-6" />
-          Create Video
-        </Button>
       )}
-      
-      <p className="text-xs text-muted-foreground text-center">
-        Renders directly with FFmpeg • Grayscale • Fade transitions • Static images
-      </p>
     </div>
   );
 }
@@ -2493,6 +2515,66 @@ export default function DocumentaryMaker() {
           </div>
         )}
 
+        {/* Auto Video Renderer - starts automatically when assets are ready */}
+        <AutoVideoRenderer 
+          projectId={projectId!}
+          generatedChapters={generatedChapters}
+          generatedImages={generatedImages}
+          generatedAudio={generatedAudio}
+          existingVideoUrl={renderedVideoUrl}
+          onVideoReady={(url) => {
+            setRenderedVideoUrl(url);
+            setCurrentStep("complete");
+          }}
+        />
+        
+        {/* Rendered Video Section - Shows prominently when video is available */}
+        {renderedVideoUrl && (
+          <div className="bg-gradient-to-br from-card via-card to-green-500/10 border-2 border-green-500/40 rounded-xl p-6 space-y-4 shadow-lg shadow-green-500/5">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                <Video className="h-6 w-6 text-green-400" />
+                Your Documentary is Ready
+              </h2>
+              <Badge variant="outline" className="text-green-400 border-green-400/30 bg-green-400/10">
+                <Check className="h-3 w-3 mr-1" />
+                Complete
+              </Badge>
+            </div>
+            
+            <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
+              <video
+                controls
+                autoPlay={false}
+                className="w-full h-full"
+                src={renderedVideoUrl}
+                poster={Object.values(generatedImages)[0] || undefined}
+                data-testid="video-rendered-documentary"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            
+            <a
+              href={renderedVideoUrl}
+              download={`documentary_${projectId}.mp4`}
+              className="block"
+            >
+              <Button 
+                className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg"
+                data-testid="button-download-video"
+              >
+                <Download className="h-6 w-6" />
+                Download Documentary
+              </Button>
+            </a>
+            
+            <p className="text-sm text-muted-foreground text-center">
+              Grayscale documentary with smooth fade transitions
+            </p>
+          </div>
+        )}
+
         {/* Generated Scripts Preview - Full Script with Audio */}
         {generatedChapters.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-4">
@@ -2605,68 +2687,6 @@ export default function DocumentaryMaker() {
                 </div>
               ))}
             </div>
-            
-            {/* Direct Create Video Button */}
-            <div className="pt-4 border-t border-border">
-              <DirectVideoRenderer 
-                projectId={projectId!}
-                generatedChapters={generatedChapters}
-                generatedImages={generatedImages}
-                generatedAudio={generatedAudio}
-                onVideoReady={(url) => {
-                  setRenderedVideoUrl(url);
-                  setCurrentStep("complete");
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Rendered Video Section */}
-        {renderedVideoUrl && currentStep === "complete" && (
-          <div className="bg-gradient-to-br from-card via-card to-primary/5 border border-primary/30 rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                <Video className="h-5 w-5 text-primary" />
-                Your Documentary is Ready
-              </h2>
-              <Badge variant="outline" className="text-green-400 border-green-400/30 bg-green-400/10">
-                <Check className="h-3 w-3 mr-1" />
-                Auto-Edited
-              </Badge>
-            </div>
-            
-            <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
-              <video
-                controls
-                className="w-full h-full"
-                src={renderedVideoUrl}
-                poster={Object.values(generatedImages)[0] || undefined}
-                data-testid="video-rendered-documentary"
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-            
-            <div className="flex gap-3">
-              <a
-                href={renderedVideoUrl}
-                download={`documentary_${projectId}.mp4`}
-                className="flex-1"
-              >
-                <Button 
-                  className="w-full h-12 gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-lg font-semibold"
-                  data-testid="button-download-video"
-                >
-                  <Download className="h-5 w-5" />
-                  Download Video
-                </Button>
-              </a>
-            </div>
-            
-            <p className="text-sm text-muted-foreground text-center">
-              Simple grayscale documentary with fade transitions.
-            </p>
           </div>
         )}
 
