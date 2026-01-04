@@ -315,7 +315,7 @@ export const TimelineTextClipSchema = z.object({
   box_color: z.string().optional().default("#000000"),
   box_opacity: z.number().min(0).max(1).optional().default(0.5),
   // Documentary caption styling
-  textType: z.enum(["caption", "chapter_title", "date_label", "location_label"]).optional().default("caption"),
+  textType: z.enum(["caption", "chapter_title", "date_label", "location_label", "era_splash", "quote_card"]).optional().default("caption"),
   shadow: z.boolean().optional().default(false),
   shadowColor: z.string().optional().default("#000000"),
   shadowOffset: z.number().optional().default(2),
