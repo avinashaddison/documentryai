@@ -140,6 +140,133 @@ function generateColorGradeFilter(colorGrade: string): string {
   return grades[colorGrade] || "";
 }
 
+// Smooth video transitions using FFmpeg xfade filter
+function getXfadeTransition(transitionType: string): string {
+  const transitions: Record<string, string> = {
+    none: "fade",
+    fade: "fade",
+    dissolve: "dissolve",
+    wipeleft: "wipeleft",
+    wiperight: "wiperight",
+    wipeup: "wipeup",
+    wipedown: "wipedown",
+    slideleft: "slideleft",
+    slideright: "slideright",
+    slideup: "slideup",
+    slidedown: "slidedown",
+    circleopen: "circleopen",
+    circleclose: "circleclose",
+    radial: "radial",
+    smoothleft: "smoothleft",
+    smoothright: "smoothright",
+    smoothup: "smoothup",
+    smoothdown: "smoothdown",
+    zoomin: "zoomin",
+  };
+  return transitions[transitionType] || "fade";
+}
+
+// Generate animated text filter with motion effects
+// Uses FFmpeg drawtext with alpha expressions for smooth animations
+function generateAnimatedTextFilter(clip: TimelineTextClip): string {
+  const escapedText = escapeForDrawtext(clip.text);
+  const size = clip.size || 48;
+  const color = clip.color || "white";
+  const boxPadding = (clip as any).boxPadding || 10;
+  const animation = (clip as any).animation || "none";
+  const animDuration = (clip as any).animationDuration || 0.5;
+  
+  // Base position
+  let x = clip.x || "(w-text_w)/2";
+  let y = clip.y || "h-120";
+  
+  // Choose font based on text type
+  const textType = (clip as any).textType || "caption";
+  let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+  
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label" || textType === "quote_card") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
+  }
+  
+  // Determine font size based on text type
+  let actualSize = size;
+  if (textType === "era_splash") {
+    actualSize = 220;
+  } else if (textType === "chapter_title") {
+    actualSize = 56;
+  } else if (textType === "quote_card") {
+    actualSize = 36;
+  } else if (textType === "caption") {
+    actualSize = 40;
+  }
+  
+  // Animation alpha expressions - use 'alpha' option for dynamic transparency
+  let alphaExpr = "1";
+  let fontSizeExpr = String(actualSize);
+  
+  const fadeInEnd = clip.start + animDuration;
+  const fadeOutStart = clip.end - animDuration;
+  
+  switch (animation) {
+    case "fade_in":
+      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
+      break;
+    case "fade_out":
+      alphaExpr = `if(gt(t,${fadeOutStart}),1-(t-${fadeOutStart})/${animDuration},1)`;
+      break;
+    case "fade_in_out":
+      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},if(gt(t,${fadeOutStart}),1-(t-${fadeOutStart})/${animDuration},1))`;
+      break;
+    case "scale_in":
+      fontSizeExpr = `if(lt(t,${fadeInEnd}),${actualSize}*((t-${clip.start})/${animDuration}),${actualSize})`;
+      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
+      break;
+    case "scale_bounce":
+      fontSizeExpr = `if(lt(t,${fadeInEnd}),${actualSize}*(1.2-0.2*cos(3.14*(t-${clip.start})/${animDuration})),${actualSize})`;
+      break;
+    case "slide_up":
+      // Simplified slide - just use fade for now
+      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
+      break;
+    case "typewriter":
+      // Simplified typewriter - use progressive fade
+      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
+      break;
+    default:
+      alphaExpr = "1";
+  }
+  
+  // Build filter with alpha option for dynamic transparency
+  let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${fontSizeExpr}:fontcolor=${color}:alpha='${alphaExpr}':x=${x}:y=${y}`;
+  
+  // Add shadow for better readability
+  if ((clip as any).shadow || textType === "era_splash" || textType === "chapter_title") {
+    const shadowColor = (clip as any).shadowColor || "black";
+    let shadowOffset = 3;
+    if (textType === "era_splash") shadowOffset = 10;
+    else if (textType === "chapter_title") shadowOffset = 4;
+    filter += `:shadowcolor=${shadowColor}:shadowx=${shadowOffset}:shadowy=${shadowOffset}`;
+  }
+  
+  // Add outline for motion graphics style
+  if ((clip as any).outline) {
+    const outlineColor = (clip as any).outlineColor || "black";
+    const outlineWidth = (clip as any).outlineWidth || 2;
+    filter += `:borderw=${outlineWidth}:bordercolor=${outlineColor}`;
+  }
+  
+  // Add box background
+  if (clip.box || textType === "quote_card") {
+    const boxColor = clip.box_color || "#F5F0E6";
+    const boxOpacity = clip.box_opacity || 0.92;
+    filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=${boxPadding}`;
+  }
+  
+  filter += `:enable='between(t,${clip.start},${clip.end})'`;
+  
+  return filter;
+}
+
 function generateTextFilter(clip: TimelineTextClip): string {
   const escapedText = escapeForDrawtext(clip.text);
   const size = clip.size || 48;
@@ -342,7 +469,14 @@ export async function renderTimeline(
     let finalVideoTag = "[vmerged]";
     
     if (timeline.tracks.text.length > 0) {
-      const textFilters = timeline.tracks.text.map((clip, i) => generateTextFilter(clip)).join(",");
+      // Use animated text filter for professional motion graphics
+      const textFilters = timeline.tracks.text.map((clip, i) => {
+        const animation = (clip as any).animation || "none";
+        if (animation !== "none") {
+          return generateAnimatedTextFilter(clip);
+        }
+        return generateTextFilter(clip);
+      }).join(",");
       filterComplex += `${finalVideoTag}${textFilters}[vfinal]`;
       finalVideoTag = "[vfinal]";
     }

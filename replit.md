@@ -66,6 +66,14 @@ The platform includes a professional timeline-based video editor with:
 - **Ken Burns Effects**: zoom_in, zoom_out, pan_left, pan_right, kenburns preset effects
 - **Text Overlays**: Customizable text with font size, color, and background box options
 
+### VidRush-Style Professional Effects
+- **Smooth Transitions**: Crossfade effects via overlay+fade approach (fade_in/fade_out creates smooth dissolves between clips)
+- **Animated Text**: FFmpeg drawtext with dynamic alpha expressions for fade_in, fade_out, fade_in_out, scale_in, scale_bounce animations
+- **Text Animation Types**: fade_in, fade_out, fade_in_out, scale_in, scale_bounce, slide_up, typewriter
+- **Auto-Editor Defaults**: All clips automatically get professional transitions and animations applied
+- **Audio Ducking**: Background music automatically lowers volume during narration segments
+- **Documentary Layouts**: era_splash (dramatic year overlays), letterbox (cinematic bars with captions), quote_card (styled quotes)
+
 ### Navigation Routes
 - `/` or `/create`: DocumentaryMaker - main creation interface with sidebar
 - `/projects`: Projects list page showing all documentaries with status and resume options

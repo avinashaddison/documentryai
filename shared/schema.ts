@@ -233,6 +233,14 @@ export * from "./models/chat";
 export const LayoutTypeSchema = z.enum(["standard", "era_splash", "letterbox", "quote_card", "chapter_title"]);
 export type LayoutType = z.infer<typeof LayoutTypeSchema>;
 
+// Transition types for smooth clip blending
+export const TransitionTypeSchema = z.enum([
+  "none", "fade", "dissolve", "wipeleft", "wiperight", "wipeup", "wipedown",
+  "slideleft", "slideright", "slideup", "slidedown", "circleopen", "circleclose",
+  "radial", "smoothleft", "smoothright", "smoothup", "smoothdown", "zoomin"
+]);
+export type TransitionType = z.infer<typeof TransitionTypeSchema>;
+
 export const TimelineVideoClipSchema = z.object({
   id: z.string(),
   src: z.string(),
@@ -248,6 +256,10 @@ export const TimelineVideoClipSchema = z.object({
   layoutType: LayoutTypeSchema.optional().default("standard"),
   // Caption for letterbox layouts
   letterboxCaption: z.string().optional(),
+  // Smooth transitions between clips
+  transitionIn: TransitionTypeSchema.optional().default("none"),
+  transitionOut: TransitionTypeSchema.optional().default("none"),
+  transitionDuration: z.number().optional().default(0.5), // seconds
 });
 
 export const TimelineAudioClipSchema = z.object({
@@ -280,6 +292,15 @@ export const SFX_LIBRARY = [
   { id: "heartbeat", name: "Heartbeat", duration: 4.0, category: "tension" },
 ] as const;
 
+// Text animation types for professional motion graphics
+export const TextAnimationSchema = z.enum([
+  "none", "fade_in", "fade_out", "fade_in_out", 
+  "typewriter", "scale_in", "scale_out", "scale_bounce",
+  "slide_left", "slide_right", "slide_up", "slide_down",
+  "blur_in", "glow_pulse"
+]);
+export type TextAnimation = z.infer<typeof TextAnimationSchema>;
+
 export const TimelineTextClipSchema = z.object({
   id: z.string(),
   text: z.string(),
@@ -298,8 +319,13 @@ export const TimelineTextClipSchema = z.object({
   shadow: z.boolean().optional().default(false),
   shadowColor: z.string().optional().default("#000000"),
   shadowOffset: z.number().optional().default(2),
-  animation: z.enum(["none", "fade_in", "typewriter"]).optional().default("none"),
+  animation: TextAnimationSchema.optional().default("none"),
+  animationDuration: z.number().optional().default(0.5), // seconds for animation
   boxPadding: z.number().optional().default(10),
+  // Motion graphics options
+  outline: z.boolean().optional().default(false),
+  outlineColor: z.string().optional().default("#000000"),
+  outlineWidth: z.number().optional().default(2),
 });
 
 export const TimelineSchema = z.object({

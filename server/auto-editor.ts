@@ -150,12 +150,12 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   const dateOverlay = yearFromTitle || eraFromTitle;
   
   if (dateOverlay && chapters.length > 0 && chapters[0].scenes.length > 0) {
-    // Add large centered year overlay on first scene
+    // Add large centered year overlay on first scene with dramatic scale animation
     textClips.push({
       id: generateId(),
       text: dateOverlay,
       start: 0.5,
-      end: 4,
+      end: 4.5,
       font: "Serif",
       size: 180,
       color: "#F5F0E6",
@@ -168,7 +168,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
       shadow: true,
       shadowColor: "#000000",
       shadowOffset: 6,
-      animation: "fade_in",
+      animation: "scale_in",
+      animationDuration: 1.2,
       boxPadding: 0,
     } as any);
   }
@@ -181,7 +182,7 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         id: generateId(),
         text: chapter.title.toUpperCase(),
         start: currentTime,
-        end: currentTime + 3,
+        end: currentTime + 3.5,
         font: "Serif",
         size: 72,
         color: "#F5F5DC",
@@ -194,7 +195,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         shadow: true,
         shadowColor: "#000000",
         shadowOffset: 3,
-        animation: "fade_in",
+        animation: "fade_in_out",
+        animationDuration: 0.8,
         boxPadding: 20,
       } as any);
     }
@@ -218,18 +220,26 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         layoutType = "quote_card";
       }
 
+      // Add smooth transitions - dissolve for most, fade for first/last
+      const transitionType = sceneIndex === 0 ? "fade" : 
+                            sceneIndex % 5 === 0 ? "wipeleft" :
+                            sceneIndex % 3 === 0 ? "dissolve" : "fade";
+      
       videoClips.push({
         id: generateId(),
         src: scene.imageUrl,
         start: currentTime,
         duration: scene.duration,
         effect: effect as any,
-        fade_in: sceneIndex === 0 ? 1 : 0.3,
-        fade_out: 0.3,
+        fade_in: sceneIndex === 0 ? 1 : 0.4,
+        fade_out: 0.4,
         blur: false,
         colorGrade: autoColorGrade,
         layoutType: layoutType,
         letterboxCaption: scene.metadata?.caption || (layoutType === "letterbox" ? extractLetterboxCaption(scene, chapter.title) : undefined),
+        transitionIn: transitionType,
+        transitionOut: transitionType,
+        transitionDuration: 0.5,
       } as any);
 
       if (scene.audioUrl) {
@@ -272,7 +282,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
             shadow: false,
             shadowColor: "#000000",
             shadowOffset: 0,
-            animation: "none",
+            animation: "fade_in_out",
+            animationDuration: 0.6,
             boxPadding: 24,
           } as any);
         }
