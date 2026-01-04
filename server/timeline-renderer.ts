@@ -464,7 +464,10 @@ export async function renderTimeline(
       const clip = localVideoClips[i].clip;
       const enableExpr = `between(t,${clip.start},${clip.start + clip.duration})`;
       const outputTag = i === overlayInputs.length - 1 ? "[vmerged]" : `[vtmp${i}]`;
-      filterComplex += `${currentBase}${overlayInputs[i]}overlay=0:0:enable='${enableExpr}'${outputTag}; `;
+      filterComplex += `${currentBase}${overlayInputs[i]}overlay=0:0:enable='${enableExpr}'${outputTag}`;
+      if (i < overlayInputs.length - 1) {
+        filterComplex += "; ";
+      }
       currentBase = outputTag;
     }
     
