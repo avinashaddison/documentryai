@@ -188,33 +188,37 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
         }
       }
       
-      // Transform assets from key-value format to array format
-      const assets: any[] = [];
-      if (assetsData.images) {
-        Object.entries(assetsData.images).forEach(([key, url]) => {
-          const match = key.match(/ch(\d+)_sc(\d+)/);
-          if (match) {
-            assets.push({
-              chapterNumber: parseInt(match[1]),
-              sceneNumber: parseInt(match[2]),
-              assetType: "image",
-              assetUrl: url,
-            });
-          }
-        });
-      }
-      if (assetsData.audio) {
-        Object.entries(assetsData.audio).forEach(([key, url]) => {
-          const match = key.match(/ch(\d+)_sc(\d+)/);
-          if (match) {
-            assets.push({
-              chapterNumber: parseInt(match[1]),
-              sceneNumber: parseInt(match[2]),
-              assetType: "audio",
-              assetUrl: url,
-            });
-          }
-        });
+      // Use full assets array from API (includes durations) or fallback to key-value format
+      let assets: any[] = assetsData.assets || [];
+      
+      // If no assets array, transform from key-value format
+      if (assets.length === 0) {
+        if (assetsData.images) {
+          Object.entries(assetsData.images).forEach(([key, url]) => {
+            const match = key.match(/ch(\d+)_sc(\d+)/);
+            if (match) {
+              assets.push({
+                chapterNumber: parseInt(match[1]),
+                sceneNumber: parseInt(match[2]),
+                assetType: "image",
+                assetUrl: url,
+              });
+            }
+          });
+        }
+        if (assetsData.audio) {
+          Object.entries(assetsData.audio).forEach(([key, url]) => {
+            const match = key.match(/ch(\d+)_sc(\d+)/);
+            if (match) {
+              assets.push({
+                chapterNumber: parseInt(match[1]),
+                sceneNumber: parseInt(match[2]),
+                assetType: "audio",
+                assetUrl: url,
+              });
+            }
+          });
+        }
       }
       
       return { project, chapters: chaptersData.chapters || [], assets };
@@ -249,7 +253,9 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             a.assetType === "audio"
           );
           
-          const duration = scene.duration || 8;
+          // Use actual audio duration from generated assets (in ms), fallback to scene duration
+          const audioDurationMs = audioAsset?.duration;
+          const duration = audioDurationMs ? audioDurationMs / 1000 : (scene.duration || 8);
           
           if (imageAsset?.assetUrl) {
             videoClips.push({
