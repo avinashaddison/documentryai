@@ -146,6 +146,8 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
 
   const { data: projectData, isLoading: isLoadingProject } = useQuery({
     queryKey: ["project-editor", projectId],
+    staleTime: 0,
+    gcTime: 0,
     queryFn: async () => {
       if (!projectId) return null;
       const [projectRes, chaptersRes, assetsRes, sessionRes] = await Promise.all([
