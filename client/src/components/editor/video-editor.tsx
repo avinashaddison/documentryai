@@ -257,11 +257,12 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
               src: imageAsset.assetUrl,
               start: currentStart,
               duration,
-              effect: effects[(chapterIdx + sceneIdx) % effects.length],
+              effect: "none",
               fade_in: 0.5,
               fade_out: 0.5,
               blur: false,
-            });
+              colorGrade: "grayscale",
+            } as any);
           }
           
           if (audioAsset?.assetUrl) {
