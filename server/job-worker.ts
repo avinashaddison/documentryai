@@ -456,8 +456,10 @@ async function runChaptersStep(
 }
 
 async function runImagesStep(projectId: number, config: any, state: GenerationState) {
+  console.log(`[JobWorker] ======= IMAGES STEP START =======`);
   console.log(`[JobWorker] Running images step for project ${projectId}`);
   console.log(`[JobWorker] Config:`, JSON.stringify(config));
+  console.log(`[JobWorker] Chapters count: ${state.chapters?.length || 0}`);
   
   const imageSource = config.imageSource || "stock";
   const isStockMode = imageSource === "stock";
@@ -473,12 +475,19 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
   const images: Record<string, string> = {};
   const model = config.hookImageModel || "flux-1.1-pro";
   
+  // Count total scenes
+  const totalScenes = state.chapters?.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0) || 0;
+  console.log(`[JobWorker] Total scenes to process: ${totalScenes}`);
+  
   if (isStockMode) {
     const { fetchStockImageForScene } = await import("./stock-image-service");
+    console.log(`[JobWorker] Stock image service imported`);
     
     for (const chapter of state.chapters) {
+      console.log(`[JobWorker] Processing chapter ${chapter.chapterNumber} with ${chapter.scenes?.length || 0} scenes`);
       for (const scene of chapter.scenes || []) {
         const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
+        console.log(`[JobWorker] Fetching stock image for ${key}`);
         
         try {
           // Pass narration segment to improve image-audio matching
@@ -488,6 +497,8 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
             key,
             scene.narrationSegment || scene.narration
           );
+          
+          console.log(`[JobWorker] Stock image result for ${key}:`, result.success ? 'SUCCESS' : 'FAILED', result.error || '');
           
           if (result.success && result.imageUrl) {
             images[key] = result.imageUrl;
