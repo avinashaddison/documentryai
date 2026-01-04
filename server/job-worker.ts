@@ -7,6 +7,28 @@ import { sseBroadcaster } from "./sse-broadcaster";
 import { buildTimelineFromAssets } from "./auto-editor";
 import { renderTimeline } from "./timeline-renderer";
 import type { GenerationJob } from "@shared/schema";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
+async function getAudioDuration(audioPath: string): Promise<number> {
+  try {
+    const filePath = audioPath.startsWith('/') ? audioPath : `./public${audioPath}`;
+    const { stdout } = await execAsync(
+      `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${filePath}"`
+    );
+    const duration = parseFloat(stdout.trim());
+    if (isNaN(duration)) {
+      console.warn(`[JobWorker] Could not parse audio duration for ${audioPath}, using estimate`);
+      return 5;
+    }
+    return duration;
+  } catch (error) {
+    console.error(`[JobWorker] ffprobe error for ${audioPath}:`, error);
+    return 5;
+  }
+}
 
 let isProcessing = false;
 let processingJobId: number | null = null;
@@ -623,6 +645,14 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
         // generateSceneVoiceover expects (projectId, chapterNumber, sceneNumber, narration, voice)
         const audioUrl = await generateSceneVoiceover(projectId, chapter.chapterNumber, scene.sceneNumber, narrationText, voice);
         
+        // Measure audio duration using ffprobe
+        const audioDuration = await getAudioDuration(audioUrl);
+        console.log(`[JobWorker] Audio duration for ${key}: ${audioDuration.toFixed(2)}s`);
+        
+        // Store duration in scene metadata for timeline building
+        scene.duration = audioDuration;
+        scene.audioUrl = audioUrl;
+        
         audio[key] = audioUrl;
         
         await storage.saveGeneratedAsset({
@@ -633,6 +663,7 @@ async function runAudioStep(projectId: number, config: any, state: GenerationSta
           assetUrl: audioUrl,
           narration: scene.narration,
           status: "completed",
+          duration: Math.round(audioDuration * 1000),
         });
         
         // Emit real-time audio generated event
