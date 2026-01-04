@@ -418,13 +418,14 @@ async function runChaptersStep(
     // generateChapterScriptWithResearch expects (title, premise, chapterNum, totalChapters, researchContext, scenesPerChapter?)
     const chapterPremise = framework?.premise || chapterTitle;
     
+    // Increase scenes per chapter for more visual variety (10-12 scenes = more engaging content)
     const chapterScript = await generateChapterScriptWithResearch(
       project.title,
       chapterPremise,
       i + 1,
       state.outline.length,
       researchContext,
-      config.imagesPerChapter || 5
+      config.imagesPerChapter || 10
     );
     
     const chapter = {
@@ -480,10 +481,12 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
         const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
         
         try {
+          // Pass narration segment to improve image-audio matching
           const result = await fetchStockImageForScene(
             scene.imagePrompt,
             projectId,
-            key
+            key,
+            scene.narrationSegment || scene.narration
           );
           
           if (result.success && result.imageUrl) {

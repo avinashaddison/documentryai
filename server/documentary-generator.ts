@@ -194,7 +194,7 @@ Respond in JSON format:
   "estimatedDuration": 180
 }
 
-Create 8-12 scenes for this chapter.
+Create 10-15 scenes for this chapter. More scenes = more visual variety and engagement.
 
 Respond ONLY with valid JSON.`;
 
@@ -273,7 +273,7 @@ Respond in JSON format:
   "estimatedDuration": 180
 }
 
-Create 8-12 scenes for this chapter. Image prompts should describe scenes that work beautifully with slow zoom and pan effects.
+Create 10-15 scenes for this chapter. More scenes = more visual variety and engagement. Image prompts should describe scenes that work beautifully with slow zoom and pan effects.
 
 Respond ONLY with valid JSON.`;
 

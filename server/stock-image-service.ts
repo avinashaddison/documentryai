@@ -103,14 +103,20 @@ export async function searchPerplexityImages(
 export async function fetchStockImageForScene(
   imagePrompt: string,
   projectId: number,
-  sceneId: string
+  sceneId: string,
+  narration?: string
 ): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string }> {
-  const keywords = extractKeywords(imagePrompt);
-  const searchQuery = keywords.slice(0, 8).join(" ");
+  // Combine imagePrompt with narration for better image matching
+  const combinedText = narration 
+    ? `${imagePrompt} ${narration.slice(0, 100)}` 
+    : imagePrompt;
+  
+  const keywords = extractKeywords(combinedText);
+  const searchQuery = keywords.slice(0, 10).join(" ");
   
   console.log(`[StockImage] Searching Perplexity for: "${searchQuery}"`);
   
-  const result = await searchPerplexityImages(searchQuery, { limit: 3 });
+  const result = await searchPerplexityImages(searchQuery, { limit: 5 });
   
   if (!result.success || result.images.length === 0) {
     const fallbackQuery = keywords.slice(0, 3).join(" ");
