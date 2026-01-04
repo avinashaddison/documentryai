@@ -461,7 +461,8 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
   console.log(`[JobWorker] Config:`, JSON.stringify(config));
   console.log(`[JobWorker] Chapters count: ${state.chapters?.length || 0}`);
   
-  const imageSource = config.imageSource || "stock";
+  // Default to AI-generated images since stock (Perplexity) may have credit limits
+  const imageSource = config.imageSource || "ai";
   const isStockMode = imageSource === "stock";
   console.log(`[JobWorker] Image source: ${imageSource}, isStockMode: ${isStockMode}`);
   
