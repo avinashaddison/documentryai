@@ -482,7 +482,8 @@ export async function renderTimeline(
         }
         return generateTextFilter(clip);
       }).join(",");
-      filterComplex += `${finalVideoTag}${textFilters}[vfinal]`;
+      // Add semicolon separator before text filter section
+      filterComplex += `; ${finalVideoTag}${textFilters}[vfinal]`;
       finalVideoTag = "[vfinal]";
     }
     

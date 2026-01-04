@@ -27,7 +27,8 @@ import {
   Plus,
   GripVertical,
   Volume2,
-  Wand2
+  Wand2,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -2089,28 +2090,56 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
           
           <div className="space-y-6 py-4">
             {renderStatus !== 'complete' && renderStatus !== 'error' && (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">
+              <div className="space-y-6">
+                <div className="flex justify-center">
+                  <div className="relative w-20 h-20">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 animate-pulse" />
+                    <div className="absolute inset-2 rounded-full bg-[#1a1a2e] flex items-center justify-center">
+                      <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                        {renderProgress}%
+                      </span>
+                    </div>
+                    <svg className="absolute inset-0 w-full h-full -rotate-90">
+                      <circle
+                        cx="40" cy="40" r="36"
+                        fill="none"
+                        stroke="rgba(100,100,100,0.2)"
+                        strokeWidth="4"
+                      />
+                      <circle
+                        cx="40" cy="40" r="36"
+                        fill="none"
+                        stroke="url(#progressGradient)"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={`${renderProgress * 2.26} 226`}
+                      />
+                      <defs>
+                        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#06b6d4" />
+                          <stop offset="100%" stopColor="#a855f7" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="space-y-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="text-gray-300 font-medium">
                       {renderStatus === 'downloading' ? 'Downloading assets...' : 
                        renderStatus === 'rendering' ? 'Encoding video...' :
                        renderStatus === 'uploading' ? 'Uploading to storage...' : 
                        'Processing...'}
                     </span>
-                    <span className="text-cyan-400 font-mono">{renderProgress}%</span>
                   </div>
-                  <Progress value={renderProgress} className="h-2 bg-gray-800" />
+                  
+                  <p className="text-gray-500 text-xs px-4">
+                    {renderMessage || 'Please wait while your video is being rendered'}
+                  </p>
                 </div>
-                
-                <div className="text-center text-gray-500 text-sm">
-                  {renderMessage}
-                </div>
-                
-                <div className="flex justify-center">
-                  <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                </div>
-              </>
+              </div>
             )}
             
             {renderStatus === 'complete' && renderedVideoUrl && (
@@ -2147,12 +2176,20 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             
             {renderStatus === 'error' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-center gap-2 text-red-400">
-                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                    <span className="text-lg">✕</span>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500/30 to-orange-500/20 flex items-center justify-center border border-red-500/40">
+                    <X className="h-8 w-8 text-red-400" />
                   </div>
-                  <span>{renderMessage || 'Render failed'}</span>
+                  <span className="text-red-400 font-semibold text-lg">Render Failed</span>
                 </div>
+                
+                {renderMessage && (
+                  <div className="bg-gray-900/60 rounded-lg p-3 border border-red-500/20 max-h-32 overflow-y-auto">
+                    <p className="text-gray-400 text-xs font-mono break-all leading-relaxed">
+                      {renderMessage.length > 200 ? renderMessage.substring(0, 200) + '...' : renderMessage}
+                    </p>
+                  </div>
+                )}
                 
                 <Button
                   variant="outline"
