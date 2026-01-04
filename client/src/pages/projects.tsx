@@ -52,17 +52,11 @@ export default function Projects() {
   };
 
   const handleResume = (project: Project) => {
-    sessionStorage.setItem("resumeProjectId", project.id.toString());
-    navigate("/create");
+    navigate(`/create/${project.id}`);
   };
 
   const handleView = (project: Project) => {
-    if (project.status === "RENDERED") {
-      sessionStorage.setItem("viewProjectId", project.id.toString());
-      navigate("/documentary-editor");
-    } else {
-      handleResume(project);
-    }
+    navigate(`/create/${project.id}`);
   };
 
   return (
