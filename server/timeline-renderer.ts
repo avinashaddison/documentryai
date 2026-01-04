@@ -531,10 +531,10 @@ export async function renderTimeline(
           filterComplex += `,volume=${baseVol}`;
         }
         
-        if (clip.fade_in && clip.fade_in > 0) {
+        if (clip.fade_in && clip.fade_in > 0 && audioType !== "narration") {
           filterComplex += `,afade=t=in:st=0:d=${clip.fade_in}`;
         }
-        if (clip.fade_out && clip.fade_out > 0 && clip.duration) {
+        if (clip.fade_out && clip.fade_out > 0 && clip.duration && audioType !== "narration") {
           const fadeOutStart = clip.duration - clip.fade_out;
           filterComplex += `,afade=t=out:st=${fadeOutStart}:d=${clip.fade_out}`;
         }
