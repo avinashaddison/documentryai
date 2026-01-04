@@ -1258,22 +1258,6 @@ export default function DocumentaryMaker() {
             Enter a topic and let AI generate a complete documentary with narration, visuals, and professional editing.
           </p>
           
-          {/* Quick Action Bar - Show when project has generated content */}
-          {projectId && Object.keys(generatedImages).length > 0 && (
-            <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border/50">
-              <Button
-                onClick={handleContinueToEditor}
-                className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-semibold px-6"
-                data-testid="button-quick-open-editor"
-              >
-                <Film className="h-4 w-4 mr-2" />
-                Open Video Editor
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {Object.keys(generatedImages).length} scenes ready to edit
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Progress Steps */}
@@ -2485,16 +2469,7 @@ export default function DocumentaryMaker() {
 
             {/* Action Buttons */}
             <div className="pt-4 border-t border-border flex gap-3">
-              {currentStep === "complete" || (projectId && Object.keys(generatedImages).length > 0) ? (
-                <Button
-                  onClick={handleContinueToEditor}
-                  className="flex-1 h-12 gap-2 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-lg font-semibold"
-                  data-testid="button-continue-editor"
-                >
-                  <Film className="h-5 w-5" />
-                  Continue to Video Editor
-                </Button>
-              ) : generatedChapters.length === 0 && chapters.length > 0 ? (
+              {generatedChapters.length === 0 && chapters.length > 0 ? (
                 <Button
                   onClick={startBackgroundGeneration}
                   disabled={isGenerating || (activeJob?.status === "running")}
@@ -2687,20 +2662,10 @@ export default function DocumentaryMaker() {
                   Download Video
                 </Button>
               </a>
-              
-              <Button
-                onClick={() => navigate(`/editor/${projectId}`)}
-                variant="outline"
-                className="h-12 gap-2 border-primary/30 hover:bg-primary/10"
-                data-testid="button-edit-video"
-              >
-                <Pencil className="h-5 w-5" />
-                Edit in Timeline
-              </Button>
             </div>
             
             <p className="text-sm text-muted-foreground text-center">
-              Your documentary has been automatically edited with chapter titles, Ken Burns effects, and color grading.
+              Simple grayscale documentary with fade transitions.
             </p>
           </div>
         )}
@@ -2713,16 +2678,6 @@ export default function DocumentaryMaker() {
                 <ImageIcon className="h-5 w-5 text-primary" />
                 Generated Scene Images ({Object.keys(generatedImages).length})
               </h2>
-              
-              {/* Open Video Editor Button */}
-              <Button
-                onClick={() => navigate(`/editor/${projectId}`)}
-                className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-medium"
-                data-testid="button-open-video-editor"
-              >
-                <Film className="h-4 w-4 mr-2" />
-                Open Video Editor
-              </Button>
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto">

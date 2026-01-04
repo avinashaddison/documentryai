@@ -1847,9 +1847,9 @@ export async function registerRoutes(
         
         videoClips.push({
           id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
-          source: scene.imageUrl,
-          startTime: currentTime,
-          duration: clipDuration,
+          src: scene.imageUrl,
+          start: currentTime,
+          end: currentTime + clipDuration,
           effects: {
             effect: "static",
             colorGrade: "grayscale",
@@ -1860,9 +1860,9 @@ export async function registerRoutes(
         
         audioClips.push({
           id: `audio_${scene.chapterNumber}_${scene.sceneNumber}`,
-          source: scene.audioUrl,
-          startTime: currentTime,
-          duration: scene.duration,
+          src: scene.audioUrl,
+          start: currentTime,
+          end: currentTime + scene.duration,
           volume: 1.0,
           fade_in: 0.1,
           fade_out: 0.1
