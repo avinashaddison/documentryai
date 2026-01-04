@@ -135,19 +135,16 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   let currentTime = 0;
   let sceneIndex = 0;
 
-  // Simple clean black and white with smooth transitions - no fancy overlays
+  // Simple clean black and white with smooth fade transitions only
   for (const chapter of chapters) {
     for (const scene of chapter.scenes) {
-      // Cycle through Ken Burns effects for visual interest
-      const effect = cycleKenBurnsEffect(sceneIndex);
-      
-      // Simple video clip with grayscale and smooth fade transitions
+      // Simple video clip with grayscale and smooth fade transitions - no effects
       videoClips.push({
         id: generateId(),
         src: scene.imageUrl,
         start: currentTime,
         duration: scene.duration,
-        effect: effect as any,
+        effect: "none",  // No Ken Burns or zoom effects
         fade_in: sceneIndex === 0 ? 1.0 : 0.5,  // Smooth fade transitions
         fade_out: 0.5,
         blur: false,
