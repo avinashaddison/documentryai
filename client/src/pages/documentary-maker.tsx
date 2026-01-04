@@ -2230,26 +2230,96 @@ export default function DocumentaryMaker() {
           </div>
         )}
 
-        {/* Generated Chapters Preview */}
+        {/* Generated Scripts Preview - Full Script with Audio */}
         {generatedChapters.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Generated Scripts Preview
-            </h2>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Full Script & Audio
+              </h2>
+              <Badge variant="outline" className="text-orange-400 border-orange-400/30">
+                {generatedChapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0)} Scenes
+              </Badge>
+            </div>
             
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
               {generatedChapters.map((chapter) => (
-                <div key={chapter.chapterNumber} className="bg-background/50 rounded-lg p-4 border border-border">
-                  <h3 className="font-bold text-white mb-2">
-                    Chapter {chapter.chapterNumber}: {chapter.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {chapter.scenes.length} scenes • ~{Math.round(chapter.estimatedDuration / 60)} minutes
-                  </p>
-                  <p className="text-sm text-white/70 line-clamp-3">
-                    {chapter.narration.substring(0, 300)}...
-                  </p>
+                <div key={chapter.chapterNumber} className="space-y-3">
+                  <div className="sticky top-0 bg-card/95 backdrop-blur py-2 z-10 border-b border-border">
+                    <h3 className="font-bold text-white text-lg">
+                      Chapter {chapter.chapterNumber}: {chapter.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {chapter.scenes?.length || 0} scenes • ~{Math.round((chapter.estimatedDuration || 0) / 60)} minutes
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3 pl-4 border-l-2 border-primary/30">
+                    {chapter.scenes?.map((scene: any) => {
+                      const audioUrl = scene.audioUrl || generatedAudio[`ch${chapter.chapterNumber}_sc${scene.sceneNumber}`];
+                      
+                      return (
+                        <div 
+                          key={scene.sceneNumber} 
+                          className="bg-background/50 rounded-lg p-4 border border-border space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                Scene {scene.sceneNumber}
+                              </Badge>
+                              {scene.mood && (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  {scene.mood}
+                                </Badge>
+                              )}
+                              {scene.shotType && (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  {scene.shotType}
+                                </Badge>
+                              )}
+                            </div>
+                            {scene.duration && (
+                              <span className="text-xs text-muted-foreground">
+                                ~{scene.duration}s
+                              </span>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
+                            {scene.narrationSegment || scene.narration || scene.voiceoverScript || "No narration"}
+                          </p>
+                          
+                          {audioUrl && (
+                            <div className="flex items-center gap-3 pt-2 border-t border-border/50">
+                              <Volume2 className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                              <audio 
+                                controls 
+                                className="h-8 flex-1"
+                                style={{ maxWidth: "100%" }}
+                                data-testid={`audio-ch${chapter.chapterNumber}-sc${scene.sceneNumber}`}
+                              >
+                                <source src={audioUrl} type="audio/wav" />
+                                Your browser does not support audio.
+                              </audio>
+                            </div>
+                          )}
+                          
+                          {scene.imagePrompt && (
+                            <details className="text-xs">
+                              <summary className="cursor-pointer text-muted-foreground hover:text-white transition-colors">
+                                View image prompt
+                              </summary>
+                              <p className="mt-2 text-muted-foreground italic pl-2 border-l border-border">
+                                {scene.imagePrompt}
+                              </p>
+                            </details>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
