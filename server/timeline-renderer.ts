@@ -25,6 +25,44 @@ interface RenderProgress {
 
 type ProgressCallback = (progress: RenderProgress) => void;
 
+// Validate that a downloaded image file is valid (not empty/corrupt)
+async function validateImageFile(filePath: string): Promise<boolean> {
+  try {
+    const stats = await fs.promises.stat(filePath);
+    // Image files should be at least 1KB to be valid
+    if (stats.size < 1000) {
+      console.log(`[TimelineRenderer] Image file too small (${stats.size} bytes), likely corrupt: ${filePath}`);
+      return false;
+    }
+    
+    // Check for valid image headers (JPEG, PNG, WebP)
+    const buffer = Buffer.alloc(12);
+    const fd = await fs.promises.open(filePath, 'r');
+    await fd.read(buffer, 0, 12, 0);
+    await fd.close();
+    
+    // Check JPEG: starts with 0xFFD8FF
+    if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      return true;
+    }
+    // Check PNG: starts with 0x89504E47
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      return true;
+    }
+    // Check WebP: starts with RIFF...WEBP
+    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+        buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+      return true;
+    }
+    
+    console.log(`[TimelineRenderer] Invalid image header in: ${filePath}`);
+    return false;
+  } catch (e) {
+    console.log(`[TimelineRenderer] Error validating image: ${filePath}`, e);
+    return false;
+  }
+}
+
 async function downloadAsset(url: string, localPath: string): Promise<boolean> {
   try {
     const dir = path.dirname(localPath);
@@ -360,7 +398,15 @@ export async function renderTimeline(
       
       const downloaded = await downloadAsset(clip.src, localPath);
       if (downloaded) {
-        localVideoClips.push({ clip, localPath, index: i });
+        // Validate the image is not corrupt
+        const isValid = await validateImageFile(localPath);
+        if (isValid) {
+          localVideoClips.push({ clip, localPath, index: i });
+        } else {
+          console.log(`[TimelineRenderer] Skipping corrupt image ${i}: ${clip.src}`);
+          // Delete the corrupt file
+          try { await fs.promises.unlink(localPath); } catch {}
+        }
       }
       
       reportProgress({ 
