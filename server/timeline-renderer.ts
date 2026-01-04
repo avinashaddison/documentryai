@@ -364,12 +364,15 @@ export async function renderTimeline(
       });
     }
     
+    console.log(`[TimelineRenderer] Processing ${sortedAudioClips.length} audio clips`);
     for (let i = 0; i < sortedAudioClips.length; i++) {
       const clip = sortedAudioClips[i];
+      console.log(`[TimelineRenderer] Audio clip ${i}: src=${clip.src}`);
       const ext = clip.src.includes(".") ? path.extname(clip.src) : ".wav";
       const localPath = path.join(assetsDir, `audio_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
+      console.log(`[TimelineRenderer] Audio ${i} download result: ${downloaded}, localPath: ${localPath}`);
       if (downloaded) {
         localAudioClips.push({ clip, localPath, index: i });
       }
@@ -380,6 +383,7 @@ export async function renderTimeline(
         message: `Downloaded audio asset ${i + 1}/${sortedAudioClips.length}` 
       });
     }
+    console.log(`[TimelineRenderer] Successfully downloaded ${localAudioClips.length} audio clips`);
     
     if (localVideoClips.length === 0) {
       return { success: false, outputPath: "", error: "No video clips to render" };
