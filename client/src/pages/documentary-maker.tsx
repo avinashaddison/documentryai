@@ -1472,6 +1472,172 @@ export default function DocumentaryMaker() {
             </div>
           </div>
           
+          {/* Image Source Selector */}
+          <div className="space-y-4 pt-4 border-t border-border/50">
+            <Label className="text-sm text-pink-300 flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Image Source
+            </Label>
+            
+            <div className="grid grid-cols-3 gap-3">
+              {/* Google Images Option */}
+              <button
+                onClick={() => setConfig({ ...config, imageSource: "google" })}
+                disabled={isGenerating}
+                className={cn(
+                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "border",
+                  config.imageSource === "google"
+                    ? "border-green-400/60 bg-green-500/10 scale-[1.02] neon-glow"
+                    : "border-border bg-card/50 hover:border-green-500/40 hover:bg-card/80",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+                data-testid="button-image-google"
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600 opacity-0 transition-opacity duration-300",
+                  config.imageSource === "google" ? "opacity-15" : "group-hover:opacity-5"
+                )} />
+                
+                {config.imageSource === "google" && (
+                  <div className="absolute inset-0 rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 blur-md opacity-40" />
+                  </div>
+                )}
+                
+                <div className="relative z-10 text-center space-y-1">
+                  <div className={cn(
+                    "text-lg font-bold transition-all duration-300",
+                    config.imageSource === "google" ? "text-green-400 neon-text" : "text-white/70 group-hover:text-white"
+                  )}>
+                    Google Images
+                  </div>
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    config.imageSource === "google" ? "text-green-300" : "text-muted-foreground group-hover:text-white/70"
+                  )}>
+                    Fast & Free
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    SerpAPI search
+                  </div>
+                </div>
+                
+                {config.imageSource === "google" && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
+              
+              {/* Perplexity Stock Option */}
+              <button
+                onClick={() => setConfig({ ...config, imageSource: "stock" })}
+                disabled={isGenerating}
+                className={cn(
+                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "border",
+                  config.imageSource === "stock"
+                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow"
+                    : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+                data-testid="button-image-stock"
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 opacity-0 transition-opacity duration-300",
+                  config.imageSource === "stock" ? "opacity-15" : "group-hover:opacity-5"
+                )} />
+                
+                {config.imageSource === "stock" && (
+                  <div className="absolute inset-0 rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 blur-md opacity-40" />
+                  </div>
+                )}
+                
+                <div className="relative z-10 text-center space-y-1">
+                  <div className={cn(
+                    "text-lg font-bold transition-all duration-300",
+                    config.imageSource === "stock" ? "text-cyan-400 neon-text" : "text-white/70 group-hover:text-white"
+                  )}>
+                    Perplexity
+                  </div>
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    config.imageSource === "stock" ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
+                  )}>
+                    Smart Search
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    AI-powered images
+                  </div>
+                </div>
+                
+                {config.imageSource === "stock" && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
+              
+              {/* AI Generated Option */}
+              <button
+                onClick={() => setConfig({ ...config, imageSource: "ai" })}
+                disabled={isGenerating}
+                className={cn(
+                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "border",
+                  config.imageSource === "ai"
+                    ? "border-pink-400/60 bg-pink-500/10 scale-[1.02] neon-glow"
+                    : "border-border bg-card/50 hover:border-pink-500/40 hover:bg-card/80",
+                  isGenerating && "opacity-50 cursor-not-allowed"
+                )}
+                data-testid="button-image-ai"
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600 opacity-0 transition-opacity duration-300",
+                  config.imageSource === "ai" ? "opacity-15" : "group-hover:opacity-5"
+                )} />
+                
+                {config.imageSource === "ai" && (
+                  <div className="absolute inset-0 rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 blur-md opacity-40" />
+                  </div>
+                )}
+                
+                <div className="relative z-10 text-center space-y-1">
+                  <div className={cn(
+                    "text-lg font-bold transition-all duration-300",
+                    config.imageSource === "ai" ? "text-pink-400 neon-text" : "text-white/70 group-hover:text-white"
+                  )}>
+                    AI Generated
+                  </div>
+                  <div className={cn(
+                    "text-xs transition-colors",
+                    config.imageSource === "ai" ? "text-pink-300" : "text-muted-foreground group-hover:text-white/70"
+                  )}>
+                    Unique Visuals
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Flux / Ideogram
+                  </div>
+                </div>
+                
+                {config.imageSource === "ai" && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+          
           {/* Story Configuration */}
           <div className="space-y-4 pt-4 border-t border-border/50">
             <Label className="text-sm text-emerald-300 flex items-center gap-2">
@@ -1581,51 +1747,6 @@ export default function DocumentaryMaker() {
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Image Source Selection */}
-            <div className="space-y-2">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <ImageIcon className="h-3 w-3" />
-                Image Source
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: "google", label: "Google Images", desc: "Fast & free" },
-                  { value: "stock", label: "Perplexity", desc: "Smart search" },
-                  { value: "ai", label: "AI Generated", desc: "Unique visuals" },
-                ].map((source) => (
-                  <button
-                    key={source.value}
-                    onClick={() => setConfig({ ...config, imageSource: source.value as "ai" | "stock" | "google" })}
-                    disabled={isGenerating}
-                    className={cn(
-                      "relative rounded-lg p-3 transition-all duration-200 text-left",
-                      "border",
-                      config.imageSource === source.value
-                        ? "border-pink-400/60 bg-pink-500/15"
-                        : "border-border bg-card/50 hover:border-pink-500/40 hover:bg-card/80",
-                      isGenerating && "opacity-50 cursor-not-allowed"
-                    )}
-                    data-testid={`button-source-${source.value}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className={cn(
-                          "text-sm font-medium",
-                          config.imageSource === source.value ? "text-pink-400" : "text-white/80"
-                        )}>
-                          {source.label}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">{source.desc}</div>
-                      </div>
-                      {config.imageSource === source.value && (
-                        <Check className="h-4 w-4 text-pink-400" />
-                      )}
-                    </div>
-                  </button>
                 ))}
               </div>
             </div>
