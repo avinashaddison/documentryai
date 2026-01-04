@@ -351,7 +351,11 @@ export async function renderTimeline(
       const clip = sortedVideoClips[i];
       // Strip query parameters from URL before extracting extension
       const cleanSrc = clip.src.split('?')[0].split('#')[0];
-      const ext = cleanSrc.includes(".") ? path.extname(cleanSrc) : ".jpg";
+      let ext = path.extname(cleanSrc);
+      // Default to .jpg if no extension or invalid extension
+      if (!ext || ext === '.' || ext.length < 2) {
+        ext = ".jpg";
+      }
       const localPath = path.join(assetsDir, `video_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
