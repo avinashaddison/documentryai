@@ -13,15 +13,19 @@ export interface StockImageSearchResult {
   error?: string;
 }
 
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
-
 export async function searchPerplexityImages(
   query: string,
   options: { limit?: number } = {}
 ): Promise<StockImageSearchResult> {
   const { limit = 5 } = options;
   
-  if (!PERPLEXITY_API_KEY) {
+  // Read API key dynamically each time (not at module load)
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+  
+  console.log(`[Perplexity] Checking API key availability: ${apiKey ? 'present' : 'missing'}`);
+  
+  if (!apiKey) {
+    console.error("[Perplexity] PERPLEXITY_API_KEY not configured in environment");
     return {
       success: false,
       images: [],
@@ -33,7 +37,7 @@ export async function searchPerplexityImages(
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
