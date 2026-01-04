@@ -14,7 +14,13 @@ const execAsync = promisify(exec);
 
 async function getAudioDuration(audioPath: string): Promise<number> {
   try {
-    const filePath = audioPath.startsWith('/') ? audioPath : `./public${audioPath}`;
+    // audioPath is like "/public/audio/project_21/ch1_sc1.wav"
+    // We need "./public/audio/..." for the file system
+    const filePath = audioPath.startsWith('/public/') 
+      ? `.${audioPath}` 
+      : audioPath.startsWith('/') 
+        ? `.${audioPath}` 
+        : `./public${audioPath}`;
     const { stdout } = await execAsync(
       `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${filePath}"`
     );
