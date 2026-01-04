@@ -220,13 +220,13 @@ function generateAnimatedTextFilter(clip: TimelineTextClip): string {
   const textType = (clip as any).textType || "caption";
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label" || textType === "quote_card") {
-    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
   }
   
   // Determine font size based on text type
   let actualSize = size;
-  if (textType === "era_splash") {
+  if (textType === "era_splash" || textType === "year_splash") {
     actualSize = 220;
   } else if (textType === "chapter_title") {
     actualSize = 56;
@@ -276,10 +276,10 @@ function generateAnimatedTextFilter(clip: TimelineTextClip): string {
   let filter = `drawtext=text='${escapedText}':fontfile=${fontFile}:fontsize=${fontSizeExpr}:fontcolor=${color}:alpha='${alphaExpr}':x=${x}:y=${y}`;
   
   // Add shadow for better readability
-  if ((clip as any).shadow || textType === "era_splash" || textType === "chapter_title") {
+  if ((clip as any).shadow || textType === "era_splash" || textType === "year_splash" || textType === "chapter_title") {
     const shadowColor = (clip as any).shadowColor || "black";
     let shadowOffset = 3;
-    if (textType === "era_splash") shadowOffset = 10;
+    if (textType === "era_splash" || textType === "year_splash") shadowOffset = 10;
     else if (textType === "chapter_title") shadowOffset = 4;
     filter += `:shadowcolor=${shadowColor}:shadowx=${shadowOffset}:shadowy=${shadowOffset}`;
   }

@@ -72,6 +72,27 @@ function extractYearFromTitle(title: string): string | null {
   return yearMatch ? yearMatch[1] : null;
 }
 
+function extractYearFromNarration(narration: string): string | null {
+  // Match years mentioned at the start of sentences or after commas/periods
+  // Prioritize years that appear prominently (start of text, after punctuation)
+  const prominentYearMatch = narration.match(/^(19\d{2}|20\d{2})\b|[.,]\s*(19\d{2}|20\d{2})\b/);
+  if (prominentYearMatch) {
+    return prominentYearMatch[1] || prominentYearMatch[2];
+  }
+  
+  // Fallback: any year in the narration
+  const yearMatch = narration.match(/\b(19\d{2}|20\d{2})\b/);
+  return yearMatch ? yearMatch[1] : null;
+}
+
+function shouldShowYearOverlay(sceneNarration: string, previousYearsShown: Set<string>): string | null {
+  const year = extractYearFromNarration(sceneNarration);
+  if (year && !previousYearsShown.has(year)) {
+    return year;
+  }
+  return null;
+}
+
 function extractEraFromTitle(title: string): string | null {
   const lowerTitle = title.toLowerCase();
   
@@ -134,6 +155,9 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
 
   let currentTime = 0;
   let sceneIndex = 0;
+  
+  // Track years that have already been shown to avoid duplicates
+  const yearsShown = new Set<string>();
 
   // Simple clean black and white with smooth fade transitions only
   for (const chapter of chapters) {
@@ -165,6 +189,35 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
           ducking: false,
           audioType: "narration",
         });
+      }
+      
+      // Detect years in narration and add dramatic year overlay
+      if (scene.narration) {
+        const yearToShow = shouldShowYearOverlay(scene.narration, yearsShown);
+        if (yearToShow) {
+          yearsShown.add(yearToShow);
+          
+          // Add dramatic year text overlay (large centered text with fade animation)
+          textClips.push({
+            id: generateId(),
+            text: yearToShow,
+            start: currentTime,
+            end: currentTime + Math.min(scene.duration, 4),  // Show for up to 4 seconds
+            x: "(w-text_w)/2",   // Centered horizontally
+            y: "(h-text_h)/2",   // Centered vertically
+            size: 220,
+            color: "#F5F0E6",   // Warm off-white color like the image
+            box: false,
+            textType: "year_splash",
+            animation: "fade_in_out",
+            animationDuration: 0.8,
+            shadow: true,
+            shadowColor: "black@0.6",
+            outline: true,
+            outlineWidth: 4,
+            outlineColor: "black@0.3",
+          } as any);
+        }
       }
 
       currentTime += scene.duration;
