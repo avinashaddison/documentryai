@@ -1779,6 +1779,134 @@ export async function registerRoutes(
     }
   });
 
+  // Direct render - Simple grayscale video with fade transitions, no fancy effects
+  app.post("/api/render/direct", async (req, res) => {
+    try {
+      const { projectId } = req.body;
+      
+      if (!projectId) {
+        res.status(400).json({ error: "Missing projectId" });
+        return;
+      }
+      
+      console.log(`[DirectRender] Starting simple render for project ${projectId}`);
+      
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        res.status(404).json({ error: "Project not found" });
+        return;
+      }
+      
+      const assets = await storage.getGeneratedAssetsByProject(projectId);
+      if (!assets || assets.length === 0) {
+        res.status(400).json({ error: "No generated assets found" });
+        return;
+      }
+      
+      // Group assets by scene
+      const sceneMap = new Map<string, { imageUrl: string; audioUrl: string; duration: number; chapterNumber: number; sceneNumber: number }>();
+      
+      for (const asset of assets) {
+        const key = `${asset.chapterNumber}-${asset.sceneNumber}`;
+        if (!sceneMap.has(key)) {
+          sceneMap.set(key, { 
+            imageUrl: '', 
+            audioUrl: '', 
+            duration: 5, 
+            chapterNumber: asset.chapterNumber, 
+            sceneNumber: asset.sceneNumber 
+          });
+        }
+        const scene = sceneMap.get(key)!;
+        if (asset.assetType === 'image') scene.imageUrl = asset.assetUrl;
+        if (asset.assetType === 'audio') {
+          scene.audioUrl = asset.assetUrl;
+          if (asset.duration) scene.duration = asset.duration / 1000;
+        }
+      }
+      
+      const scenes = Array.from(sceneMap.values())
+        .filter(s => s.imageUrl && s.audioUrl)
+        .sort((a, b) => a.chapterNumber - b.chapterNumber || a.sceneNumber - b.sceneNumber);
+      
+      if (scenes.length === 0) {
+        res.status(400).json({ error: "No complete scenes found (need both image and audio)" });
+        return;
+      }
+      
+      console.log(`[DirectRender] Rendering ${scenes.length} scenes`);
+      
+      // Build simple timeline - grayscale, fade transitions, static images
+      const videoClips: any[] = [];
+      const audioClips: any[] = [];
+      let currentTime = 0;
+      const fadeDuration = 0.5;
+      
+      for (const scene of scenes) {
+        const clipDuration = scene.duration + fadeDuration;
+        
+        videoClips.push({
+          id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
+          source: scene.imageUrl,
+          startTime: currentTime,
+          duration: clipDuration,
+          effects: {
+            effect: "static",
+            colorGrade: "grayscale",
+            fade_in: fadeDuration,
+            fade_out: fadeDuration
+          }
+        });
+        
+        audioClips.push({
+          id: `audio_${scene.chapterNumber}_${scene.sceneNumber}`,
+          source: scene.audioUrl,
+          startTime: currentTime,
+          duration: scene.duration,
+          volume: 1.0,
+          fade_in: 0.1,
+          fade_out: 0.1
+        });
+        
+        currentTime += scene.duration;
+      }
+      
+      const timeline = {
+        projectId,
+        projectName: project.title,
+        duration: currentTime + fadeDuration,
+        resolution: "1920x1080",
+        fps: 30,
+        tracks: {
+          video: videoClips,
+          audio: audioClips,
+          text: [] as any[]
+        }
+      };
+      
+      const outputName = `direct_${projectId}_${Date.now()}`;
+      const result = await renderTimeline(timeline, outputName, (progress) => {
+        console.log(`[DirectRender] ${progress.status}: ${progress.message} (${progress.progress}%)`);
+      });
+      
+      if (result.success) {
+        await storage.updateProject(projectId, { status: "RENDERED" });
+        
+        res.json({
+          success: true,
+          videoUrl: result.objectStorageUrl || `/generated_videos/${outputName}.mp4`,
+          objectStorageUrl: result.objectStorageUrl,
+          message: "Video rendered successfully"
+        });
+      } else {
+        res.status(500).json({ success: false, error: result.error || "Render failed" });
+      }
+    } catch (error: any) {
+      console.error("[DirectRender] Error:", error);
+      res.status(500).json({ error: error.message || "Direct render failed" });
+    }
+  });
+
   // AI-powered timeline editing - Claude generates edit plan
   app.post("/api/timeline/ai-edit", async (req, res) => {
     try {

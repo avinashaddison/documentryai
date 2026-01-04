@@ -104,6 +104,135 @@ interface ResearchActivity {
   timestamp?: string;
 }
 
+function DirectVideoRenderer({ 
+  projectId, 
+  generatedChapters, 
+  generatedImages, 
+  generatedAudio,
+  onVideoReady 
+}: { 
+  projectId: number;
+  generatedChapters: ChapterScript[];
+  generatedImages: Record<string, string>;
+  generatedAudio: Record<string, string>;
+  onVideoReady: (url: string) => void;
+}) {
+  const [isRendering, setIsRendering] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  
+  const startRendering = async () => {
+    setIsRendering(true);
+    setProgress(0);
+    setError(null);
+    setStatusMessage("Preparing video assets...");
+    
+    try {
+      const response = await fetch("/api/render/direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId })
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || "Rendering failed");
+      }
+      
+      const data = await response.json();
+      
+      if (data.jobId) {
+        pollRenderJob(data.jobId);
+      } else if (data.videoUrl) {
+        setProgress(100);
+        setStatusMessage("Video ready!");
+        onVideoReady(data.videoUrl);
+        setIsRendering(false);
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setIsRendering(false);
+    }
+  };
+  
+  const pollRenderJob = async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/render/status/${jobId}`);
+      const data = await response.json();
+      
+      setProgress(data.progress || 0);
+      setStatusMessage(data.message || "Rendering...");
+      
+      if (data.status === "completed" && data.videoUrl) {
+        onVideoReady(data.videoUrl);
+        setIsRendering(false);
+      } else if (data.status === "failed") {
+        setError(data.error || "Rendering failed");
+        setIsRendering(false);
+      } else {
+        setTimeout(() => pollRenderJob(jobId), 2000);
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setIsRendering(false);
+    }
+  };
+  
+  const hasAllAssets = generatedChapters.length > 0 && 
+    Object.keys(generatedImages).length > 0 && 
+    Object.keys(generatedAudio).length > 0;
+  
+  if (!hasAllAssets) {
+    return (
+      <div className="bg-muted/30 rounded-lg p-4 text-center">
+        <p className="text-muted-foreground text-sm">
+          Waiting for all assets (images & audio) to be generated before video can be created.
+        </p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+      
+      {isRendering ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white font-medium flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {statusMessage}
+            </span>
+            <span className="text-muted-foreground">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center">
+            Creating your documentary with FFmpeg...
+          </p>
+        </div>
+      ) : (
+        <Button
+          onClick={startRendering}
+          className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg shadow-green-500/25"
+          data-testid="button-create-video"
+        >
+          <Video className="h-6 w-6" />
+          Create Video
+        </Button>
+      )}
+      
+      <p className="text-xs text-muted-foreground text-center">
+        Renders directly with FFmpeg • Grayscale • Fade transitions • Static images
+      </p>
+    </div>
+  );
+}
+
 function ChapterAudioPlayer({ chapterNumber, audioUrls, sceneCount }: { 
   chapterNumber: number; 
   audioUrls: string[]; 
@@ -2500,6 +2629,20 @@ export default function DocumentaryMaker() {
                   </div>
                 </div>
               ))}
+            </div>
+            
+            {/* Direct Create Video Button */}
+            <div className="pt-4 border-t border-border">
+              <DirectVideoRenderer 
+                projectId={projectId!}
+                generatedChapters={generatedChapters}
+                generatedImages={generatedImages}
+                generatedAudio={generatedAudio}
+                onVideoReady={(url) => {
+                  setRenderedVideoUrl(url);
+                  setCurrentStep("complete");
+                }}
+              />
             </div>
           </div>
         )}
