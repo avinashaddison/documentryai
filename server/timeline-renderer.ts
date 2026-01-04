@@ -502,11 +502,14 @@ export async function renderTimeline(
       
       filterComplex += `,format=yuva420p`;
       
+      // Ensure duration is valid for fade calculations
+      const safeDuration = (clip.duration && !isNaN(clip.duration)) ? clip.duration : 5;
+      
       if (clip.fade_in && clip.fade_in > 0) {
         filterComplex += `,fade=t=in:st=0:d=${clip.fade_in}:alpha=1`;
       }
       if (clip.fade_out && clip.fade_out > 0) {
-        filterComplex += `,fade=t=out:st=${clip.duration - clip.fade_out}:d=${clip.fade_out}:alpha=1`;
+        filterComplex += `,fade=t=out:st=${safeDuration - clip.fade_out}:d=${clip.fade_out}:alpha=1`;
       }
       
       filterComplex += `,setpts=PTS+${clip.start}/TB[v${i}]; `;
@@ -516,7 +519,10 @@ export async function renderTimeline(
     let currentBase = "[0:v]";
     for (let i = 0; i < overlayInputs.length; i++) {
       const clip = localVideoClips[i].clip;
-      const enableExpr = `between(t,${clip.start},${clip.start + clip.duration})`;
+      // Ensure duration is valid - use fallback of 5 seconds if undefined/NaN
+      const clipDuration = (clip.duration && !isNaN(clip.duration)) ? clip.duration : 5;
+      const clipEnd = clip.start + clipDuration;
+      const enableExpr = `between(t,${clip.start},${clipEnd})`;
       const outputTag = i === overlayInputs.length - 1 ? "[vmerged]" : `[vtmp${i}]`;
       filterComplex += `${currentBase}${overlayInputs[i]}overlay=0:0:enable='${enableExpr}'${outputTag}`;
       if (i < overlayInputs.length - 1) {
