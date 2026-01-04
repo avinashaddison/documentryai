@@ -349,7 +349,9 @@ export async function renderTimeline(
     
     for (let i = 0; i < sortedVideoClips.length; i++) {
       const clip = sortedVideoClips[i];
-      const ext = clip.src.includes(".") ? path.extname(clip.src) : ".jpg";
+      // Strip query parameters from URL before extracting extension
+      const cleanSrc = clip.src.split('?')[0].split('#')[0];
+      const ext = cleanSrc.includes(".") ? path.extname(cleanSrc) : ".jpg";
       const localPath = path.join(assetsDir, `video_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
@@ -368,7 +370,9 @@ export async function renderTimeline(
     for (let i = 0; i < sortedAudioClips.length; i++) {
       const clip = sortedAudioClips[i];
       console.log(`[TimelineRenderer] Audio clip ${i}: src=${clip.src}`);
-      const ext = clip.src.includes(".") ? path.extname(clip.src) : ".wav";
+      // Strip query parameters from URL before extracting extension
+      const cleanAudioSrc = clip.src.split('?')[0].split('#')[0];
+      const ext = cleanAudioSrc.includes(".") ? path.extname(cleanAudioSrc) : ".wav";
       const localPath = path.join(assetsDir, `audio_${i}${ext}`);
       
       const downloaded = await downloadAsset(clip.src, localPath);
