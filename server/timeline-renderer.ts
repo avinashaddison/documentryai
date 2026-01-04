@@ -4,16 +4,14 @@ import { spawn } from "child_process";
 import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip, LayoutType } from "@shared/schema";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
 
-// Escape text for FFmpeg drawtext filter - handles all special characters
+// Escape text for FFmpeg drawtext filter
+// Single escape for special characters when text is wrapped in single quotes
 function escapeForDrawtext(text: string): string {
   if (!text) return "";
   return text
-    .replace(/\\/g, "\\\\\\\\")  // Backslash
-    .replace(/'/g, "'\\''")       // Single quote
+    .replace(/\\/g, "\\\\")       // Backslash
+    .replace(/'/g, "'\\''")       // Single quote - close, escape, reopen
     .replace(/:/g, "\\:")         // Colon
-    .replace(/%/g, "%%")          // Percent sign
-    .replace(/\[/g, "\\[")        // Brackets
-    .replace(/\]/g, "\\]")
     .replace(/\n/g, "\\n");       // Newlines
 }
 
