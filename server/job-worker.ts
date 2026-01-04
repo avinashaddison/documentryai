@@ -461,16 +461,21 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
   console.log(`[JobWorker] Config:`, JSON.stringify(config));
   console.log(`[JobWorker] Chapters count: ${state.chapters?.length || 0}`);
   
-  // Default to AI-generated images since stock (Perplexity) may have credit limits
+  // Image sources: "ai" (Replicate), "stock" (Perplexity), "google" (SerpAPI Google Images)
   const imageSource = config.imageSource || "ai";
   const isStockMode = imageSource === "stock";
-  console.log(`[JobWorker] Image source: ${imageSource}, isStockMode: ${isStockMode}`);
+  const isGoogleMode = imageSource === "google";
+  console.log(`[JobWorker] Image source: ${imageSource}, isStockMode: ${isStockMode}, isGoogleMode: ${isGoogleMode}`);
+  
+  let statusMessage = "Generating AI images for all chapters...";
+  if (isStockMode) statusMessage = "Fetching stock photos (Perplexity) for all chapters...";
+  if (isGoogleMode) statusMessage = "Fetching Google Images for all chapters...";
   
   await storage.createGenerationLog({
     projectId,
     step: "images",
     status: "started",
-    message: isStockMode ? "Fetching stock photos for all chapters..." : "Generating AI images for all chapters...",
+    message: statusMessage,
   });
   
   const images: Record<string, string> = {};
@@ -480,26 +485,31 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
   const totalScenes = state.chapters?.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0) || 0;
   console.log(`[JobWorker] Total scenes to process: ${totalScenes}`);
   
-  if (isStockMode) {
-    const { fetchStockImageForScene } = await import("./stock-image-service");
-    console.log(`[JobWorker] Stock image service imported`);
+  if (isStockMode || isGoogleMode) {
+    // Use either Perplexity (stock) or Google Images (google) based on imageSource
+    const fetchImageForScene = isGoogleMode
+      ? (await import("./google-image-service")).fetchGoogleImageForScene
+      : (await import("./stock-image-service")).fetchStockImageForScene;
+    
+    const sourceLabel = isGoogleMode ? "Google Images" : "Perplexity";
+    console.log(`[JobWorker] ${sourceLabel} service imported`);
     
     for (const chapter of state.chapters) {
       console.log(`[JobWorker] Processing chapter ${chapter.chapterNumber} with ${chapter.scenes?.length || 0} scenes`);
       for (const scene of chapter.scenes || []) {
         const key = `ch${chapter.chapterNumber}_scene${scene.sceneNumber}`;
-        console.log(`[JobWorker] Fetching stock image for ${key}`);
+        console.log(`[JobWorker] Fetching ${sourceLabel} image for ${key}`);
         
         try {
           // Pass narration segment to improve image-audio matching
-          const result = await fetchStockImageForScene(
+          const result = await fetchImageForScene(
             scene.imagePrompt,
             projectId,
             key,
             scene.narrationSegment || scene.narration
           );
           
-          console.log(`[JobWorker] Stock image result for ${key}:`, result.success ? 'SUCCESS' : 'FAILED', result.error || '');
+          console.log(`[JobWorker] ${sourceLabel} image result for ${key}:`, result.success ? 'SUCCESS' : 'FAILED', result.error || '');
           
           if (result.success && result.imageUrl) {
             images[key] = result.imageUrl;
@@ -520,12 +530,12 @@ async function runImagesStep(projectId: number, config: any, state: GenerationSt
             sseBroadcaster.emitImageGenerated(projectId, processingJobId || 0, chapter.chapterNumber, scene.sceneNumber, result.imageUrl);
             sseBroadcaster.emitProgress(projectId, processingJobId || 0, "images", Math.round((completedImages / totalScenes) * 20) + 50, `Fetched image ${completedImages} of ${totalScenes}`);
           } else {
-            console.error(`[JobWorker] Stock image failed for ${key}:`, result.error);
+            console.error(`[JobWorker] ${sourceLabel} image failed for ${key}:`, result.error);
           }
           
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 300));
         } catch (error) {
-          console.error(`[JobWorker] Stock image failed for ${key}:`, error);
+          console.error(`[JobWorker] ${sourceLabel} image failed for ${key}:`, error);
         }
       }
     }

@@ -124,7 +124,7 @@ export default function DocumentaryMaker() {
     chapterImageModel: "flux-1.1-pro",
     imagesPerChapter: 5,
     imageStyle: "color" as "color" | "black-and-white",
-    imageSource: "stock" as "ai" | "stock",
+    imageSource: "google" as "ai" | "stock" | "google",
     researchMethod: "perplexity" as "perplexity" | "claude",
     storyStyle: "narrative" as "narrative" | "investigative" | "historical" | "educational",
   });
@@ -1591,14 +1591,15 @@ export default function DocumentaryMaker() {
                 <ImageIcon className="h-3 w-3" />
                 Image Source
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "stock", label: "Stock Photos", desc: "Real images" },
+                  { value: "google", label: "Google Images", desc: "Fast & free" },
+                  { value: "stock", label: "Perplexity", desc: "Smart search" },
                   { value: "ai", label: "AI Generated", desc: "Unique visuals" },
                 ].map((source) => (
                   <button
                     key={source.value}
-                    onClick={() => setConfig({ ...config, imageSource: source.value as "ai" | "stock" })}
+                    onClick={() => setConfig({ ...config, imageSource: source.value as "ai" | "stock" | "google" })}
                     disabled={isGenerating}
                     className={cn(
                       "relative rounded-lg p-3 transition-all duration-200 text-left",
@@ -1969,19 +1970,22 @@ export default function DocumentaryMaker() {
                 </div>
                 <Select
                   value={config.imageSource}
-                  onValueChange={(value) => setConfig({ ...config, imageSource: value as "ai" | "stock" })}
+                  onValueChange={(value) => setConfig({ ...config, imageSource: value as "ai" | "stock" | "google" })}
                 >
                   <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-source">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="stock">Stock Photos (Real Images)</SelectItem>
+                    <SelectItem value="google">Google Images (Fast & Free)</SelectItem>
+                    <SelectItem value="stock">Perplexity (Smart Search)</SelectItem>
                     <SelectItem value="ai">AI Generated (Flux/Ideogram)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {config.imageSource === "stock" 
-                    ? "Uses real photos from Pexels - royalty-free and high quality" 
+                  {config.imageSource === "google" 
+                    ? "Uses Google Images via SerpAPI - fast and free"
+                    : config.imageSource === "stock" 
+                    ? "Uses Perplexity for intelligent image search" 
                     : "Generates unique images using AI models"}
                 </p>
               </div>
