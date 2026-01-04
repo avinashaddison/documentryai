@@ -1,10 +1,34 @@
 import { storage } from "./storage";
 import { generateChapterImages, type ImageStyle } from "./image-generator";
 import { generateSceneVoiceover } from "./tts-service";
-import { spawn } from "child_process";
+import { spawn, exec } from "child_process";
+import { promisify } from "util";
 import path from "path";
 import fs from "fs";
 import type { GenerationSession, GeneratedAsset } from "@shared/schema";
+
+const execAsync = promisify(exec);
+
+async function getAudioDuration(audioPath: string): Promise<number> {
+  try {
+    const filePath = audioPath.startsWith('/') ? audioPath.substring(1) : audioPath;
+    const fullPath = path.join(process.cwd(), filePath);
+    
+    if (!fs.existsSync(fullPath)) {
+      console.log(`[Autopilot] Audio file not found: ${fullPath}`);
+      return 5;
+    }
+    
+    const { stdout } = await execAsync(
+      `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${fullPath}"`
+    );
+    const duration = parseFloat(stdout.trim());
+    return isNaN(duration) ? 5 : duration;
+  } catch (error) {
+    console.error(`[Autopilot] Error getting audio duration:`, error);
+    return 5;
+  }
+}
 
 interface AutopilotOptions {
   projectId: number;
@@ -201,8 +225,12 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
             );
 
             result.generatedAudio[key] = audioUrl;
+            
+            // Measure actual audio duration using ffprobe
+            const actualDuration = await getAudioDuration(audioUrl);
+            console.log(`[Autopilot] Audio ${key} actual duration: ${actualDuration.toFixed(2)}s`);
 
-            // Save to database
+            // Save to database with actual duration
             await storage.saveGeneratedAsset({
               projectId,
               chapterNumber: chapter.chapterNumber,
@@ -210,7 +238,7 @@ export async function runAutopilotGeneration(options: AutopilotOptions): Promise
               assetType: "audio",
               assetUrl: audioUrl,
               narration: scene.narrationSegment,
-              duration: scene.duration,
+              duration: Math.round(actualDuration * 1000),
               status: "completed",
             });
 

@@ -805,14 +805,34 @@ export async function registerRoutes(
         narration,
         voice
       );
+      
+      // Measure actual audio duration
+      const { exec } = await import("child_process");
+      const { promisify } = await import("util");
+      const execAsync = promisify(exec);
+      let audioDurationMs = 5000;
+      try {
+        const filePath = audioUrl.startsWith('/') ? audioUrl.substring(1) : audioUrl;
+        const { stdout } = await execAsync(
+          `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${filePath}"`
+        );
+        const duration = parseFloat(stdout.trim());
+        if (!isNaN(duration)) {
+          audioDurationMs = Math.round(duration * 1000);
+        }
+      } catch (e) {
+        console.error("Error getting audio duration:", e);
+      }
 
-      // Save the audio asset to database for persistence
+      // Save the audio asset to database with actual duration
       await storage.saveGeneratedAsset({
         projectId,
         chapterNumber,
         sceneNumber,
         assetType: "audio",
         assetUrl: audioUrl,
+        narration: narration,
+        duration: audioDurationMs,
       });
 
       await storage.createGenerationLog({
