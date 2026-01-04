@@ -1850,12 +1850,11 @@ export async function registerRoutes(
           src: scene.imageUrl,
           start: currentTime,
           end: currentTime + clipDuration,
-          effects: {
-            effect: "static",
-            colorGrade: "grayscale",
-            fade_in: fadeDuration,
-            fade_out: fadeDuration
-          }
+          duration: clipDuration,
+          effect: "none",
+          colorGrade: "grayscale",
+          fade_in: fadeDuration,
+          fade_out: fadeDuration
         });
         
         audioClips.push({
@@ -1863,6 +1862,7 @@ export async function registerRoutes(
           src: scene.audioUrl,
           start: currentTime,
           end: currentTime + scene.duration,
+          duration: scene.duration,
           volume: 1.0,
           fade_in: 0.1,
           fade_out: 0.1
