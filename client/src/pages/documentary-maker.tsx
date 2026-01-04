@@ -39,7 +39,10 @@ import {
   Users,
   Download,
   Pencil,
-  Video
+  Video,
+  SkipBack,
+  SkipForward,
+  Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
@@ -99,6 +102,162 @@ interface ResearchActivity {
   fact?: { claim: string; confidence: string; category: string };
   message: string;
   timestamp?: string;
+}
+
+function ChapterAudioPlayer({ chapterNumber, audioUrls, sceneCount }: { 
+  chapterNumber: number; 
+  audioUrls: string[]; 
+  sceneCount: number;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentScene, setCurrentScene] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleDurationChange = () => setTotalDuration(audio.duration || 0);
+    const handleEnded = () => {
+      if (currentScene < audioUrls.length - 1) {
+        setCurrentScene(prev => prev + 1);
+      } else {
+        setIsPlaying(false);
+        setCurrentScene(0);
+      }
+    };
+    
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("durationchange", handleDurationChange);
+    audio.addEventListener("ended", handleEnded);
+    
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("durationchange", handleDurationChange);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [currentScene, audioUrls.length]);
+  
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    audio.src = audioUrls[currentScene];
+    if (isPlaying) {
+      audio.play().catch(() => {});
+    }
+  }, [currentScene, audioUrls]);
+  
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+    setIsPlaying(!isPlaying);
+  };
+  
+  const skipPrev = () => {
+    if (currentScene > 0) {
+      setCurrentScene(prev => prev - 1);
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+  };
+  
+  const skipNext = () => {
+    if (currentScene < audioUrls.length - 1) {
+      setCurrentScene(prev => prev + 1);
+    }
+  };
+  
+  const stopPlayback = () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentScene(0);
+  };
+  
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+  
+  return (
+    <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg p-3 border border-amber-500/30">
+      <audio ref={audioRef} />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8"
+            onClick={skipPrev}
+            data-testid={`btn-prev-ch${chapterNumber}`}
+          >
+            <SkipBack className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="default"
+            className="h-9 w-9 bg-amber-500 hover:bg-amber-600"
+            onClick={togglePlay}
+            data-testid={`btn-play-chapter-${chapterNumber}`}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8"
+            onClick={skipNext}
+            data-testid={`btn-next-ch${chapterNumber}`}
+          >
+            <SkipForward className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8"
+            onClick={stopPlayback}
+            data-testid={`btn-stop-ch${chapterNumber}`}
+          >
+            <Square className="h-3 w-3" />
+          </Button>
+        </div>
+        
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-amber-400 font-medium">
+              Full Chapter {chapterNumber} Audio
+            </span>
+            <span className="text-muted-foreground">
+              Scene {currentScene + 1}/{sceneCount}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Progress 
+              value={totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0} 
+              className="h-1.5 flex-1"
+            />
+            <span className="text-xs text-muted-foreground min-w-[70px] text-right">
+              {formatTime(currentTime)} / {formatTime(totalDuration)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DocumentaryMaker() {
@@ -2246,13 +2405,32 @@ export default function DocumentaryMaker() {
             <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
               {generatedChapters.map((chapter) => (
                 <div key={chapter.chapterNumber} className="space-y-3">
-                  <div className="sticky top-0 bg-card/95 backdrop-blur py-2 z-10 border-b border-border">
-                    <h3 className="font-bold text-white text-lg">
-                      Chapter {chapter.chapterNumber}: {chapter.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {chapter.scenes?.length || 0} scenes • ~{Math.round((chapter.estimatedDuration || 0) / 60)} minutes
-                    </p>
+                  <div className="sticky top-0 bg-card/95 backdrop-blur py-2 z-10 border-b border-border space-y-3">
+                    <div>
+                      <h3 className="font-bold text-white text-lg">
+                        Chapter {chapter.chapterNumber}: {chapter.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {chapter.scenes?.length || 0} scenes • ~{Math.round((chapter.estimatedDuration || 0) / 60)} minutes
+                      </p>
+                    </div>
+                    
+                    {/* Full Chapter Audio Player */}
+                    {(() => {
+                      const chapterAudioUrls = (chapter.scenes || [])
+                        .map((s: any) => s.audioUrl || generatedAudio[`ch${chapter.chapterNumber}_sc${s.sceneNumber}`])
+                        .filter(Boolean);
+                      
+                      if (chapterAudioUrls.length === 0) return null;
+                      
+                      return (
+                        <ChapterAudioPlayer 
+                          chapterNumber={chapter.chapterNumber}
+                          audioUrls={chapterAudioUrls}
+                          sceneCount={chapterAudioUrls.length}
+                        />
+                      );
+                    })()}
                   </div>
                   
                   <div className="space-y-3 pl-4 border-l-2 border-primary/30">
