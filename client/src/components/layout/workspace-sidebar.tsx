@@ -156,13 +156,23 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
                   {/* Icon */}
                   <div className={cn(
                     "relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300",
-                    isActive 
-                      ? "bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/40" 
-                      : "bg-white/5 group-hover:bg-white/10"
+                    item.href === "/create" 
+                      ? "bg-gradient-to-br from-orange-500/20 to-amber-600/20 shadow-lg shadow-orange-500/30"
+                      : isActive 
+                        ? "bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/40" 
+                        : "bg-white/5 group-hover:bg-white/10"
                   )}>
+                    {item.href === "/create" && (
+                      <>
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-orange-400/40 to-amber-500/40 animate-pulse" />
+                        <div className="absolute inset-[-2px] rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 opacity-60 blur-md animate-pulse" />
+                      </>
+                    )}
                     <item.icon className={cn(
-                      "h-4 w-4 transition-all duration-300",
-                      isActive ? "text-white" : "text-white/50 group-hover:text-cyan-400"
+                      "h-4 w-4 transition-all duration-300 relative z-10",
+                      item.href === "/create" 
+                        ? "text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]"
+                        : isActive ? "text-white" : "text-white/50 group-hover:text-cyan-400"
                     )} />
                   </div>
                   
