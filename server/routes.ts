@@ -1868,7 +1868,8 @@ export async function registerRoutes(
               y: "h-text_h-80",  // Bottom area, above controls
               size: 72,
               box: true,
-              boxColor: "black@0.5",
+              boxColor: "black",
+              boxOpacity: 0.5,
               boxPadding: 20
             };
           }
@@ -1877,7 +1878,8 @@ export async function registerRoutes(
             y: "h-text_h-80",
             size: 64,
             box: true,
-            boxColor: "black@0.5",
+            boxColor: "black",
+            boxOpacity: 0.5,
             boxPadding: 15
           };
         }
@@ -2051,7 +2053,7 @@ export async function registerRoutes(
               color: "#F5F0E6",
               box: style.box || false,
               box_color: (style as any).boxColor || "black",
-              box_opacity: 0.5,
+              box_opacity: (style as any).boxOpacity || 0.5,
               boxPadding: (style as any).boxPadding || 10,
               textType: "character_lower_third",
               animation: "fade_in_out",
