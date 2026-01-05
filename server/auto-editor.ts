@@ -245,7 +245,7 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         if (yearToShow) {
           yearsShown.add(yearToShow);
           
-          // Add dramatic year text overlay (large centered text with fade animation)
+          // Add dramatic year text overlay (large centered text with typewriter animation)
           textClips.push({
             id: generateId(),
             text: yearToShow,
@@ -257,7 +257,7 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
             color: "#F5F0E6",   // Warm off-white color like the image
             box: false,
             textType: "year_splash",
-            animation: "fade_in_out",
+            animation: "typewriter",  // Character-by-character animation
             animationDuration: 0.8,
             shadow: true,
             shadowColor: "black@0.6",
@@ -265,6 +265,19 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
             outlineWidth: 4,
             outlineColor: "black@0.3",
           } as any);
+          
+          // Add typewriter sound effect for year text
+          audioClips.push({
+            id: generateId(),
+            src: "public/audio/typewriter_sfx.mp3",
+            start: currentTime,
+            duration: yearToShow.length * 0.15 + 0.3,  // Match character typing duration
+            volume: 0.8,
+            fade_in: 0,
+            fade_out: 0.2,
+            ducking: false,
+            audioType: "sfx",
+          });
         }
       }
 

@@ -233,6 +233,48 @@ function getXfadeTransition(transitionType: string): string {
   return transitions[transitionType] || "fade";
 }
 
+// Generate typewriter effect - multiple drawtext filters showing characters appearing one by one
+// Returns an array of filter strings, each showing progressively more characters
+function generateTypewriterTextFilters(clip: TimelineTextClip): string[] {
+  const text = clip.text;
+  const size = clip.size || 220;
+  const color = clip.color || "#F5F0E6";
+  const x = clip.x || "(w-text_w)/2";
+  const y = clip.y || "(h-text_h)/2";
+  const fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
+  
+  // Timing: each character appears every 0.15 seconds
+  const charDelay = 0.15;
+  const holdTime = clip.end - clip.start - (text.length * charDelay) - 0.8; // Time to hold full text before fade out
+  const fadeOutDuration = 0.8;
+  
+  const filters: string[] = [];
+  
+  // Create a filter for each character reveal stage
+  for (let i = 1; i <= text.length; i++) {
+    const partialText = escapeForDrawtext(text.substring(0, i));
+    const charStart = clip.start + (i - 1) * charDelay;
+    const charEnd = i === text.length 
+      ? clip.end // Last character stays until end
+      : clip.start + i * charDelay; // Previous chars hidden when next appears
+    
+    // For the final complete text, add fade out
+    let alphaExpr = "1";
+    if (i === text.length) {
+      const fadeOutStart = clip.end - fadeOutDuration;
+      alphaExpr = `if(gt(t,${fadeOutStart}),1-(t-${fadeOutStart})/${fadeOutDuration},1)`;
+    }
+    
+    let filter = `drawtext=text='${partialText}':fontfile=${fontFile}:fontsize=${size}:fontcolor=${color}:alpha='${alphaExpr}':x=${x}:y=${y}`;
+    filter += `:shadowcolor=black@0.6:shadowx=10:shadowy=10:borderw=4:bordercolor=black@0.3`;
+    filter += `:enable='between(t,${charStart},${charEnd})'`;
+    
+    filters.push(filter);
+  }
+  
+  return filters;
+}
+
 // Generate animated text filter with motion effects
 // Uses FFmpeg drawtext with alpha expressions for smooth animations
 function generateAnimatedTextFilter(clip: TimelineTextClip): string {
@@ -594,13 +636,24 @@ export async function renderTimeline(
     
     if (timeline.tracks.text.length > 0) {
       // Use animated text filter for professional motion graphics
-      const textFilters = timeline.tracks.text.map((clip, i) => {
+      const allTextFilters: string[] = [];
+      
+      for (const clip of timeline.tracks.text) {
+        const textType = (clip as any).textType || "caption";
         const animation = (clip as any).animation || "none";
-        if (animation !== "none") {
-          return generateAnimatedTextFilter(clip);
+        
+        // Use typewriter effect for year/era splash text
+        if (textType === "era_splash" || textType === "year_splash") {
+          const typewriterFilters = generateTypewriterTextFilters(clip);
+          allTextFilters.push(...typewriterFilters);
+        } else if (animation !== "none") {
+          allTextFilters.push(generateAnimatedTextFilter(clip));
+        } else {
+          allTextFilters.push(generateTextFilter(clip));
         }
-        return generateTextFilter(clip);
-      }).join(",");
+      }
+      
+      const textFilters = allTextFilters.join(",");
       // Add semicolon separator before text filter section
       filterComplex += `; ${finalVideoTag}${textFilters}[vfinal]`;
       finalVideoTag = "[vfinal]";
