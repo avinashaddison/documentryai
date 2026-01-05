@@ -1858,13 +1858,37 @@ export async function registerRoutes(
       let currentTime = 0;
       const fadeDuration = 0.5;
       
-      // Track years to avoid duplicates
+      // Track years and places to avoid duplicates
       const yearsShown = new Set<string>();
+      const placesShown = new Set<string>();
       
       // Helper to detect years in narration
       const extractYear = (text: string): string | null => {
         const yearMatch = text.match(/\b(19\d{2}|20\d{2})\b/);
         return yearMatch ? yearMatch[1] : null;
+      };
+      
+      // Helper to detect place names in narration
+      const extractPlace = (text: string): string | null => {
+        // Common place patterns - cities, countries, regions, historical sites
+        const placePatterns = [
+          // Specific historical places
+          /\b(Hiroshima|Nagasaki|Pearl Harbor|Los Alamos|Trinity Site|Manhattan|Berlin|Normandy|Stalingrad|Auschwitz|Dunkirk|Iwo Jima|Okinawa|Dresden|Hamburg|Tokyo|Moscow|London|Paris|Warsaw|Leningrad)\b/i,
+          // US states and regions
+          /\b(New Mexico|California|Nevada|Texas|Washington D\.?C\.?|New York|Virginia|Tennessee|Arizona)\b/i,
+          // Countries
+          /\b(Japan|Germany|Soviet Union|Russia|United States|America|Britain|France|Poland|China|Italy)\b/i,
+          // Geographic features
+          /\b(Pacific|Atlantic|Mediterranean|Rhine|Volga|English Channel)\b/i,
+        ];
+        
+        for (const pattern of placePatterns) {
+          const match = text.match(pattern);
+          if (match) {
+            return match[1];
+          }
+        }
+        return null;
       };
       
       for (const scene of scenes) {
@@ -1923,12 +1947,39 @@ export async function registerRoutes(
               outlineColor: "black@0.3"
             });
           }
+          
+          // Detect place names and add text overlay (if no year shown this scene)
+          const place = extractPlace(narration);
+          if (place && !placesShown.has(place) && !(year && !yearsShown.has(year))) {
+            placesShown.add(place);
+            console.log(`[DirectRender] Adding place overlay: ${place} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+            
+            textClips.push({
+              id: `place_${scene.chapterNumber}_${scene.sceneNumber}`,
+              text: place,
+              start: currentTime + 0.5,
+              end: currentTime + Math.min(scene.duration, 4),
+              x: "(w-text_w)/2",
+              y: "(h-text_h)/2",
+              size: 140,
+              color: "#F5F0E6",
+              box: false,
+              textType: "place_splash",
+              animation: "fade_in_out",
+              animationDuration: 0.8,
+              shadow: true,
+              shadowColor: "black@0.6",
+              outline: true,
+              outlineWidth: 3,
+              outlineColor: "black@0.3"
+            });
+          }
         }
         
         currentTime += scene.duration;
       }
       
-      console.log(`[DirectRender] Created timeline with ${textClips.length} year overlays`);
+      console.log(`[DirectRender] Created timeline with ${textClips.length} text overlays (years: ${yearsShown.size}, places: ${placesShown.size})`);
       
       const timeline = {
         projectId,
