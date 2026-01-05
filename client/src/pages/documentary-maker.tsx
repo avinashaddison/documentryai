@@ -2563,197 +2563,27 @@ export default function DocumentaryMaker() {
           </div>
         )}
 
-        {/* Story Configuration */}
-        {framework && (
-          <div className="bg-card border border-border rounded-xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-display font-bold text-white">Story Configuration</h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Mic className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-white">Narrator Voice</Label>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {voiceOptions.map((option) => (
-                    <div
-                      key={option.value}
-                      className={`relative flex flex-col p-3 rounded-lg border cursor-pointer transition-all ${
-                        config.narratorVoice === option.value
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-muted-foreground bg-background/50"
-                      }`}
-                      onClick={() => setConfig({ ...config, narratorVoice: option.value })}
-                      data-testid={`voice-option-${option.value}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{option.label}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 rounded-full bg-primary/20 hover:bg-primary/40"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleVoicePreview(option.value);
-                          }}
-                          data-testid={`button-preview-voice-${option.value}`}
-                        >
-                          {previewingVoice === option.value ? (
-                            <Pause className="h-3.5 w-3.5 text-primary" />
-                          ) : (
-                            <Play className="h-3.5 w-3.5 text-primary ml-0.5" />
-                          )}
-                        </Button>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                      {config.narratorVoice === option.value && (
-                        <div className="absolute top-1 left-1 w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-white">Image Source</Label>
-                </div>
-                <Select
-                  value={config.imageSource}
-                  onValueChange={(value) => setConfig({ ...config, imageSource: value as "ai" | "stock" | "google" })}
-                >
-                  <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-source">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google">Google Images (Fast & Free)</SelectItem>
-                    <SelectItem value="stock">Perplexity (Smart Search)</SelectItem>
-                    <SelectItem value="ai">AI Generated (Flux/Ideogram)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {config.imageSource === "google" 
-                    ? "Uses Google Images via SerpAPI - fast and free"
-                    : config.imageSource === "stock" 
-                    ? "Uses Perplexity for intelligent image search" 
-                    : "Generates unique images using AI models"}
-                </p>
-              </div>
-
-              {config.imageSource === "ai" && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium text-white">AI Model</Label>
-                  </div>
-                  <Select
-                    value={config.hookImageModel}
-                    onValueChange={(value) => setConfig({ ...config, hookImageModel: value, chapterImageModel: value })}
-                  >
-                    <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-model">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {imageModelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        {/* Start Generation Button - appears after framework is ready */}
+        {framework && generatedChapters.length === 0 && chapters.length > 0 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Button
+              onClick={startBackgroundGeneration}
+              disabled={isGenerating || (activeJob?.status === "running")}
+              className="w-full h-14 gap-3 bg-gradient-to-r from-primary via-violet-500 to-purple-500 hover:from-primary/90 hover:via-violet-500/90 hover:to-purple-500/90 text-lg font-semibold shadow-lg shadow-purple-500/25 border border-white/10"
+              data-testid="button-start-generation"
+            >
+              {isGenerating || activeJob?.status === "running" ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {activeJob ? `Generating... ${activeJob.elapsedFormatted}` : "Generating Chapters..."}
+                </>
+              ) : (
+                <>
+                  <Play className="h-5 w-5" />
+                  Start Full Generation
+                </>
               )}
-
-              {config.imageSource === "ai" && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium text-white">Image Style</Label>
-                  </div>
-                  <Select
-                    value={config.imageStyle}
-                    onValueChange={(value) => setConfig({ ...config, imageStyle: value as "color" | "black-and-white" })}
-                  >
-                    <SelectTrigger className="w-full bg-background/50 border-border" data-testid="select-image-style">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="color">Color Images</SelectItem>
-                      <SelectItem value="black-and-white">Black & White (Vintage)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium text-white">Images Per Scene</Label>
-                  </div>
-                  <span className="text-sm text-primary font-mono">{config.imagesPerChapter}</span>
-                </div>
-                <Slider
-                  value={[config.imagesPerChapter]}
-                  onValueChange={([value]) => setConfig({ ...config, imagesPerChapter: value })}
-                  min={3}
-                  max={10}
-                  step={1}
-                  className="cursor-pointer"
-                  data-testid="slider-images-per-chapter"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium text-white">Scene Duration (seconds)</Label>
-                  </div>
-                  <span className="text-sm text-primary font-mono">{config.hookImageCount * 5}s avg</span>
-                </div>
-                <Slider
-                  value={[config.hookImageCount]}
-                  onValueChange={([value]) => setConfig({ ...config, hookImageCount: value })}
-                  min={2}
-                  max={8}
-                  step={1}
-                  className="cursor-pointer"
-                  data-testid="slider-scene-duration"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-4 border-t border-border flex gap-3">
-              {generatedChapters.length === 0 && chapters.length > 0 ? (
-                <Button
-                  onClick={startBackgroundGeneration}
-                  disabled={isGenerating || (activeJob?.status === "running")}
-                  className="flex-1 h-12 gap-2 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-lg font-semibold"
-                  data-testid="button-start-generation"
-                >
-                  {isGenerating || activeJob?.status === "running" ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      {activeJob ? `Generating... ${activeJob.elapsedFormatted}` : "Generating Chapters..."}
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-5 w-5" />
-                      Start Full Generation
-                    </>
-                  )}
-                </Button>
-              ) : null}
-            </div>
+            </Button>
           </div>
         )}
 
