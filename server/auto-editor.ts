@@ -162,13 +162,56 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   // Track chapter starts for chapter title cards
   let chapterIndex = 0;
   
-  // Simple clean black and white with smooth fade transitions only
+  // Professional transition rules:
+  // Scene change      → Cross Dissolve (0.7s)
+  // Chapter change    → Fade to Black (1.2s)
+  // Image-based video → Ken Burns + Dissolve
+  // Emotional moment  → Slow fade (1.5s)
+  
+  // Keywords that indicate emotional/dramatic moments
+  const emotionalKeywords = ['death', 'died', 'tragic', 'sacrifice', 'lost', 'final', 'end', 'never', 'forever', 'memory', 'remember', 'legacy', 'farewell', 'goodbye'];
+  
+  function isEmotionalMoment(narration: string): boolean {
+    if (!narration) return false;
+    const lower = narration.toLowerCase();
+    return emotionalKeywords.some(kw => lower.includes(kw));
+  }
+  
+  // Ken Burns effect rotation for variety
+  const kenBurnsEffects = ['zoom_in', 'zoom_out', 'pan_left', 'pan_right', 'kenburns'];
+  
   for (const chapter of chapters) {
     const chapterStartTime = currentTime;
+    const isFirstChapter = chapterIndex === 0;
     
     for (const scene of chapter.scenes) {
+      const isFirstScene = scene.sceneNumber === 1;
+      const isEmotional = isEmotionalMoment(scene.narration || '');
+      
+      // Determine transition timing based on context
+      let fadeIn: number;
+      let fadeOut: number;
+      
+      if (isFirstScene && !isFirstChapter) {
+        // Chapter change → Fade to Black (1.2s)
+        fadeIn = 1.2;
+        fadeOut = 0.7;  // Cross dissolve out to next scene
+      } else if (isEmotional) {
+        // Emotional moment → Slow fade (1.5s)
+        fadeIn = 1.5;
+        fadeOut = 1.5;
+      } else if (sceneIndex === 0) {
+        // Very first scene of documentary
+        fadeIn = 1.5;
+        fadeOut = 0.7;
+      } else {
+        // Regular scene change → Cross Dissolve (0.7s)
+        fadeIn = 0.7;
+        fadeOut = 0.7;
+      }
+      
       // Add chapter title card on first scene of each chapter
-      if (scene.sceneNumber === 1) {
+      if (isFirstScene) {
         // Dramatic chapter title with fade animation - centered, large text
         textClips.push({
           id: generateId(),
@@ -210,18 +253,21 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         } as any);
       }
       
-      // Simple video clip with grayscale and smooth fade transitions - no effects
+      // Image-based video → Ken Burns + Dissolve
+      // Rotate through different Ken Burns effects for variety
+      const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
+      
       videoClips.push({
         id: generateId(),
         src: scene.imageUrl,
         start: currentTime,
         duration: scene.duration,
-        effect: "none",  // No Ken Burns or zoom effects
-        fade_in: sceneIndex === 0 ? 1.0 : 0.5,  // Smooth fade transitions
-        fade_out: 0.5,
+        effect: kenBurnsEffect,  // Ken Burns motion for static images
+        fade_in: fadeIn,  // Context-aware fade transitions
+        fade_out: fadeOut,
         blur: false,
         colorGrade: "grayscale",  // Clean black and white
-        layoutType: "standard",   // No fancy layouts
+        layoutType: "standard",
       } as any);
 
       // Add narration audio

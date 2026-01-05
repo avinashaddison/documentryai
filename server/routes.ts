@@ -2000,11 +2000,59 @@ export async function registerRoutes(
         return null;
       };
       
+      // Professional transition rules:
+      // Scene change      → Cross Dissolve (0.7s)
+      // Chapter change    → Fade to Black (1.2s)
+      // Image-based video → Ken Burns + Dissolve
+      // Emotional moment  → Slow fade (1.5s)
+      const emotionalKeywords = ['death', 'died', 'tragic', 'sacrifice', 'lost', 'final', 'end', 'never', 'forever', 'memory', 'remember', 'legacy', 'farewell', 'goodbye'];
+      const isEmotionalMoment = (text: string): boolean => {
+        if (!text) return false;
+        const lower = text.toLowerCase();
+        return emotionalKeywords.some(kw => lower.includes(kw));
+      };
+      
+      // Ken Burns effect rotation for variety
+      const kenBurnsEffects = ['zoom_in', 'zoom_out', 'pan_left', 'pan_right', 'kenburns'];
+      let sceneIndex = 0;
+      let lastChapter = 0;
+      
       for (const scene of scenes) {
         const clipDuration = scene.duration + fadeDuration;
         const narrationKey = `${scene.chapterNumber}-${scene.sceneNumber}`;
         const narration = narrationLookup[narrationKey] || '';
         const shotType = shotTypeLookup[narrationKey] || '';
+        
+        // Determine if this is a chapter change
+        const isChapterChange = scene.chapterNumber !== lastChapter && lastChapter !== 0;
+        const isEmotional = isEmotionalMoment(narration);
+        const isFirstScene = sceneIndex === 0;
+        lastChapter = scene.chapterNumber;
+        
+        // Context-aware fade timing
+        let fadeIn: number;
+        let fadeOut: number;
+        
+        if (isChapterChange) {
+          // Chapter change → Fade to Black (1.2s)
+          fadeIn = 1.2;
+          fadeOut = 0.7;
+        } else if (isEmotional) {
+          // Emotional moment → Slow fade (1.5s)
+          fadeIn = 1.5;
+          fadeOut = 1.5;
+        } else if (isFirstScene) {
+          // First scene of documentary
+          fadeIn = 1.5;
+          fadeOut = 0.7;
+        } else {
+          // Regular scene change → Cross Dissolve (0.7s)
+          fadeIn = 0.7;
+          fadeOut = 0.7;
+        }
+        
+        // Ken Burns effect for image-based video
+        const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
         
         videoClips.push({
           id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
@@ -2012,11 +2060,13 @@ export async function registerRoutes(
           start: currentTime,
           end: currentTime + clipDuration,
           duration: clipDuration,
-          effect: "none",
+          effect: kenBurnsEffect,  // Ken Burns motion for static images
           colorGrade: "grayscale",
-          fade_in: fadeDuration,
-          fade_out: fadeDuration
+          fade_in: fadeIn,
+          fade_out: fadeOut
         });
+        
+        sceneIndex++;
         
         audioClips.push({
           id: `audio_${scene.chapterNumber}_${scene.sceneNumber}`,
