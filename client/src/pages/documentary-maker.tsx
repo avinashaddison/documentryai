@@ -42,7 +42,8 @@ import {
   Video,
   SkipBack,
   SkipForward,
-  Square
+  Square,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkspaceSidebar } from "@/components/layout/workspace-sidebar";
@@ -110,7 +111,9 @@ function AutoVideoRenderer({
   generatedImages, 
   generatedAudio,
   onVideoReady,
-  existingVideoUrl
+  existingVideoUrl,
+  forceRerender,
+  onRerenderStart
 }: { 
   projectId: number;
   generatedChapters: ChapterScript[];
@@ -118,6 +121,8 @@ function AutoVideoRenderer({
   generatedAudio: Record<string, string>;
   onVideoReady: (url: string) => void;
   existingVideoUrl?: string | null;
+  forceRerender?: boolean;
+  onRerenderStart?: () => void;
 }) {
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -129,9 +134,14 @@ function AutoVideoRenderer({
     Object.keys(generatedImages).length > 0 && 
     Object.keys(generatedAudio).length > 0;
   
-  const startRendering = async () => {
-    if (hasStartedRef.current || existingVideoUrl) return;
+  const startRendering = async (isRerender = false) => {
+    if (hasStartedRef.current && !isRerender) return;
+    if (!isRerender && existingVideoUrl) return;
     hasStartedRef.current = true;
+    
+    if (isRerender && onRerenderStart) {
+      onRerenderStart();
+    }
     
     setIsRendering(true);
     setProgress(0);
@@ -198,7 +208,14 @@ function AutoVideoRenderer({
     }
   }, [hasAllAssets, existingVideoUrl]);
   
-  if (existingVideoUrl) {
+  // Handle force re-render
+  useEffect(() => {
+    if (forceRerender && hasAllAssets && !isRendering) {
+      startRendering(true);
+    }
+  }, [forceRerender]);
+  
+  if (existingVideoUrl && !forceRerender) {
     return null;
   }
   
@@ -423,6 +440,7 @@ export default function DocumentaryMaker() {
   const [progress, setProgress] = useState(0);
   const [totalChapters, setTotalChapters] = useState(5);
   const [renderedVideoUrl, setRenderedVideoUrl] = useState<string | null>(null);
+  const [forceRerender, setForceRerender] = useState(false);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [editingChapterValue, setEditingChapterValue] = useState("");
   
@@ -2522,8 +2540,11 @@ export default function DocumentaryMaker() {
           generatedImages={generatedImages}
           generatedAudio={generatedAudio}
           existingVideoUrl={renderedVideoUrl}
+          forceRerender={forceRerender}
+          onRerenderStart={() => setRenderedVideoUrl(null)}
           onVideoReady={(url) => {
             setRenderedVideoUrl(url);
+            setForceRerender(false);
             setCurrentStep("complete");
           }}
         />
@@ -2555,22 +2576,35 @@ export default function DocumentaryMaker() {
               </video>
             </div>
             
-            <a
-              href={renderedVideoUrl}
-              download={`documentary_${projectId}.mp4`}
-              className="block"
-            >
-              <Button 
-                className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg"
-                data-testid="button-download-video"
+            <div className="flex gap-3">
+              <a
+                href={renderedVideoUrl}
+                download={`documentary_${projectId}.mp4`}
+                className="flex-1"
               >
-                <Download className="h-6 w-6" />
-                Download Documentary
+                <Button 
+                  className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg"
+                  data-testid="button-download-video"
+                >
+                  <Download className="h-6 w-6" />
+                  Download Documentary
+                </Button>
+              </a>
+              
+              <Button 
+                variant="outline"
+                className="h-14 gap-2 border-orange-400/30 text-orange-400"
+                onClick={() => setForceRerender(true)}
+                disabled={forceRerender}
+                data-testid="button-rerender-video"
+              >
+                <RefreshCw className={`h-5 w-5 ${forceRerender ? 'animate-spin' : ''}`} />
+                Re-render
               </Button>
-            </a>
+            </div>
             
             <p className="text-sm text-muted-foreground text-center">
-              Grayscale documentary with smooth fade transitions
+              Grayscale documentary with smooth fade transitions • Click Re-render to apply changes
             </p>
           </div>
         )}
