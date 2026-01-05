@@ -2212,11 +2212,24 @@ export async function registerRoutes(
       };
       
       const outputName = `direct_${projectId}_${Date.now()}`;
+      
+      // Reset progress tracker for real-time UI updates
+      currentRenderProgress = { status: 'downloading', progress: 0, message: 'Preparing video assets...' };
+      
       const result = await renderTimeline(timeline, outputName, (progress) => {
+        // Update global progress tracker for real-time polling
+        currentRenderProgress = {
+          status: progress.status === 'pending' ? 'downloading' : 
+                  progress.status === 'failed' ? 'error' : 
+                  progress.status as any,
+          progress: progress.progress,
+          message: progress.message
+        };
         console.log(`[DirectRender] ${progress.status}: ${progress.message} (${progress.progress}%)`);
       });
       
       if (result.success) {
+        currentRenderProgress = { status: 'complete', progress: 100, message: 'Video ready!' };
         await storage.updateProject(projectId, { status: "RENDERED" });
         
         res.json({
@@ -2226,9 +2239,11 @@ export async function registerRoutes(
           message: "Video rendered successfully"
         });
       } else {
+        currentRenderProgress = { status: 'error', progress: 0, message: result.error || 'Render failed' };
         res.status(500).json({ success: false, error: result.error || "Render failed" });
       }
     } catch (error: any) {
+      currentRenderProgress = { status: 'error', progress: 0, message: error.message || 'Render failed' };
       console.error("[DirectRender] Error:", error);
       res.status(500).json({ error: error.message || "Direct render failed" });
     }

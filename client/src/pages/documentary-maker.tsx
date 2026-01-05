@@ -149,27 +149,34 @@ function AutoVideoRenderer({
     setStatusMessage("Preparing video assets...");
     
     try {
-      const response = await fetch("/api/render/direct", {
+      // Start render in background (non-blocking)
+      fetch("/api/render/direct", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId })
+      }).then(async (response) => {
+        if (response.ok) {
+          const data = await response.json();
+          if (data.videoUrl) {
+            setProgress(100);
+            setStatusMessage("Video ready!");
+            onVideoReady(data.videoUrl);
+            setIsRendering(false);
+          }
+        } else {
+          const errData = await response.json();
+          setError(errData.message || "Rendering failed");
+          setIsRendering(false);
+          hasStartedRef.current = false;
+        }
+      }).catch((err) => {
+        setError(err.message);
+        setIsRendering(false);
+        hasStartedRef.current = false;
       });
       
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.message || "Rendering failed");
-      }
-      
-      const data = await response.json();
-      
-      if (data.jobId) {
-        pollRenderJob(data.jobId);
-      } else if (data.videoUrl) {
-        setProgress(100);
-        setStatusMessage("Video ready!");
-        onVideoReady(data.videoUrl);
-        setIsRendering(false);
-      }
+      // Start polling for real-time progress immediately
+      pollRenderProgress();
     } catch (err: any) {
       setError(err.message);
       setIsRendering(false);
@@ -177,28 +184,29 @@ function AutoVideoRenderer({
     }
   };
   
-  const pollRenderJob = async (jobId: string) => {
+  const pollRenderProgress = async () => {
     try {
-      const response = await fetch(`/api/render/status/${jobId}`);
+      const response = await fetch("/api/timeline/render-progress");
       const data = await response.json();
       
       setProgress(data.progress || 0);
       setStatusMessage(data.message || "Rendering...");
       
-      if (data.status === "completed" && data.videoUrl) {
-        onVideoReady(data.videoUrl);
-        setIsRendering(false);
-      } else if (data.status === "failed") {
-        setError(data.error || "Rendering failed");
+      if (data.status === "complete") {
+        // Render is done - the fetch promise above will handle the video URL
+        return;
+      } else if (data.status === "error") {
+        setError(data.message || "Rendering failed");
         setIsRendering(false);
         hasStartedRef.current = false;
+        return;
       } else {
-        setTimeout(() => pollRenderJob(jobId), 2000);
+        // Poll every 500ms for real-time updates
+        setTimeout(() => pollRenderProgress(), 500);
       }
     } catch (err: any) {
-      setError(err.message);
-      setIsRendering(false);
-      hasStartedRef.current = false;
+      // Keep polling even on errors
+      setTimeout(() => pollRenderProgress(), 1000);
     }
   };
   
