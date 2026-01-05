@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import claudeIconPath from "@assets/claude-ai-icon_1767588099802.png";
 import perplexityIconPath from "@assets/perplexity-ai-icon_1767590005100.png";
 import googleIconPath from "@assets/google-color-icon_1767590050980.png";
+import aiGenerateIconPath from "@assets/midjourney-color-icon_1767592526835.png";
 
 const clickSoundUrl = "/audio/click-sound.mp3";
 import {
@@ -2021,47 +2022,68 @@ export default function DocumentaryMaker() {
                 onClick={() => { playClickSound(); setConfig({ ...config, imageSource: "ai" }); }}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
-                  "border",
+                  "relative group overflow-hidden rounded-2xl p-4 transition-all duration-500 ease-out",
+                  "border-2",
                   config.imageSource === "ai"
-                    ? "border-pink-400/60 bg-pink-500/10 scale-[1.02]"
-                    : "border-border bg-card/50 hover:border-pink-500/40 hover:bg-card/80",
+                    ? "border-transparent bg-gradient-to-br from-fuchsia-600 via-purple-600 to-pink-600 scale-[1.02]"
+                    : "border-white/10 bg-gradient-to-br from-slate-800/80 to-slate-900/80 hover:border-fuchsia-500/30 hover:from-slate-800 hover:to-slate-900 hover:scale-[1.01]",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
                 style={{
                   boxShadow: config.imageSource === "ai" 
-                    ? "0 0 25px -5px rgba(236, 72, 153, 0.4)"
+                    ? "0 0 40px -8px rgba(217, 70, 239, 0.6), inset 0 1px 0 0 rgba(255,255,255,0.2)"
                     : undefined
                 }}
                 data-testid="button-image-ai"
               >
+                {/* Inner dark overlay for selected state */}
+                {config.imageSource === "ai" && (
+                  <div className="absolute inset-[3px] rounded-xl bg-gradient-to-br from-slate-900/95 via-purple-950/90 to-slate-900/95 backdrop-blur-sm" />
+                )}
+                
+                {/* Shimmer effect on hover */}
                 <div className={cn(
-                  "absolute inset-0 bg-gradient-to-br from-pink-500 to-purple-600 opacity-0 transition-opacity duration-300",
-                  config.imageSource === "ai" ? "opacity-15" : "group-hover:opacity-5"
+                  "absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000",
+                  config.imageSource === "ai" && "hidden"
                 )} />
                 
-                <div className="relative z-10 flex flex-col items-center gap-2">
+                <div className="relative z-10 flex flex-col items-center gap-3">
+                  {/* Icon with glow */}
                   <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    "relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden",
                     config.imageSource === "ai" 
-                      ? "bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/30" 
+                      ? "bg-gradient-to-br from-fuchsia-500 via-purple-500 to-pink-500 shadow-xl shadow-fuchsia-500/50 ring-2 ring-white/20" 
                       : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    <Wand2 className={cn(
-                      "h-5 w-5 transition-colors",
-                      config.imageSource === "ai" ? "text-white" : "text-pink-400/70"
-                    )} />
+                    {config.imageSource === "ai" && (
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+                    )}
+                    <img 
+                      src={aiGenerateIconPath} 
+                      alt="AI Generate"
+                      className={cn(
+                        "w-8 h-8 object-contain transition-all duration-300",
+                        config.imageSource === "ai" ? "opacity-100 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" : "opacity-60 group-hover:opacity-80"
+                      )}
+                    />
+                    {/* Sparkle effects */}
+                    {config.imageSource === "ai" && (
+                      <>
+                        <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-white rounded-full animate-ping opacity-75" />
+                        <div className="absolute bottom-1 left-1 w-1 h-1 bg-fuchsia-300 rounded-full animate-pulse" />
+                      </>
+                    )}
                   </div>
                   <div className="text-center">
                     <div className={cn(
                       "text-sm font-bold transition-all duration-300",
-                      config.imageSource === "ai" ? "text-pink-400" : "text-white/70 group-hover:text-white"
+                      config.imageSource === "ai" ? "text-fuchsia-300 drop-shadow-[0_0_10px_rgba(217,70,239,0.5)]" : "text-white/60 group-hover:text-white"
                     )}>
                       AI Generate
                     </div>
                     <div className={cn(
-                      "text-[10px] transition-colors",
-                      config.imageSource === "ai" ? "text-pink-300/80" : "text-muted-foreground"
+                      "text-[10px] transition-colors font-medium",
+                      config.imageSource === "ai" ? "text-pink-300/80" : "text-white/40"
                     )}>
                       Flux / Ideogram
                     </div>
@@ -2069,9 +2091,9 @@ export default function DocumentaryMaker() {
                 </div>
                 
                 {config.imageSource === "ai" && (
-                  <div className="absolute top-1.5 right-1.5">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
-                      <Check className="h-3 w-3 text-white" />
+                  <div className="absolute top-2.5 right-2.5">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-500 flex items-center justify-center shadow-lg ring-2 ring-white/20 animate-in zoom-in duration-200">
+                      <Check className="h-3.5 w-3.5 text-white drop-shadow-md" />
                     </div>
                   </div>
                 )}
