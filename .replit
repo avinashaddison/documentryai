@@ -46,7 +46,7 @@ integrations = ["javascript_anthropic_ai_integrations:2.0.0", "javascript_object
 expertMode = true
 
 [objectStorage]
-defaultBucketID = "replit-objstore-a333ee92-5917-4e45-ba09-cfa78ad855b7"
+defaultBucketID = "replit-objstore-6be1970a-8e30-493f-8288-5640cdd2eed2"
 
 [userenv]
 
