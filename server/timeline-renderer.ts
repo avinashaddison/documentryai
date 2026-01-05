@@ -4,6 +4,9 @@ import { spawn } from "child_process";
 import type { Timeline, TimelineVideoClip, TimelineAudioClip, TimelineTextClip, LayoutType } from "@shared/schema";
 import { objectStorageClient } from "./replit_integrations/object_storage/objectStorage";
 
+// Path to old film overlay video for vintage dust/scratches effect
+const FILM_OVERLAY_PATH = path.join(process.cwd(), "public/audio/film_overlay.mp4");
+
 // Escape text for FFmpeg drawtext filter
 // Single escape for special characters when text is wrapped in single quotes
 function escapeForDrawtext(text: string): string {
@@ -574,6 +577,15 @@ export async function renderTimeline(
       ffmpegArgs.push("-i", localPath);
     }
     
+    // Add film overlay as looping input (for dust, scratches, flicker effect)
+    // Input index will be: 1 + videoClips + audioClips
+    const filmOverlayInputIndex = 1 + localVideoClips.length + localAudioClips.length;
+    const hasFilmOverlay = fs.existsSync(FILM_OVERLAY_PATH);
+    if (hasFilmOverlay) {
+      ffmpegArgs.push("-stream_loop", "-1", "-i", FILM_OVERLAY_PATH);
+      console.log(`[TimelineRenderer] Added film overlay input at index ${filmOverlayInputIndex}`);
+    }
+    
     let filterComplex = "";
     const overlayInputs: string[] = [];
     
@@ -687,6 +699,17 @@ export async function renderTimeline(
       // Add semicolon separator before text filter section
       filterComplex += `; ${finalVideoTag}${textFilters}[vfinal]`;
       finalVideoTag = "[vfinal]";
+    }
+    
+    // Apply old film overlay (dust, scratches, flicker) at ~25% opacity
+    if (hasFilmOverlay) {
+      // Scale overlay to match video size, convert to RGBA for transparency, reduce opacity
+      // Use colorchannelmixer to set alpha (aa=0.25 for 25% opacity)
+      // Then overlay on top of the video with format conversion back to yuva420p
+      filterComplex += `; [${filmOverlayInputIndex}:v]scale=1920:1080,format=rgba,colorchannelmixer=aa=0.25[filmfg]`;
+      filterComplex += `; ${finalVideoTag}[filmfg]overlay=0:0:shortest=1[vwithfilm]`;
+      finalVideoTag = "[vwithfilm]";
+      console.log(`[TimelineRenderer] Applied film overlay with 25% opacity`);
     }
     
     let audioTag = "";
