@@ -2064,6 +2064,19 @@ export async function registerRoutes(
               outlineWidth: 2,
               outlineColor: "black@0.3"
             });
+            
+            // Add typewriter sound effect for character names
+            audioClips.push({
+              id: `sfx_char_${scene.chapterNumber}_${scene.sceneNumber}`,
+              src: "/public/audio/typewriter_sfx.mp3",
+              start: currentTime + 0.3,
+              end: currentTime + 2.5,
+              duration: 2.2,
+              volume: 0.6,
+              fade_in: 0,
+              fade_out: 0.3,
+              audioType: "sfx"
+            });
           }
           
           // Then check for years (if no character shown)
