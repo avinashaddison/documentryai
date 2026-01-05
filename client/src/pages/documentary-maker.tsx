@@ -1220,10 +1220,10 @@ export default function DocumentaryMaker() {
   };
 
   const chapterPresets = [
-    { count: 3, label: "Short", duration: "5-8 min", color: "from-blue-500 to-cyan-500" },
-    { count: 5, label: "Medium", duration: "15-20 min", color: "from-purple-500 to-pink-500" },
-    { count: 8, label: "Long", duration: "30-45 min", color: "from-violet-500 to-red-500" },
-    { count: 12, label: "Feature", duration: "60+ min", color: "from-green-500 to-emerald-500" },
+    { count: 3, label: "Short", duration: "5-8 min", color: "from-sky-400 via-cyan-500 to-teal-500", glow: "shadow-cyan-500/50", text: "text-cyan-400", accent: "text-cyan-300" },
+    { count: 5, label: "Medium", duration: "15-20 min", color: "from-fuchsia-500 via-purple-500 to-violet-600", glow: "shadow-purple-500/50", text: "text-purple-400", accent: "text-fuchsia-300" },
+    { count: 8, label: "Long", duration: "30-45 min", color: "from-orange-400 via-amber-500 to-yellow-500", glow: "shadow-amber-500/50", text: "text-amber-400", accent: "text-orange-300" },
+    { count: 12, label: "Feature", duration: "60+ min", color: "from-rose-500 via-pink-500 to-red-500", glow: "shadow-rose-500/50", text: "text-rose-400", accent: "text-pink-300" },
   ];
 
   const storyLengthOptions = [
@@ -1593,59 +1593,63 @@ export default function DocumentaryMaker() {
                     }}
                     disabled={isGenerating}
                     className={cn(
-                      "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
-                      "border",
+                      "relative group overflow-hidden rounded-2xl p-5 transition-all duration-500 ease-out",
+                      "border-2",
                       isSelected 
-                        ? "border-violet-400/60 bg-violet-500/10 scale-[1.02] neon-glow" 
-                        : "border-border bg-card/50 hover:border-violet-500/40 hover:bg-card/80",
+                        ? `border-transparent bg-gradient-to-br ${preset.color} scale-[1.03] shadow-xl ${preset.glow}` 
+                        : "border-white/10 bg-gradient-to-br from-slate-800/80 to-slate-900/80 hover:border-white/20 hover:from-slate-800 hover:to-slate-900 hover:scale-[1.02]",
                       isGenerating && "opacity-50 cursor-not-allowed"
                     )}
+                    style={{
+                      boxShadow: isSelected 
+                        ? `0 0 40px -8px var(--tw-shadow-color), inset 0 1px 0 0 rgba(255,255,255,0.2)`
+                        : undefined
+                    }}
                     data-testid={`button-chapter-${preset.count}`}
                   >
-                    {/* Gradient background effect on hover/select */}
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300",
-                      preset.color,
-                      isSelected ? "opacity-15" : "group-hover:opacity-5"
-                    )} />
-                    
-                    {/* Animated border glow */}
+                    {/* Inner dark overlay for selected state */}
                     {isSelected && (
-                      <div className="absolute inset-0 rounded-xl">
-                        <div className={cn(
-                          "absolute inset-0 rounded-xl bg-gradient-to-br blur-md opacity-40",
-                          preset.color
-                        )} />
-                      </div>
+                      <div className="absolute inset-[3px] rounded-xl bg-slate-900/90 backdrop-blur-sm" />
                     )}
                     
+                    {/* Shimmer effect on hover */}
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000",
+                      isSelected && "hidden"
+                    )} />
+                    
                     {/* Content */}
-                    <div className="relative z-10 text-center space-y-1">
+                    <div className="relative z-10 text-center space-y-1.5">
                       <div className={cn(
-                        "text-4xl font-bold transition-all duration-300",
-                        isSelected ? "text-violet-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
+                        "text-5xl font-black transition-all duration-300 tracking-tight",
+                        isSelected 
+                          ? `${preset.text} drop-shadow-[0_0_20px_currentColor]` 
+                          : "text-white/60 group-hover:text-white"
                       )}>
                         {preset.count}
                       </div>
                       <div className={cn(
-                        "text-xs font-semibold uppercase tracking-wider transition-colors",
-                        isSelected ? "text-orange-300" : "text-muted-foreground group-hover:text-white/70"
+                        "text-[11px] font-bold uppercase tracking-[0.2em] transition-colors",
+                        isSelected ? preset.accent : "text-white/40 group-hover:text-white/60"
                       )}>
                         {preset.label}
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className={cn(
+                        "text-[10px] transition-colors font-medium",
+                        isSelected ? "text-white/60" : "text-white/30 group-hover:text-white/40"
+                      )}>
                         {preset.duration}
                       </div>
                     </div>
                     
                     {/* Selection indicator */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2.5 right-2.5">
                         <div className={cn(
-                          "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg",
+                          "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg ring-2 ring-white/20",
                           preset.color
                         )}>
-                          <Check className="h-3.5 w-3.5 text-white" />
+                          <Check className="h-3.5 w-3.5 text-white drop-shadow-md" />
                         </div>
                       </div>
                     )}
