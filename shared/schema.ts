@@ -332,6 +332,9 @@ export const TimelineSchema = z.object({
   resolution: z.string().optional().default("1920x1080"),
   fps: z.number().optional().default(30),
   duration: z.number(),
+  // Old film overlay effect (dust, scratches, flicker)
+  filmOverlay: z.boolean().optional().default(true),
+  filmOverlayOpacity: z.number().min(0).max(1).optional().default(0.25),
   tracks: z.object({
     video: z.array(TimelineVideoClipSchema).optional().default([]),
     audio: z.array(TimelineAudioClipSchema).optional().default([]),

@@ -701,15 +701,20 @@ export async function renderTimeline(
       finalVideoTag = "[vfinal]";
     }
     
-    // Apply old film overlay (dust, scratches, flicker) at ~25% opacity
-    if (hasFilmOverlay) {
+    // Apply old film overlay (dust, scratches, flicker) - configurable via timeline settings
+    const filmOverlayEnabled = timeline.filmOverlay !== false; // Default true if not specified
+    const filmOverlayOpacity = timeline.filmOverlayOpacity ?? 0.25;
+    
+    if (hasFilmOverlay && filmOverlayEnabled && filmOverlayOpacity > 0) {
       // Scale overlay to match video size, convert to RGBA for transparency, reduce opacity
-      // Use colorchannelmixer to set alpha (aa=0.25 for 25% opacity)
+      // Use colorchannelmixer to set alpha channel
       // Then overlay on top of the video with format conversion back to yuva420p
-      filterComplex += `; [${filmOverlayInputIndex}:v]scale=1920:1080,format=rgba,colorchannelmixer=aa=0.25[filmfg]`;
+      filterComplex += `; [${filmOverlayInputIndex}:v]scale=1920:1080,format=rgba,colorchannelmixer=aa=${filmOverlayOpacity}[filmfg]`;
       filterComplex += `; ${finalVideoTag}[filmfg]overlay=0:0:shortest=1[vwithfilm]`;
       finalVideoTag = "[vwithfilm]";
-      console.log(`[TimelineRenderer] Applied film overlay with 25% opacity`);
+      console.log(`[TimelineRenderer] Applied film overlay with ${Math.round(filmOverlayOpacity * 100)}% opacity`);
+    } else if (!filmOverlayEnabled) {
+      console.log(`[TimelineRenderer] Film overlay disabled by timeline settings`);
     }
     
     let audioTag = "";
