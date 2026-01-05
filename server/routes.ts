@@ -1891,8 +1891,9 @@ export async function registerRoutes(
           end: currentTime + scene.duration,
           duration: scene.duration,
           volume: 1.0,
-          fade_in: 0.1,
-          fade_out: 0.1
+          fade_in: 0,
+          fade_out: 0,
+          audioType: "narration"
         });
         
         // Detect years in narration and add text overlay

@@ -565,7 +565,8 @@ export async function renderTimeline(
         const audioType = (clip as any).audioType;
         const shouldDuck = clip.ducking && audioType === "music" && narrationClips.length > 0;
         
-        filterComplex += `; [${inputIndex}:a]adelay=${delayMs}|${delayMs}`;
+        // Add delay and pad with silence to ensure proper mixing
+        filterComplex += `; [${inputIndex}:a]adelay=${delayMs}|${delayMs},apad=whole_dur=${Math.ceil(totalDuration)}`;
         
         if (shouldDuck) {
           // Build volume expression that ducks during narration
