@@ -1858,7 +1858,8 @@ export async function registerRoutes(
       let currentTime = 0;
       const fadeDuration = 0.3;  // Faster transitions
       
-      // Track years and places to avoid duplicates
+      // Track characters, years, and places to avoid duplicates
+      const charactersShown = new Set<string>();
       const yearsShown = new Set<string>();
       const placesShown = new Set<string>();
       
@@ -1866,6 +1867,54 @@ export async function registerRoutes(
       const extractYear = (text: string): string | null => {
         const yearMatch = text.match(/\b(19\d{2}|20\d{2})\b/);
         return yearMatch ? yearMatch[1] : null;
+      };
+      
+      // Helper to detect character/person names in narration
+      const extractCharacter = (text: string): string | null => {
+        // Historical figures and notable people
+        const characterPatterns = [
+          // Manhattan Project scientists
+          /\b(Robert Oppenheimer|J\.?\s*Robert Oppenheimer|Oppenheimer)\b/i,
+          /\b(Enrico Fermi|Fermi)\b/i,
+          /\b(Richard Feynman|Feynman)\b/i,
+          /\b(Niels Bohr|Bohr)\b/i,
+          /\b(Albert Einstein|Einstein)\b/i,
+          /\b(Leo Szilard|Szilard)\b/i,
+          /\b(Edward Teller|Teller)\b/i,
+          /\b(Hans Bethe|Bethe)\b/i,
+          // Military/Political leaders
+          /\b(General Leslie Groves|Leslie Groves|Groves)\b/i,
+          /\b(Harry Truman|President Truman|Truman)\b/i,
+          /\b(Franklin Roosevelt|FDR|Roosevelt)\b/i,
+          /\b(Winston Churchill|Churchill)\b/i,
+          /\b(Adolf Hitler|Hitler)\b/i,
+          /\b(Joseph Stalin|Stalin)\b/i,
+          /\b(Dwight Eisenhower|Eisenhower)\b/i,
+          /\b(Douglas MacArthur|MacArthur)\b/i,
+          // Other historical figures
+          /\b(Marie Curie|Curie)\b/i,
+          /\b(Werner Heisenberg|Heisenberg)\b/i,
+        ];
+        
+        for (const pattern of characterPatterns) {
+          const match = text.match(pattern);
+          if (match) {
+            // Return full name for some abbreviated matches
+            const name = match[1];
+            if (name.toLowerCase() === 'oppenheimer') return 'Robert Oppenheimer';
+            if (name.toLowerCase() === 'fermi') return 'Enrico Fermi';
+            if (name.toLowerCase() === 'feynman') return 'Richard Feynman';
+            if (name.toLowerCase() === 'bohr') return 'Niels Bohr';
+            if (name.toLowerCase() === 'einstein') return 'Albert Einstein';
+            if (name.toLowerCase() === 'groves') return 'General Groves';
+            if (name.toLowerCase() === 'truman') return 'Harry Truman';
+            if (name.toLowerCase() === 'churchill') return 'Winston Churchill';
+            if (name.toLowerCase() === 'stalin') return 'Joseph Stalin';
+            if (name.toLowerCase() === 'roosevelt') return 'Franklin Roosevelt';
+            return match[1];
+          }
+        }
+        return null;
       };
       
       // Helper to detect place names in narration
@@ -1920,38 +1969,69 @@ export async function registerRoutes(
           audioType: "narration"
         });
         
-        // Detect years and places in narration - only show ONE per scene (year takes priority)
+        // Detect overlays in narration - priority: Character > Year > Place (only ONE per scene)
         if (narration) {
           let showedOverlayThisScene = false;
           
-          const year = extractYear(narration);
-          if (year && !yearsShown.has(year)) {
-            yearsShown.add(year);
+          // First check for character names (highest priority)
+          const character = extractCharacter(narration);
+          if (character && !charactersShown.has(character)) {
+            charactersShown.add(character);
             showedOverlayThisScene = true;
-            console.log(`[DirectRender] Adding year overlay: ${year} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+            console.log(`[DirectRender] Adding character overlay: ${character} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
             
             textClips.push({
-              id: `year_${scene.chapterNumber}_${scene.sceneNumber}`,
-              text: year,
+              id: `char_${scene.chapterNumber}_${scene.sceneNumber}`,
+              text: character,
               start: currentTime,
               end: currentTime + Math.min(scene.duration, 4),
               x: "(w-text_w)/2",
               y: "(h-text_h)/2",
-              size: 220,
+              size: 120,
               color: "#F5F0E6",
               box: false,
-              textType: "year_splash",
+              textType: "character_splash",
               animation: "fade_in_out",
               animationDuration: 0.8,
               shadow: true,
               shadowColor: "black@0.6",
               outline: true,
-              outlineWidth: 4,
+              outlineWidth: 3,
               outlineColor: "black@0.3"
             });
           }
           
-          // Only show place if we didn't show a year this scene
+          // Then check for years (if no character shown)
+          if (!showedOverlayThisScene) {
+            const year = extractYear(narration);
+            if (year && !yearsShown.has(year)) {
+              yearsShown.add(year);
+              showedOverlayThisScene = true;
+              console.log(`[DirectRender] Adding year overlay: ${year} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+              
+              textClips.push({
+                id: `year_${scene.chapterNumber}_${scene.sceneNumber}`,
+                text: year,
+                start: currentTime,
+                end: currentTime + Math.min(scene.duration, 4),
+                x: "(w-text_w)/2",
+                y: "(h-text_h)/2",
+                size: 220,
+                color: "#F5F0E6",
+                box: false,
+                textType: "year_splash",
+                animation: "fade_in_out",
+                animationDuration: 0.8,
+                shadow: true,
+                shadowColor: "black@0.6",
+                outline: true,
+                outlineWidth: 4,
+                outlineColor: "black@0.3"
+              });
+            }
+          }
+          
+          // Finally check for places (if nothing else shown)
           if (!showedOverlayThisScene) {
             const place = extractPlace(narration);
             if (place && !placesShown.has(place)) {
@@ -1984,7 +2064,7 @@ export async function registerRoutes(
         currentTime += scene.duration;
       }
       
-      console.log(`[DirectRender] Created timeline with ${textClips.length} text overlays (years: ${yearsShown.size}, places: ${placesShown.size})`);
+      console.log(`[DirectRender] Created timeline with ${textClips.length} text overlays (characters: ${charactersShown.size}, years: ${yearsShown.size}, places: ${placesShown.size})`);
       
       const timeline = {
         projectId,
