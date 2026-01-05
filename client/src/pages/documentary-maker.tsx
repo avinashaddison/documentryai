@@ -1297,16 +1297,54 @@ export default function DocumentaryMaker() {
         <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
         {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-mono uppercase tracking-wider neon-border">
-            <Sparkles className="h-3 w-3" />
-            AI Documentary Studio
+        <div className="text-center space-y-6 relative">
+          {/* Floating particles around header */}
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-[600px] h-[200px] pointer-events-none overflow-hidden">
+            <div className="absolute w-2 h-2 bg-fuchsia-400/60 rounded-full animate-[float_4s_ease-in-out_infinite]" style={{ left: '10%', top: '30%' }} />
+            <div className="absolute w-1.5 h-1.5 bg-cyan-400/60 rounded-full animate-[float_5s_ease-in-out_infinite]" style={{ left: '85%', top: '50%', animationDelay: '1s' }} />
+            <div className="absolute w-1 h-1 bg-violet-400/80 rounded-full animate-[float_3s_ease-in-out_infinite]" style={{ left: '25%', top: '70%', animationDelay: '2s' }} />
+            <div className="absolute w-2.5 h-2.5 bg-pink-400/40 rounded-full animate-[float_6s_ease-in-out_infinite]" style={{ left: '75%', top: '20%', animationDelay: '0.5s' }} />
           </div>
-          <h1 className="text-5xl font-display font-bold neon-text text-violet-400">
-            Create Your Documentary
-          </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
-            Enter a topic and let AI generate a complete documentary with narration, visuals, and professional editing.
+          
+          {/* Badge */}
+          <div className="relative inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-violet-500/20 via-fuchsia-500/20 to-cyan-500/20 border border-violet-400/40 text-xs font-mono uppercase tracking-[0.2em] group hover:scale-105 transition-all duration-300 cursor-default overflow-hidden">
+            {/* Animated shimmer */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]" />
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/30 via-fuchsia-500/30 to-cyan-500/30 blur-xl opacity-50" />
+            <Sparkles className="h-3.5 w-3.5 text-fuchsia-400 animate-pulse relative z-10" />
+            <span className="relative z-10 bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent font-bold">
+              AI Documentary Studio
+            </span>
+            <Sparkles className="h-3.5 w-3.5 text-cyan-400 animate-pulse relative z-10" style={{ animationDelay: '0.5s' }} />
+          </div>
+          
+          {/* Main Title */}
+          <div className="relative">
+            {/* Title glow background */}
+            <div className="absolute inset-0 blur-3xl bg-gradient-to-r from-violet-500/20 via-fuchsia-500/20 to-cyan-500/20 animate-pulse" />
+            <h1 className="relative text-6xl font-display font-black tracking-tight">
+              <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(168,85,247,0.5)] animate-[pulse_4s_ease-in-out_infinite]">
+                Create Your
+              </span>
+              <br />
+              <span className="bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(6,182,212,0.5)] animate-[pulse_4s_ease-in-out_infinite]" style={{ animationDelay: '2s' }}>
+                Documentary
+              </span>
+            </h1>
+          </div>
+          
+          {/* Subtitle */}
+          <p className="max-w-xl mx-auto text-lg font-medium leading-relaxed">
+            <span className="text-white/70">Enter a topic and let </span>
+            <span className="bg-gradient-to-r from-fuchsia-400 to-violet-400 bg-clip-text text-transparent font-semibold">AI generate</span>
+            <span className="text-white/70"> a complete documentary with </span>
+            <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent font-semibold">narration</span>
+            <span className="text-white/70">, </span>
+            <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent font-semibold">visuals</span>
+            <span className="text-white/70">, and </span>
+            <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent font-semibold">professional editing</span>
+            <span className="text-white/70">.</span>
           </p>
           
         </div>
