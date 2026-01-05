@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import claudeIconPath from "@assets/claude-ai-icon_1767588099802.png";
+import perplexityIconPath from "@assets/perplexity-ai-icon_1767590005100.png";
+import googleIconPath from "@assets/google-color-icon_1767590050980.png";
 import {
   Select,
   SelectContent,
@@ -1713,15 +1715,19 @@ export default function DocumentaryMaker() {
                 
                 <div className="relative z-10 flex flex-col items-center gap-3">
                   <div className={cn(
-                    "w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300",
+                    "w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 overflow-hidden",
                     config.researchMethod === "perplexity" 
-                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30" 
+                      ? "shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400/50" 
                       : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    <Search className={cn(
-                      "h-7 w-7 transition-colors",
-                      config.researchMethod === "perplexity" ? "text-white" : "text-cyan-400/70"
-                    )} />
+                    <img 
+                      src={perplexityIconPath} 
+                      alt="Perplexity AI"
+                      className={cn(
+                        "w-full h-full object-cover transition-all duration-300",
+                        config.researchMethod === "perplexity" ? "opacity-100" : "opacity-70 group-hover:opacity-90"
+                      )}
+                    />
                   </div>
                   <div className="text-center space-y-1">
                     <div className={cn(
@@ -1849,15 +1855,19 @@ export default function DocumentaryMaker() {
                 
                 <div className="relative z-10 flex flex-col items-center gap-2">
                   <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 overflow-hidden",
                     config.imageSource === "google" 
-                      ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30" 
+                      ? "shadow-lg shadow-green-500/30 ring-2 ring-green-400/50" 
                       : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    <Search className={cn(
-                      "h-5 w-5 transition-colors",
-                      config.imageSource === "google" ? "text-white" : "text-green-400/70"
-                    )} />
+                    <img 
+                      src={googleIconPath} 
+                      alt="Google"
+                      className={cn(
+                        "w-full h-full object-cover transition-all duration-300",
+                        config.imageSource === "google" ? "opacity-100" : "opacity-70 group-hover:opacity-90"
+                      )}
+                    />
                   </div>
                   <div className="text-center">
                     <div className={cn(
@@ -1910,15 +1920,19 @@ export default function DocumentaryMaker() {
                 
                 <div className="relative z-10 flex flex-col items-center gap-2">
                   <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300 overflow-hidden",
                     config.imageSource === "stock" 
-                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30" 
+                      ? "shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400/50" 
                       : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    <Layers className={cn(
-                      "h-5 w-5 transition-colors",
-                      config.imageSource === "stock" ? "text-white" : "text-cyan-400/70"
-                    )} />
+                    <img 
+                      src={perplexityIconPath} 
+                      alt="Perplexity"
+                      className={cn(
+                        "w-full h-full object-cover transition-all duration-300",
+                        config.imageSource === "stock" ? "opacity-100" : "opacity-70 group-hover:opacity-90"
+                      )}
+                    />
                   </div>
                   <div className="text-center">
                     <div className={cn(
