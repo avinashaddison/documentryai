@@ -13,6 +13,7 @@ import {
   Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import magicWandIcon from "@assets/magic-wand_1767591284061.png";
 
 interface WorkspaceSidebarProps {
   children: React.ReactNode;
@@ -62,18 +63,37 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
           "p-4 flex items-center border-b border-cyan-500/10 relative z-10",
           isCollapsed ? "justify-center" : "gap-3"
         )}>
-          <div className="relative group">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity duration-300" />
-            <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/30">
-              <Film className="h-5 w-5 text-white" />
+          <div className="relative group cursor-pointer">
+            {/* Animated glow rings */}
+            <div className="absolute inset-[-4px] rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-500 to-cyan-500 opacity-0 group-hover:opacity-60 blur-lg transition-all duration-500 animate-pulse" />
+            <div className="absolute inset-[-2px] rounded-xl bg-gradient-to-br from-pink-500 via-purple-500 to-blue-500 opacity-40 blur-md group-hover:opacity-70 transition-all duration-300" />
+            
+            {/* Spinning border effect */}
+            <div className="absolute inset-0 rounded-xl overflow-hidden">
+              <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_0deg,#a855f7_60deg,#ec4899_120deg,#06b6d4_180deg,#a855f7_240deg,#ec4899_300deg,transparent_360deg)] animate-[spin_4s_linear_infinite] opacity-60 group-hover:opacity-100 transition-opacity" />
+            </div>
+            
+            {/* Icon container */}
+            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center flex-shrink-0 shadow-xl shadow-purple-500/30 overflow-hidden border border-white/10 group-hover:scale-105 transition-transform duration-300">
+              <img 
+                src={magicWandIcon} 
+                alt="Petr AI"
+                className="h-8 w-8 object-contain group-hover:rotate-12 group-hover:scale-110 transition-all duration-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]"
+              />
+              {/* Sparkle effects */}
+              <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-white rounded-full animate-ping opacity-75" />
+              <div className="absolute bottom-2 left-1 w-1 h-1 bg-cyan-400 rounded-full animate-pulse" />
             </div>
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden animate-in fade-in slide-in-from-left-2 duration-300">
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-500 bg-clip-text text-transparent">
-                Petr AI
-              </span>
-              <p className="text-[10px] text-cyan-300/60">Documentary Studio</p>
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-xl tracking-tight bg-gradient-to-r from-fuchsia-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(168,85,247,0.4)] animate-[pulse_3s_ease-in-out_infinite]">
+                  Petr AI
+                </span>
+                <Sparkles className="h-3.5 w-3.5 text-fuchsia-400 animate-pulse" />
+              </div>
+              <p className="text-[10px] font-medium bg-gradient-to-r from-cyan-300/80 to-violet-300/80 bg-clip-text text-transparent">Documentary Studio</p>
             </div>
           )}
         </div>
