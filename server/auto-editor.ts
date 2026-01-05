@@ -159,9 +159,57 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
   // Track years that have already been shown to avoid duplicates
   const yearsShown = new Set<string>();
 
+  // Track chapter starts for chapter title cards
+  let chapterIndex = 0;
+  
   // Simple clean black and white with smooth fade transitions only
   for (const chapter of chapters) {
+    const chapterStartTime = currentTime;
+    
     for (const scene of chapter.scenes) {
+      // Add chapter title card on first scene of each chapter
+      if (scene.sceneNumber === 1) {
+        // Dramatic chapter title with fade animation - centered, large text
+        textClips.push({
+          id: generateId(),
+          text: chapter.title.toUpperCase(),
+          start: currentTime,
+          end: currentTime + 3.5,  // Show chapter title for 3.5 seconds
+          x: "(w-text_w)/2",   // Centered horizontally
+          y: "(h-text_h)/2",   // Centered vertically
+          size: 56,
+          color: "#F5F0E6",   // Warm off-white
+          box: false,
+          textType: "chapter_title",
+          animation: "fade_in_out",
+          animationDuration: 1.0,  // Slower, more dramatic fade
+          shadow: true,
+          shadowColor: "black@0.6",
+          outline: true,
+          outlineWidth: 3,
+          outlineColor: "black@0.3",
+        } as any);
+        
+        // Add chapter number above title
+        textClips.push({
+          id: generateId(),
+          text: `CHAPTER ${chapterIndex + 1}`,
+          start: currentTime + 0.3,  // Stagger slightly after title
+          end: currentTime + 3.2,
+          x: "(w-text_w)/2",
+          y: "(h-text_h)/2-80",  // Above the main title
+          size: 28,
+          color: "#C0B8A8",   // Slightly muted color
+          box: false,
+          textType: "chapter_number",
+          animation: "fade_in_out",
+          animationDuration: 0.8,
+          shadow: true,
+          shadowColor: "black@0.5",
+          outline: false,
+        } as any);
+      }
+      
       // Simple video clip with grayscale and smooth fade transitions - no effects
       videoClips.push({
         id: generateId(),
@@ -223,6 +271,8 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
       currentTime += scene.duration;
       sceneIndex++;
     }
+    
+    chapterIndex++;  // Increment chapter count after each chapter
   }
 
   const totalDuration = currentTime;

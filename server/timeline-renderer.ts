@@ -176,6 +176,36 @@ function generateColorGradeFilter(colorGrade: string): string {
   return grades[colorGrade] || "";
 }
 
+// Professional film grain filter for authentic documentary look
+function generateFilmGrainFilter(intensity: number = 15): string {
+  // Use noise filter with temporal component for organic film grain
+  // alls = all-planes strength (0-100), allf = flags (t=temporal, u=uniform)
+  const strength = Math.min(100, Math.max(0, intensity));
+  return `noise=alls=${strength}:allf=tu`;
+}
+
+// Vignette effect for cinematic darkened corners
+function generateVignetteFilter(intensity: number = 0.3): string {
+  // vignette filter: angle controls fall-off gradient
+  // Use standard vignette filter with proper named parameters
+  // angle in radians: PI/4 for natural circular vignette
+  return `vignette=angle=PI/4`;
+}
+
+// Letterbox bars for cinematic widescreen look
+function generateLetterboxFilter(barHeight: number = 100): string {
+  // Draw black bars at top and bottom for 2.35:1 aspect ratio feel
+  const topBar = `drawbox=x=0:y=0:w=1920:h=${barHeight}:c=black:t=fill`;
+  const bottomBar = `drawbox=x=0:y=${1080 - barHeight}:w=1920:h=${barHeight}:c=black:t=fill`;
+  return `${topBar},${bottomBar}`;
+}
+
+// Contrast and sharpening for documentary punch
+function generateDocumentaryEnhanceFilter(): string {
+  // Slight contrast boost + subtle sharpening for crisp documentary look
+  return `eq=contrast=1.05:brightness=0.02,unsharp=5:5:0.5:5:5:0.3`;
+}
+
 // Smooth video transitions using FFmpeg xfade filter
 function getXfadeTransition(transitionType: string): string {
   const transitions: Record<string, string> = {
@@ -220,7 +250,7 @@ function generateAnimatedTextFilter(clip: TimelineTextClip): string {
   const textType = (clip as any).textType || "caption";
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
+  if (textType === "chapter_title" || textType === "chapter_number" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
   }
   // Use sans-serif bold for character names (cleaner lower-third look)
@@ -322,7 +352,7 @@ function generateTextFilter(clip: TimelineTextClip): string {
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
   // Use serif fonts for titles, dates, and era splashes (like the "1945" style)
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
+  if (textType === "chapter_title" || textType === "chapter_number" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
   }
   // Use sans-serif for character names (cleaner look for lower-thirds)
@@ -493,6 +523,24 @@ export async function renderTimeline(
         filterComplex += `,${colorGradeFilter}`;
       }
       
+      // Apply documentary enhancement (contrast + sharpening)
+      const enhanceFilter = generateDocumentaryEnhanceFilter();
+      filterComplex += `,${enhanceFilter}`;
+      
+      // Apply film grain for authentic look (subtle: 8-12 intensity)
+      const filmGrainIntensity = (clip as any).filmGrain ?? 10;
+      if (filmGrainIntensity > 0) {
+        const grainFilter = generateFilmGrainFilter(filmGrainIntensity);
+        filterComplex += `,${grainFilter}`;
+      }
+      
+      // Apply vignette for cinematic darkened corners
+      const vignetteIntensity = (clip as any).vignette ?? 0.25;
+      if (vignetteIntensity > 0) {
+        const vignetteFilter = generateVignetteFilter(vignetteIntensity);
+        filterComplex += `,${vignetteFilter}`;
+      }
+      
       // Apply layout-specific compositing
       if (layoutType === "letterbox") {
         // Add black letterbox bars (140px top and bottom)
@@ -615,10 +663,15 @@ export async function renderTimeline(
       }
       
       if (audioMerge.length > 1) {
-        filterComplex += `; ${audioMerge.join("")}amix=inputs=${audioMerge.length}:duration=longest:normalize=0[afinal]`;
+        // Mix all audio tracks, then apply loudness normalization for broadcast quality
+        // loudnorm targets: I=-16 LUFS (broadcast standard), TP=-1.5 dB (true peak), LRA=11 (loudness range)
+        filterComplex += `; ${audioMerge.join("")}amix=inputs=${audioMerge.length}:duration=longest:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11[afinal]`;
         audioTag = "[afinal]";
       } else if (audioMerge.length === 1) {
-        audioTag = "[a0]";
+        // Single audio track - apply normalization for consistent levels
+        // The [a0] label was created in the loop above, apply loudnorm to it
+        filterComplex += `; [a0]loudnorm=I=-16:TP=-1.5:LRA=11[afinal]`;
+        audioTag = "[afinal]";
       }
     }
     
