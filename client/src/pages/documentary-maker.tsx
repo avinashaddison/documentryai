@@ -232,13 +232,13 @@ function AutoVideoRenderer({
   }
   
   return (
-    <div className="bg-gradient-to-br from-card via-card to-amber-500/5 border border-amber-500/30 rounded-xl p-6 space-y-4">
+    <div className="bg-gradient-to-br from-card via-card to-cyan-500/5 border border-cyan-500/30 rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-          <Video className="h-5 w-5 text-amber-400" />
+          <Video className="h-5 w-5 text-cyan-400" />
           Rendering Video
         </h2>
-        <Badge variant="outline" className="text-amber-400 border-amber-400/30 bg-amber-400/10">
+        <Badge variant="outline" className="text-cyan-400 border-cyan-400/30 bg-cyan-400/10">
           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
           In Progress
         </Badge>
@@ -265,7 +265,7 @@ function AutoVideoRenderer({
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-white font-medium flex items-center gap-2">
-              <Film className="h-4 w-4 text-amber-400" />
+              <Film className="h-4 w-4 text-cyan-400" />
               {statusMessage}
             </span>
             <span className="text-muted-foreground">{Math.round(progress)}%</span>
@@ -370,7 +370,7 @@ function ChapterAudioPlayer({ chapterNumber, audioUrls, sceneCount }: {
   };
   
   return (
-    <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg p-3 border border-amber-500/30">
+    <div className="bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-lg p-3 border border-cyan-500/30">
       <audio ref={audioRef} />
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1">
@@ -386,7 +386,7 @@ function ChapterAudioPlayer({ chapterNumber, audioUrls, sceneCount }: {
           <Button 
             size="icon" 
             variant="default"
-            className="h-9 w-9 bg-amber-500 hover:bg-amber-600"
+            className="h-9 w-9 bg-cyan-500 hover:bg-cyan-600"
             onClick={togglePlay}
             data-testid={`btn-play-chapter-${chapterNumber}`}
           >
@@ -414,7 +414,7 @@ function ChapterAudioPlayer({ chapterNumber, audioUrls, sceneCount }: {
         
         <div className="flex-1 space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-amber-400 font-medium">
+            <span className="text-cyan-400 font-medium">
               Full Chapter {chapterNumber} Audio
             </span>
             <span className="text-muted-foreground">
@@ -1219,7 +1219,7 @@ export default function DocumentaryMaker() {
   const chapterPresets = [
     { count: 3, label: "Short", duration: "5-8 min", color: "from-blue-500 to-cyan-500" },
     { count: 5, label: "Medium", duration: "15-20 min", color: "from-purple-500 to-pink-500" },
-    { count: 8, label: "Long", duration: "30-45 min", color: "from-orange-500 to-red-500" },
+    { count: 8, label: "Long", duration: "30-45 min", color: "from-violet-500 to-red-500" },
     { count: 12, label: "Feature", duration: "60+ min", color: "from-green-500 to-emerald-500" },
   ];
 
@@ -1286,20 +1286,20 @@ export default function DocumentaryMaker() {
     <WorkspaceSidebar>
       <div className="min-h-screen bg-background text-white relative overflow-auto">
         {/* Animated background effects */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-500/10 via-amber-500/5 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-violet-500/10 via-cyan-500/5 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
         <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono uppercase tracking-wider neon-border">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-xs font-mono uppercase tracking-wider neon-border">
             <Sparkles className="h-3 w-3" />
             AI Documentary Studio
           </div>
-          <h1 className="text-5xl font-display font-bold neon-text text-orange-400">
+          <h1 className="text-5xl font-display font-bold neon-text text-violet-400">
             Create Your Documentary
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
@@ -1313,10 +1313,10 @@ export default function DocumentaryMaker() {
           <div className="glass-panel-glow rounded-2xl p-6 relative overflow-hidden">
             {/* Animated background particles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute w-2 h-2 bg-orange-500/30 rounded-full animate-float" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
-              <div className="absolute w-1.5 h-1.5 bg-amber-500/30 rounded-full animate-float" style={{ left: '30%', top: '60%', animationDelay: '0.5s' }} />
+              <div className="absolute w-2 h-2 bg-violet-500/30 rounded-full animate-float" style={{ left: '10%', top: '20%', animationDelay: '0s' }} />
+              <div className="absolute w-1.5 h-1.5 bg-cyan-500/30 rounded-full animate-float" style={{ left: '30%', top: '60%', animationDelay: '0.5s' }} />
               <div className="absolute w-2 h-2 bg-yellow-500/30 rounded-full animate-float" style={{ left: '70%', top: '30%', animationDelay: '1s' }} />
-              <div className="absolute w-1 h-1 bg-orange-400/40 rounded-full animate-float" style={{ left: '85%', top: '70%', animationDelay: '1.5s' }} />
+              <div className="absolute w-1 h-1 bg-violet-400/40 rounded-full animate-float" style={{ left: '85%', top: '70%', animationDelay: '1.5s' }} />
             </div>
             
             <div className="flex items-center justify-between mb-6 relative">
@@ -1330,12 +1330,12 @@ export default function DocumentaryMaker() {
                     <div className="relative">
                       {/* Glow ring for active step */}
                       {isActive && (
-                        <div className="absolute inset-0 rounded-xl bg-orange-500/50 blur-md animate-pulse" />
+                        <div className="absolute inset-0 rounded-xl bg-violet-500/50 blur-md animate-pulse" />
                       )}
                       <div className={cn(
                         "relative w-12 h-12 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-500 transform",
                         isComplete ? "bg-gradient-to-br from-green-400 via-emerald-500 to-green-600 text-white shadow-lg shadow-green-500/40 scale-100" :
-                        isActive ? "bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600 text-white shadow-lg shadow-orange-500/50 scale-110 animate-bounce-subtle" :
+                        isActive ? "bg-gradient-to-br from-violet-400 via-cyan-500 to-violet-600 text-white shadow-lg shadow-violet-500/50 scale-110 animate-bounce-subtle" :
                         "bg-card/80 border-2 border-border text-muted-foreground scale-95 opacity-60"
                       )}>
                         {isComplete ? <Check className="h-5 w-5 animate-in zoom-in duration-300" /> : <step.icon className="h-5 w-5" />}
@@ -1361,12 +1361,12 @@ export default function DocumentaryMaker() {
             <div className="relative h-4 bg-black/40 rounded-full overflow-hidden border border-white/10 shadow-inner">
               {/* Background glow */}
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-600/30 via-amber-500/20 to-transparent blur-sm transition-all duration-700"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-600/30 via-cyan-500/20 to-transparent blur-sm transition-all duration-700"
                 style={{ width: `${Math.min(progress + 10, 100)}%` }}
               />
               {/* Main progress fill */}
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-400 rounded-full transition-all duration-500 ease-out"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 via-cyan-400 to-yellow-400 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progress}%` }}
               >
                 {/* Animated shine effect */}
@@ -1384,7 +1384,7 @@ export default function DocumentaryMaker() {
             {/* Progress percentage */}
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs text-muted-foreground font-mono">{Math.round(progress)}%</span>
-              <span className="text-xs text-orange-400/80 font-medium">
+              <span className="text-xs text-violet-400/80 font-medium">
                 {currentStep === "complete" ? "Complete!" : "Processing..."}
               </span>
             </div>
@@ -1400,7 +1400,7 @@ export default function DocumentaryMaker() {
                 {currentStep === "complete" && `Generation complete! ${Object.keys(generatedImages).length} images generated.`}
               </p>
               {activeJob && activeJob.status === "running" && (
-                <div className="flex items-center gap-2 text-sm text-amber-400 font-mono bg-card/50 px-3 py-1 rounded-lg border border-amber-500/30">
+                <div className="flex items-center gap-2 text-sm text-cyan-400 font-mono bg-card/50 px-3 py-1 rounded-lg border border-cyan-500/30">
                   <Clock className="h-4 w-4" />
                   <span data-testid="text-elapsed-time">{activeJob.elapsedFormatted}</span>
                 </div>
@@ -1435,28 +1435,28 @@ export default function DocumentaryMaker() {
                       key={i}
                       className={cn(
                         "flex items-start gap-3 text-xs p-2 rounded-lg animate-in slide-in-from-left-2 duration-300",
-                        activity.activityType === "query_started" && "bg-amber-500/10 border-l-2 border-amber-400",
+                        activity.activityType === "query_started" && "bg-cyan-500/10 border-l-2 border-cyan-400",
                         activity.activityType === "query_completed" && "bg-green-500/10 border-l-2 border-green-400",
                         activity.activityType === "source_found" && "bg-blue-500/10 border-l-2 border-blue-400",
                         activity.activityType === "subtopic_identified" && "bg-purple-500/10 border-l-2 border-purple-400",
                         activity.activityType === "fact_extracted" && "bg-emerald-500/10 border-l-2 border-emerald-400",
-                        activity.activityType === "phase_complete" && "bg-orange-500/10 border-l-2 border-orange-400"
+                        activity.activityType === "phase_complete" && "bg-violet-500/10 border-l-2 border-violet-400"
                       )}
                       style={{ animationDelay: `${i * 30}ms` }}
                       data-testid={`item-research-activity-${i}`}
                     >
                       <div className="flex-shrink-0 mt-0.5">
-                        {activity.activityType === "query_started" && <Search className="h-3 w-3 text-amber-400 animate-pulse" />}
+                        {activity.activityType === "query_started" && <Search className="h-3 w-3 text-cyan-400 animate-pulse" />}
                         {activity.activityType === "query_completed" && <Check className="h-3 w-3 text-green-400" />}
                         {activity.activityType === "source_found" && <ExternalLink className="h-3 w-3 text-blue-400" />}
                         {activity.activityType === "subtopic_identified" && <Layers className="h-3 w-3 text-purple-400" />}
                         {activity.activityType === "fact_extracted" && <FileText className="h-3 w-3 text-emerald-400" />}
-                        {activity.activityType === "phase_complete" && <Sparkles className="h-3 w-3 text-orange-400" />}
+                        {activity.activityType === "phase_complete" && <Sparkles className="h-3 w-3 text-violet-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           "truncate",
-                          activity.activityType === "query_started" && "text-amber-300",
+                          activity.activityType === "query_started" && "text-cyan-300",
                           activity.activityType === "query_completed" && "text-green-300",
                           activity.activityType === "source_found" && "text-blue-300",
                           activity.activityType === "subtopic_identified" && "text-purple-300",
@@ -1480,7 +1480,7 @@ export default function DocumentaryMaker() {
                           <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded",
                             activity.fact.confidence === "high" && "bg-emerald-500/20 text-emerald-400",
-                            activity.fact.confidence === "medium" && "bg-amber-500/20 text-amber-400",
+                            activity.fact.confidence === "medium" && "bg-cyan-500/20 text-cyan-400",
                             activity.fact.confidence === "low" && "bg-red-500/20 text-red-400"
                           )}>
                             {activity.fact.confidence} confidence
@@ -1516,8 +1516,8 @@ export default function DocumentaryMaker() {
                         "w-1.5 h-1.5 rounded-full",
                         event.type === "chapter" && "bg-purple-400",
                         event.type === "image" && "bg-blue-400",
-                        event.type === "audio" && "bg-amber-400",
-                        event.type === "progress" && "bg-orange-400"
+                        event.type === "audio" && "bg-cyan-400",
+                        event.type === "progress" && "bg-violet-400"
                       )} />
                       <span className="text-muted-foreground">{event.message}</span>
                     </div>
@@ -1545,14 +1545,14 @@ export default function DocumentaryMaker() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., The Dark Secrets of the Woolworth Mansion..."
-              className="flex-1 h-14 bg-card/50 border-orange-500/30 text-white placeholder:text-muted-foreground rounded-xl focus:border-orange-400 focus:ring-orange-400/20 text-lg neon-input"
+              className="flex-1 h-14 bg-card/50 border-violet-500/30 text-white placeholder:text-muted-foreground rounded-xl focus:border-violet-400 focus:ring-violet-400/20 text-lg neon-input"
               disabled={isGenerating}
               data-testid="input-title"
             />
             <Button
               onClick={handleGenerateFramework}
               disabled={!title.trim() || isGenerating}
-              className="h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:via-amber-400 hover:to-orange-500 border-0 shadow-lg shadow-orange-500/40 hover:shadow-orange-500/60 hover:scale-105 transition-all duration-300 text-white"
+              className="h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-violet-500 via-cyan-500 to-violet-600 hover:from-violet-400 hover:via-cyan-400 hover:to-violet-500 border-0 shadow-lg shadow-violet-500/40 hover:shadow-violet-500/60 hover:scale-105 transition-all duration-300 text-white"
               data-testid="button-generate-framework"
             >
               {isGenerating && currentStep !== "chapters" ? (
@@ -1571,7 +1571,7 @@ export default function DocumentaryMaker() {
           
           {/* Chapter Count Selector with Visual Boxes */}
           <div className="space-y-4">
-            <Label className="text-sm text-amber-300 flex items-center gap-2">
+            <Label className="text-sm text-cyan-300 flex items-center gap-2">
               <Hash className="h-4 w-4" />
               Number of Chapters
             </Label>
@@ -1593,8 +1593,8 @@ export default function DocumentaryMaker() {
                       "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
                       "border",
                       isSelected 
-                        ? "border-orange-400/60 bg-orange-500/10 scale-[1.02] neon-glow" 
-                        : "border-border bg-card/50 hover:border-orange-500/40 hover:bg-card/80",
+                        ? "border-violet-400/60 bg-violet-500/10 scale-[1.02] neon-glow" 
+                        : "border-border bg-card/50 hover:border-violet-500/40 hover:bg-card/80",
                       isGenerating && "opacity-50 cursor-not-allowed"
                     )}
                     data-testid={`button-chapter-${preset.count}`}
@@ -1620,7 +1620,7 @@ export default function DocumentaryMaker() {
                     <div className="relative z-10 text-center space-y-1">
                       <div className={cn(
                         "text-4xl font-bold transition-all duration-300",
-                        isSelected ? "text-orange-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
+                        isSelected ? "text-violet-400 scale-110 neon-text" : "text-white/70 group-hover:text-white"
                       )}>
                         {preset.count}
                       </div>
@@ -1668,7 +1668,7 @@ export default function DocumentaryMaker() {
                     setConfig({ ...config, storyLength: lengthMap[clamped] || "custom" });
                   }}
                   disabled={isGenerating}
-                  className="w-20 h-9 text-center bg-card/50 border-orange-500/30 text-white font-bold rounded-lg"
+                  className="w-20 h-9 text-center bg-card/50 border-violet-500/30 text-white font-bold rounded-lg"
                   data-testid="input-custom-chapters"
                 />
               </div>
@@ -2108,7 +2108,7 @@ export default function DocumentaryMaker() {
                 <div className="grid gap-2">
                   {researchData.summary.timeline.slice(0, 4).map((item, i) => (
                     <div key={i} className="flex items-start gap-3 p-2 bg-background/50 rounded-lg border border-border">
-                      <span className="text-xs font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded flex-shrink-0">
+                      <span className="text-xs font-mono text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded flex-shrink-0">
                         {item.date}
                       </span>
                       <span className="text-sm text-white/80">{item.event}</span>
@@ -2162,7 +2162,7 @@ export default function DocumentaryMaker() {
         {framework && (
           <div className="glass-panel-glow rounded-2xl p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center neon-glow-gold">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-600 flex items-center justify-center neon-glow-gold">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <h2 className="text-xl font-display font-bold gradient-text">Generated Framework</h2>
@@ -2172,17 +2172,17 @@ export default function DocumentaryMaker() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-amber-300">Title</Label>
+              <Label className="text-xs uppercase tracking-wider text-cyan-300">Title</Label>
               <h3 className="text-3xl font-display font-bold text-white neon-text-gold" data-testid="text-generated-title">
                 {framework.generatedTitle}
               </h3>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-amber-300">Genres</Label>
+              <Label className="text-xs uppercase tracking-wider text-cyan-300">Genres</Label>
               <div className="flex gap-2" data-testid="container-genres">
                 {framework.genres?.map((genre, i) => (
-                  <Badge key={i} className="bg-orange-500/20 text-orange-300 border border-orange-500/30 px-3 py-1">
+                  <Badge key={i} className="bg-violet-500/20 text-orange-300 border border-violet-500/30 px-3 py-1">
                     {genre}
                   </Badge>
                 ))}
@@ -2601,7 +2601,7 @@ export default function DocumentaryMaker() {
               
               <Button 
                 variant="outline"
-                className="h-14 gap-2 border-orange-400/30 text-orange-400"
+                className="h-14 gap-2 border-violet-400/30 text-violet-400"
                 onClick={() => setForceRerender(true)}
                 disabled={forceRerender}
                 data-testid="button-rerender-video"
@@ -2625,7 +2625,7 @@ export default function DocumentaryMaker() {
                 <FileText className="h-5 w-5 text-primary" />
                 Full Script & Audio
               </h2>
-              <Badge variant="outline" className="text-orange-400 border-orange-400/30">
+              <Badge variant="outline" className="text-violet-400 border-violet-400/30">
                 {generatedChapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0)} Scenes
               </Badge>
             </div>
@@ -2699,7 +2699,7 @@ export default function DocumentaryMaker() {
                           
                           {audioUrl && (
                             <div className="flex items-center gap-3 pt-2 border-t border-border/50">
-                              <Volume2 className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                              <Volume2 className="h-4 w-4 text-cyan-400 flex-shrink-0" />
                               <audio 
                                 controls 
                                 className="h-8 flex-1"
