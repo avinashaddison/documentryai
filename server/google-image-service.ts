@@ -1,4 +1,5 @@
 import { rankImages, selectBestImage, logRankingDetails, type RankableImage, type RankedImage } from './image-ranker';
+import { validateImageUrl, findFirstValidImage } from './image-validator';
 
 export interface GoogleImage {
   id: string;
@@ -152,14 +153,14 @@ export async function fetchGoogleImageForScene(
   console.log(`[GoogleImages] Searching for scene ${sceneId}: "${searchQuery}"`);
   
   // Fetch more images (15+) for intelligent ranking
-  const result = await searchGoogleImages(searchQuery, { limit: 5, fetchMore: true });
+  const result = await searchGoogleImages(searchQuery, { limit: 10, fetchMore: true });
   
   if (!result.success || !result.rankedImages || result.rankedImages.length === 0) {
     // Try fallback with fewer keywords but still use ranking
     const fallbackQuery = keywords.slice(0, 4).join(" ");
     console.log(`[GoogleImages] No ranked results, trying fallback: "${fallbackQuery}"`);
     
-    const fallbackResult = await searchGoogleImages(fallbackQuery, { limit: 5, fetchMore: true });
+    const fallbackResult = await searchGoogleImages(fallbackQuery, { limit: 10, fetchMore: true });
     
     if (!fallbackResult.success || !fallbackResult.rankedImages || fallbackResult.rankedImages.length === 0) {
       return {
@@ -168,43 +169,61 @@ export async function fetchGoogleImageForScene(
       };
     }
     
-    // Use the best-ranked image from fallback
-    const bestImage = selectBestImage(fallbackResult.rankedImages);
-    if (bestImage) {
-      console.log(`[GoogleImages] Scene ${sceneId}: Selected image with score ${bestImage.score.toFixed(1)}`);
-      return {
-        success: true,
-        imageUrl: bestImage.url,
-        attribution: `Image via Google Images`,
-        score: bestImage.score,
-      };
+    // Validate and find first working image from ranked list
+    const validImage = await findFirstValidImageFromRanked(fallbackResult.rankedImages, sceneId);
+    if (validImage) {
+      return validImage;
     }
     
     return {
       success: false,
-      error: "No suitable images found after ranking",
+      error: "No accessible images found after validation",
     };
   }
   
-  // Use the best-ranked image
-  const bestImage = selectBestImage(result.rankedImages);
-  if (bestImage) {
-    console.log(`[GoogleImages] Scene ${sceneId}: Selected BEST image with score ${bestImage.score.toFixed(1)} - "${bestImage.title?.slice(0, 50)}"`);
-    return {
-      success: true,
-      imageUrl: bestImage.url,
-      attribution: `Image via Google Images`,
-      score: bestImage.score,
-    };
+  // Validate and find first working image from ranked list
+  const validImage = await findFirstValidImageFromRanked(result.rankedImages, sceneId);
+  if (validImage) {
+    return validImage;
   }
   
-  // Fallback to first image if no ranked selection
-  const image = result.images[0];
   return {
-    success: true,
-    imageUrl: image.url,
-    attribution: `Image via Google Images`,
+    success: false,
+    error: "No accessible images found after validation",
   };
+}
+
+/**
+ * Find the first valid/accessible image from a ranked list
+ * Validates each image URL to ensure it can be loaded
+ */
+async function findFirstValidImageFromRanked(
+  rankedImages: RankedImage[],
+  sceneId: string
+): Promise<{ success: boolean; imageUrl: string; attribution: string; score: number } | null> {
+  console.log(`[GoogleImages] Scene ${sceneId}: Validating ${rankedImages.length} ranked images...`);
+  
+  for (let i = 0; i < Math.min(rankedImages.length, 8); i++) {
+    const image = rankedImages[i];
+    console.log(`[GoogleImages] Scene ${sceneId}: Checking image ${i + 1} (score: ${image.score.toFixed(1)})...`);
+    
+    const validation = await validateImageUrl(image.url);
+    
+    if (validation.valid) {
+      console.log(`[GoogleImages] Scene ${sceneId}: Image ${i + 1} VALID - "${image.title?.slice(0, 40)}"`);
+      return {
+        success: true,
+        imageUrl: image.url,
+        attribution: `Image via Google Images`,
+        score: image.score,
+      };
+    } else {
+      console.log(`[GoogleImages] Scene ${sceneId}: Image ${i + 1} FAILED - ${validation.error}`);
+    }
+  }
+  
+  console.log(`[GoogleImages] Scene ${sceneId}: No valid images found after checking ${Math.min(rankedImages.length, 8)} URLs`);
+  return null;
 }
 
 function extractKeywords(prompt: string): string[] {
