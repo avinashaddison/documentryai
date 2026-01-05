@@ -1836,14 +1836,41 @@ export async function registerRoutes(
       
       console.log(`[DirectRender] Rendering ${scenes.length} scenes`);
       
+      // Get session data to extract narration for year detection
+      const session = await storage.getActiveGenerationSession(projectId);
+      const chaptersData: any[] = session?.chaptersData ? JSON.parse(session.chaptersData) : [];
+      
+      // Build narration lookup from chaptersData
+      const narrationLookup: Record<string, string> = {};
+      for (const chapter of chaptersData) {
+        if (chapter.scenes) {
+          for (const scene of chapter.scenes) {
+            const key = `${chapter.chapterNumber}-${scene.sceneNumber}`;
+            narrationLookup[key] = scene.narrationSegment || '';
+          }
+        }
+      }
+      
       // Build simple timeline - grayscale, fade transitions, static images
       const videoClips: any[] = [];
       const audioClips: any[] = [];
+      const textClips: any[] = [];
       let currentTime = 0;
       const fadeDuration = 0.5;
       
+      // Track years to avoid duplicates
+      const yearsShown = new Set<string>();
+      
+      // Helper to detect years in narration
+      const extractYear = (text: string): string | null => {
+        const yearMatch = text.match(/\b(19\d{2}|20\d{2})\b/);
+        return yearMatch ? yearMatch[1] : null;
+      };
+      
       for (const scene of scenes) {
         const clipDuration = scene.duration + fadeDuration;
+        const narrationKey = `${scene.chapterNumber}-${scene.sceneNumber}`;
+        const narration = narrationLookup[narrationKey] || '';
         
         videoClips.push({
           id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
@@ -1868,8 +1895,39 @@ export async function registerRoutes(
           fade_out: 0.1
         });
         
+        // Detect years in narration and add text overlay
+        if (narration) {
+          const year = extractYear(narration);
+          if (year && !yearsShown.has(year)) {
+            yearsShown.add(year);
+            console.log(`[DirectRender] Adding year overlay: ${year} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+            
+            textClips.push({
+              id: `year_${scene.chapterNumber}_${scene.sceneNumber}`,
+              text: year,
+              start: currentTime,
+              end: currentTime + Math.min(scene.duration, 4),
+              x: "(w-text_w)/2",
+              y: "(h-text_h)/2",
+              size: 220,
+              color: "#F5F0E6",
+              box: false,
+              textType: "year_splash",
+              animation: "fade_in_out",
+              animationDuration: 0.8,
+              shadow: true,
+              shadowColor: "black@0.6",
+              outline: true,
+              outlineWidth: 4,
+              outlineColor: "black@0.3"
+            });
+          }
+        }
+        
         currentTime += scene.duration;
       }
+      
+      console.log(`[DirectRender] Created timeline with ${textClips.length} year overlays`);
       
       const timeline = {
         projectId,
@@ -1880,7 +1938,7 @@ export async function registerRoutes(
         tracks: {
           video: videoClips,
           audio: audioClips,
-          text: [] as any[]
+          text: textClips
         }
       };
       
