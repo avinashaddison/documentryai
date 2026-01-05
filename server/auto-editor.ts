@@ -253,16 +253,16 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
         } as any);
       }
       
-      // Image-based video → Ken Burns + Dissolve
-      // Rotate through different Ken Burns effects for variety
-      const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
+      // Image-based video with smooth fade transitions
+      // Ken Burns effects are available but disabled for faster renders
+      // const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
       
       videoClips.push({
         id: generateId(),
         src: scene.imageUrl,
         start: currentTime,
         duration: scene.duration,
-        effect: kenBurnsEffect,  // Ken Burns motion for static images
+        effect: "none",  // Static image - use fades only for faster renders
         fade_in: fadeIn,  // Context-aware fade transitions
         fade_out: fadeOut,
         blur: false,

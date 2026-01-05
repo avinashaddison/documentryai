@@ -2051,8 +2051,8 @@ export async function registerRoutes(
           fadeOut = 0.7;
         }
         
-        // Ken Burns effect for image-based video
-        const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
+        // Image-based video with smooth fades (Ken Burns disabled for faster renders)
+        // const kenBurnsEffect = kenBurnsEffects[sceneIndex % kenBurnsEffects.length];
         
         videoClips.push({
           id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
@@ -2060,7 +2060,7 @@ export async function registerRoutes(
           start: currentTime,
           end: currentTime + clipDuration,
           duration: clipDuration,
-          effect: kenBurnsEffect,  // Ken Burns motion for static images
+          effect: "none",  // Static image with fades for faster renders
           colorGrade: "grayscale",
           fade_in: fadeIn,
           fade_out: fadeOut
