@@ -269,7 +269,7 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
           // Add typewriter sound effect for year text
           audioClips.push({
             id: generateId(),
-            src: "public/audio/typewriter_sfx.mp3",
+            src: "/public/audio/typewriter_sfx.mp3",
             start: currentTime,
             duration: yearToShow.length * 0.15 + 0.3,  // Match character typing duration
             volume: 0.8,
@@ -309,10 +309,12 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
     resolution: "1920x1080",
     fps: 30,
     duration: totalDuration,
+    filmOverlay: true,
+    filmOverlayOpacity: 0.25,
     tracks: {
       video: videoClips,
       audio: audioClips,
-      text: textClips,  // Empty - no text overlays
+      text: textClips,
     },
   };
 }

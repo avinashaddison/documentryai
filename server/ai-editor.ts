@@ -226,7 +226,7 @@ export function applyEditPlanToTimeline(
       // Add typewriter sound effect for text
       newTimeline.tracks.audio.push({
         id: `ai_sfx_${clipEdit.clipIndex}_${Date.now()}`,
-        src: "public/audio/typewriter_sfx.mp3",
+        src: "/public/audio/typewriter_sfx.mp3",
         start: clip.start + 0.5,
         duration: textDuration,
         volume: 0.6,
