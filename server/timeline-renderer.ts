@@ -270,8 +270,13 @@ function generateAnimatedTextFilter(clip: TimelineTextClip): string {
       alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
       break;
     case "typewriter":
-      // Simplified typewriter - use progressive fade
-      alphaExpr = `if(lt(t,${fadeInEnd}),(t-${clip.start})/${animDuration},1)`;
+      // Typewriter effect - text fades in with subtle scale, then holds, then fades out
+      // Creates a "typing" feel with smooth entrance
+      const typeDelay = animDuration * 0.3;
+      const typeFadeIn = clip.start + typeDelay;
+      const typeScaleEnd = clip.start + animDuration;
+      fontSizeExpr = `if(lt(t,${typeScaleEnd}),${actualSize}*(0.9+0.1*((t-${clip.start})/${animDuration})),${actualSize})`;
+      alphaExpr = `if(lt(t,${typeFadeIn}),0,if(lt(t,${typeScaleEnd}),(t-${typeFadeIn})/${(animDuration - typeDelay)},if(gt(t,${fadeOutStart}),1-(t-${fadeOutStart})/${animDuration},1)))`;
       break;
     default:
       alphaExpr = "1";
