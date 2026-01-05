@@ -1920,11 +1920,14 @@ export async function registerRoutes(
           audioType: "narration"
         });
         
-        // Detect years in narration and add text overlay
+        // Detect years and places in narration - only show ONE per scene (year takes priority)
         if (narration) {
+          let showedOverlayThisScene = false;
+          
           const year = extractYear(narration);
           if (year && !yearsShown.has(year)) {
             yearsShown.add(year);
+            showedOverlayThisScene = true;
             console.log(`[DirectRender] Adding year overlay: ${year} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
             
             textClips.push({
@@ -1948,31 +1951,33 @@ export async function registerRoutes(
             });
           }
           
-          // Detect place names and add text overlay (if no year shown this scene)
-          const place = extractPlace(narration);
-          if (place && !placesShown.has(place) && !(year && !yearsShown.has(year))) {
-            placesShown.add(place);
-            console.log(`[DirectRender] Adding place overlay: ${place} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
-            
-            textClips.push({
-              id: `place_${scene.chapterNumber}_${scene.sceneNumber}`,
-              text: place,
-              start: currentTime + 0.5,
-              end: currentTime + Math.min(scene.duration, 4),
-              x: "(w-text_w)/2",
-              y: "(h-text_h)/2",
-              size: 140,
-              color: "#F5F0E6",
-              box: false,
-              textType: "place_splash",
-              animation: "fade_in_out",
-              animationDuration: 0.8,
-              shadow: true,
-              shadowColor: "black@0.6",
-              outline: true,
-              outlineWidth: 3,
-              outlineColor: "black@0.3"
-            });
+          // Only show place if we didn't show a year this scene
+          if (!showedOverlayThisScene) {
+            const place = extractPlace(narration);
+            if (place && !placesShown.has(place)) {
+              placesShown.add(place);
+              console.log(`[DirectRender] Adding place overlay: ${place} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+              
+              textClips.push({
+                id: `place_${scene.chapterNumber}_${scene.sceneNumber}`,
+                text: place,
+                start: currentTime + 0.5,
+                end: currentTime + Math.min(scene.duration, 4),
+                x: "(w-text_w)/2",
+                y: "(h-text_h)/2",
+                size: 140,
+                color: "#F5F0E6",
+                box: false,
+                textType: "place_splash",
+                animation: "fade_in_out",
+                animationDuration: 0.8,
+                shadow: true,
+                shadowColor: "black@0.6",
+                outline: true,
+                outlineWidth: 3,
+                outlineColor: "black@0.3"
+              });
+            }
           }
         }
         
