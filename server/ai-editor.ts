@@ -223,15 +223,15 @@ export function applyEditPlanToTimeline(
       
       newTimeline.tracks.text.push(textClip as any);
       
-      // Add typewriter sound effect for text
+      // Add typewriter sound effect for text (loud enough to be heard over narration)
       newTimeline.tracks.audio.push({
         id: `ai_sfx_${clipEdit.clipIndex}_${Date.now()}`,
         src: "/public/audio/typewriter_sfx.mp3",
         start: clip.start + 0.5,
         duration: textDuration,
-        volume: 0.6,
+        volume: 2.0,  // Boosted volume to be audible over narration
         fade_in: 0,
-        fade_out: 0.2,
+        fade_out: 0.1,
         ducking: false,
         audioType: "sfx",
       } as any);

@@ -266,15 +266,15 @@ export function buildDocumentaryTimeline(config: AutoEditConfig): Timeline {
             outlineColor: "black@0.3",
           } as any);
           
-          // Add typewriter sound effect for year text
+          // Add typewriter sound effect for year text (loud enough to be heard over narration)
           audioClips.push({
             id: generateId(),
             src: "/public/audio/typewriter_sfx.mp3",
             start: currentTime,
             duration: yearToShow.length * 0.15 + 0.3,  // Match character typing duration
-            volume: 0.8,
+            volume: 2.0,  // Boosted volume to be audible over narration
             fade_in: 0,
-            fade_out: 0.2,
+            fade_out: 0.1,
             ducking: false,
             audioType: "sfx",
           });

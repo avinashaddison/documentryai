@@ -2065,16 +2065,16 @@ export async function registerRoutes(
               outlineColor: "black@0.3"
             });
             
-            // Add typewriter sound effect for character names
+            // Add typewriter sound effect for character names (loud enough to be heard)
             audioClips.push({
               id: `sfx_char_${scene.chapterNumber}_${scene.sceneNumber}`,
               src: "/public/audio/typewriter_sfx.mp3",
               start: currentTime + 0.3,
               end: currentTime + 3.5,
               duration: 3.2,
-              volume: 1.0,
+              volume: 2.0,  // Boosted volume to be audible over narration
               fade_in: 0,
-              fade_out: 0.5,
+              fade_out: 0.3,
               audioType: "sfx"
             });
           }
@@ -2152,6 +2152,8 @@ export async function registerRoutes(
         duration: currentTime + fadeDuration,
         resolution: "1920x1080",
         fps: 30,
+        filmOverlay: true,
+        filmOverlayOpacity: 0.25,
         tracks: {
           video: videoClips,
           audio: audioClips,
