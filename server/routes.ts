@@ -1840,16 +1840,74 @@ export async function registerRoutes(
       const session = await storage.getActiveGenerationSession(projectId);
       const chaptersData: any[] = session?.chaptersData ? JSON.parse(session.chaptersData) : [];
       
-      // Build narration lookup from chaptersData
+      // Build narration and scene type lookup from chaptersData
       const narrationLookup: Record<string, string> = {};
+      const shotTypeLookup: Record<string, string> = {};
       for (const chapter of chaptersData) {
         if (chapter.scenes) {
           for (const scene of chapter.scenes) {
             const key = `${chapter.chapterNumber}-${scene.sceneNumber}`;
             narrationLookup[key] = scene.narrationSegment || '';
+            shotTypeLookup[key] = scene.shotType || '';
           }
         }
       }
+      
+      // Helper to determine overlay style based on shot type
+      const getOverlayStyle = (shotType: string, overlayType: 'character' | 'year' | 'place') => {
+        const isPortrait = /portrait|closeup|close-up|headshot/i.test(shotType);
+        const isWide = /wide|establishing|landscape|aerial|panoramic/i.test(shotType);
+        const isInterior = /interior|indoor/i.test(shotType);
+        const isDocument = /document|closeup|detail/i.test(shotType);
+        
+        if (overlayType === 'character') {
+          // Character names: lower-third style for portraits, bottom for others
+          if (isPortrait) {
+            return {
+              x: "(w-text_w)/2",
+              y: "h-text_h-80",  // Bottom area, above controls
+              size: 72,
+              box: true,
+              boxColor: "black@0.5",
+              boxPadding: 20
+            };
+          }
+          return {
+            x: "60",
+            y: "h-text_h-80",
+            size: 64,
+            box: true,
+            boxColor: "black@0.5",
+            boxPadding: 15
+          };
+        }
+        
+        if (overlayType === 'year') {
+          // Years: large centered for wide/establishing, smaller for others
+          if (isWide || isInterior) {
+            return {
+              x: "(w-text_w)/2",
+              y: "(h-text_h)/2",
+              size: 220,
+              box: false
+            };
+          }
+          return {
+            x: "(w-text_w)/2",
+            y: "120",  // Upper area
+            size: 160,
+            box: false
+          };
+        }
+        
+        // Places: upper area, medium size
+        return {
+          x: "(w-text_w)/2",
+          y: "(h-text_h)/2",
+          size: 100,
+          box: false
+        };
+      };
       
       // Build simple timeline - grayscale, fade transitions, static images
       const videoClips: any[] = [];
@@ -1944,6 +2002,7 @@ export async function registerRoutes(
         const clipDuration = scene.duration + fadeDuration;
         const narrationKey = `${scene.chapterNumber}-${scene.sceneNumber}`;
         const narration = narrationLookup[narrationKey] || '';
+        const shotType = shotTypeLookup[narrationKey] || '';
         
         videoClips.push({
           id: `video_${scene.chapterNumber}_${scene.sceneNumber}`,
@@ -1978,25 +2037,29 @@ export async function registerRoutes(
           if (character && !charactersShown.has(character)) {
             charactersShown.add(character);
             showedOverlayThisScene = true;
-            console.log(`[DirectRender] Adding character overlay: ${character} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+            const style = getOverlayStyle(shotType, 'character');
+            console.log(`[DirectRender] Adding character overlay: ${character} (${shotType || 'unknown'}) for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
             
             textClips.push({
               id: `char_${scene.chapterNumber}_${scene.sceneNumber}`,
               text: character,
-              start: currentTime,
+              start: currentTime + 0.3,
               end: currentTime + Math.min(scene.duration, 4),
-              x: "(w-text_w)/2",
-              y: "(h-text_h)/2",
-              size: 120,
+              x: style.x,
+              y: style.y,
+              size: style.size,
               color: "#F5F0E6",
-              box: false,
-              textType: "character_splash",
+              box: style.box || false,
+              box_color: (style as any).boxColor || "black",
+              box_opacity: 0.5,
+              boxPadding: (style as any).boxPadding || 10,
+              textType: "character_lower_third",
               animation: "fade_in_out",
-              animationDuration: 0.8,
+              animationDuration: 0.6,
               shadow: true,
               shadowColor: "black@0.6",
               outline: true,
-              outlineWidth: 3,
+              outlineWidth: 2,
               outlineColor: "black@0.3"
             });
           }
@@ -2007,16 +2070,17 @@ export async function registerRoutes(
             if (year && !yearsShown.has(year)) {
               yearsShown.add(year);
               showedOverlayThisScene = true;
-              console.log(`[DirectRender] Adding year overlay: ${year} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+              const style = getOverlayStyle(shotType, 'year');
+              console.log(`[DirectRender] Adding year overlay: ${year} (${shotType || 'unknown'}) for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
               
               textClips.push({
                 id: `year_${scene.chapterNumber}_${scene.sceneNumber}`,
                 text: year,
                 start: currentTime,
                 end: currentTime + Math.min(scene.duration, 4),
-                x: "(w-text_w)/2",
-                y: "(h-text_h)/2",
-                size: 220,
+                x: style.x,
+                y: style.y,
+                size: style.size,
                 color: "#F5F0E6",
                 box: false,
                 textType: "year_splash",
@@ -2036,21 +2100,22 @@ export async function registerRoutes(
             const place = extractPlace(narration);
             if (place && !placesShown.has(place)) {
               placesShown.add(place);
-              console.log(`[DirectRender] Adding place overlay: ${place} for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
+              const style = getOverlayStyle(shotType, 'place');
+              console.log(`[DirectRender] Adding place overlay: ${place} (${shotType || 'unknown'}) for scene ${scene.chapterNumber}-${scene.sceneNumber}`);
               
               textClips.push({
                 id: `place_${scene.chapterNumber}_${scene.sceneNumber}`,
                 text: place,
-                start: currentTime + 0.5,
+                start: currentTime + 0.3,
                 end: currentTime + Math.min(scene.duration, 4),
-                x: "(w-text_w)/2",
-                y: "(h-text_h)/2",
-                size: 140,
+                x: style.x,
+                y: style.y,
+                size: style.size,
                 color: "#F5F0E6",
                 box: false,
                 textType: "place_splash",
                 animation: "fade_in_out",
-                animationDuration: 0.8,
+                animationDuration: 0.6,
                 shadow: true,
                 shadowColor: "black@0.6",
                 outline: true,

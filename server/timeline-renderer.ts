@@ -220,19 +220,24 @@ function generateAnimatedTextFilter(clip: TimelineTextClip): string {
   const textType = (clip as any).textType || "caption";
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card") {
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
   }
+  // Use sans-serif bold for character names (cleaner lower-third look)
+  if (textType === "character_lower_third") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+  }
   
-  // Determine font size based on text type
+  // Use the size passed in from the clip - scene-aware sizing is done at the caller level
   let actualSize = size;
-  if (textType === "era_splash" || textType === "year_splash") {
+  // Only override for legacy text types that don't specify their own size
+  if (textType === "era_splash" && size < 100) {
     actualSize = 220;
-  } else if (textType === "chapter_title") {
+  } else if (textType === "chapter_title" && size < 50) {
     actualSize = 56;
-  } else if (textType === "quote_card") {
+  } else if (textType === "quote_card" && size < 30) {
     actualSize = 36;
-  } else if (textType === "caption") {
+  } else if (textType === "caption" && size < 30) {
     actualSize = 40;
   }
   
@@ -316,8 +321,12 @@ function generateTextFilter(clip: TimelineTextClip): string {
   let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
   
   // Use serif fonts for titles, dates, and era splashes (like the "1945" style)
-  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "location_label" || textType === "quote_card") {
+  if (textType === "chapter_title" || textType === "date_label" || textType === "era_splash" || textType === "year_splash" || textType === "location_label" || textType === "quote_card" || textType === "place_splash") {
     fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
+  }
+  // Use sans-serif for character names (cleaner look for lower-thirds)
+  if (textType === "character_lower_third") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
   }
   
   // Determine font size based on text type for proper documentary styling
