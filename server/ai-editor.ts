@@ -196,6 +196,10 @@ export function applyEditPlanToTimeline(
       const isEraSplash = clipEdit.textOverlay.style === "era_splash";
       const isQuoteCard = clipEdit.textOverlay.style === "quote_card";
       
+      // Calculate char delay based on text type for sound effect duration
+      const charDelay = isEraSplash ? 0.15 : 0.06;
+      const textDuration = clipEdit.textOverlay.text.length * charDelay + 0.3;
+      
       const textClip = {
         id: `ai_text_${clipEdit.clipIndex}_${Date.now()}`,
         text: clipEdit.textOverlay.text,
@@ -213,11 +217,24 @@ export function applyEditPlanToTimeline(
         shadow: true,
         shadowColor: "#000000",
         shadowOffset: isEraSplash ? 10 : 3,
-        animation: "none" as const,
+        animation: "typewriter" as const,  // Typewriter animation for all text
         boxPadding: isQuoteCard ? 24 : 10,
       };
       
       newTimeline.tracks.text.push(textClip as any);
+      
+      // Add typewriter sound effect for text
+      newTimeline.tracks.audio.push({
+        id: `ai_sfx_${clipEdit.clipIndex}_${Date.now()}`,
+        src: "public/audio/typewriter_sfx.mp3",
+        start: clip.start + 0.5,
+        duration: textDuration,
+        volume: 0.6,
+        fade_in: 0,
+        fade_out: 0.2,
+        ducking: false,
+        audioType: "sfx",
+      } as any);
     }
     
     if (clipEdit.layoutType === "letterbox" && context) {

@@ -237,17 +237,37 @@ function getXfadeTransition(transitionType: string): string {
 // Returns an array of filter strings, each showing progressively more characters
 function generateTypewriterTextFilters(clip: TimelineTextClip): string[] {
   const text = clip.text;
-  const size = clip.size || 220;
+  const textType = (clip as any).textType || "caption";
   const color = clip.color || "#F5F0E6";
   const x = clip.x || "(w-text_w)/2";
   const y = clip.y || "(h-text_h)/2";
-  const fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
   
-  // Timing: each character appears every 0.15 seconds
-  const charDelay = 0.15;
-  const holdTime = clip.end - clip.start - (text.length * charDelay) - 0.8; // Time to hold full text before fade out
-  const fadeOutDuration = 0.8;
+  // Choose font and size based on text type
+  let fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf";
+  let size = clip.size || 48;
+  let shadowOffset = 3;
+  let charDelay = 0.08; // Faster typing for most text
   
+  if (textType === "era_splash" || textType === "year_splash") {
+    size = clip.size && clip.size >= 100 ? clip.size : 220;
+    shadowOffset = 10;
+    charDelay = 0.15; // Slower, more dramatic for years
+  } else if (textType === "place_splash" || textType === "location_label") {
+    size = clip.size && clip.size >= 50 ? clip.size : 100;
+    shadowOffset = 5;
+    charDelay = 0.06;
+  } else if (textType === "character_lower_third") {
+    fontFile = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+    size = clip.size && clip.size >= 40 ? clip.size : 72;
+    shadowOffset = 3;
+    charDelay = 0.05; // Fast typing for names
+  } else if (textType === "chapter_title") {
+    size = clip.size && clip.size >= 40 ? clip.size : 56;
+    shadowOffset = 4;
+    charDelay = 0.07;
+  }
+  
+  const fadeOutDuration = 0.6;
   const filters: string[] = [];
   
   // Create a filter for each character reveal stage
@@ -266,7 +286,15 @@ function generateTypewriterTextFilters(clip: TimelineTextClip): string[] {
     }
     
     let filter = `drawtext=text='${partialText}':fontfile=${fontFile}:fontsize=${size}:fontcolor=${color}:alpha='${alphaExpr}':x=${x}:y=${y}`;
-    filter += `:shadowcolor=black@0.6:shadowx=10:shadowy=10:borderw=4:bordercolor=black@0.3`;
+    filter += `:shadowcolor=black@0.6:shadowx=${shadowOffset}:shadowy=${shadowOffset}:borderw=${Math.max(2, Math.floor(shadowOffset/2))}:bordercolor=black@0.3`;
+    
+    // Add box for character names (lower third style)
+    if (textType === "character_lower_third" && clip.box) {
+      const boxColor = clip.box_color || "black";
+      const boxOpacity = clip.box_opacity || 0.5;
+      filter += `:box=1:boxcolor=${boxColor}@${boxOpacity}:boxborderw=20`;
+    }
+    
     filter += `:enable='between(t,${charStart},${charEnd})'`;
     
     filters.push(filter);
@@ -642,8 +670,10 @@ export async function renderTimeline(
         const textType = (clip as any).textType || "caption";
         const animation = (clip as any).animation || "none";
         
-        // Use typewriter effect for year/era splash text
-        if (textType === "era_splash" || textType === "year_splash") {
+        // Use typewriter effect for all dramatic text types
+        if (animation === "typewriter" || textType === "era_splash" || textType === "year_splash" || 
+            textType === "place_splash" || textType === "location_label" || 
+            textType === "character_lower_third" || textType === "chapter_title") {
           const typewriterFilters = generateTypewriterTextFilters(clip);
           allTextFilters.push(...typewriterFilters);
         } else if (animation !== "none") {
