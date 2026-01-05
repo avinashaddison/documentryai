@@ -737,6 +737,19 @@ async function runAutoRenderStep(projectId: number, state: GenerationState): Pro
       chapterTitles[ch.chapterNumber] = ch.content.split('\n')[0]?.replace(/^#+\s*/, '') || `Chapter ${ch.chapterNumber}`;
     }
     
+    // Get session data for narration segments (stored in chaptersData)
+    const session = await storage.getActiveGenerationSession(projectId);
+    const chaptersData: any[] = session?.chaptersData ? JSON.parse(session.chaptersData) : [];
+    
+    // Build narration lookup from chaptersData
+    const narrationLookup: Record<string, string> = {};
+    for (const chapter of chaptersData) {
+      for (const scene of chapter.scenes || []) {
+        const key = `${chapter.chapterNumber}-${scene.sceneNumber}`;
+        narrationLookup[key] = scene.narrationSegment || scene.narration || "";
+      }
+    }
+    
     // Build merged asset list (combine image and audio for same scene)
     const sceneMap = new Map<string, any>();
     
@@ -750,7 +763,7 @@ async function runAutoRenderStep(projectId: number, state: GenerationState): Pro
           sceneNumber: asset.sceneNumber,
           imageUrl: "",
           audioUrl: undefined,
-          narration: asset.narration || undefined,
+          narration: narrationLookup[key] || asset.narration || undefined,
           duration: 5,
         });
       }
@@ -764,8 +777,8 @@ async function runAutoRenderStep(projectId: number, state: GenerationState): Pro
           scene.duration = asset.duration / 1000;
         }
       }
-      if (asset.narration && !scene.narration) {
-        scene.narration = asset.narration;
+      if (!scene.narration) {
+        scene.narration = narrationLookup[key] || asset.narration;
       }
     }
     
