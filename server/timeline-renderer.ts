@@ -510,17 +510,36 @@ export async function renderTimeline(
       }
       const localPath = path.join(assetsDir, `video_${i}${ext}`);
       
-      const downloaded = await downloadAsset(clip.src, localPath);
-      if (downloaded) {
-        // Validate the image is not corrupt
-        const isValid = await validateImageFile(localPath);
-        if (isValid) {
-          localVideoClips.push({ clip, localPath, index: i });
+      let downloaded = await downloadAsset(clip.src, localPath);
+      let isValid = downloaded ? await validateImageFile(localPath) : false;
+      
+      // If download failed or image is corrupt, create a black placeholder
+      if (!downloaded || !isValid) {
+        console.log(`[TimelineRenderer] Image ${i} failed (downloaded=${downloaded}, valid=${isValid}), creating placeholder: ${clip.src}`);
+        try { await fs.promises.unlink(localPath); } catch {}
+        
+        // Generate a solid black PNG placeholder using FFmpeg
+        const placeholderPath = path.join(assetsDir, `video_${i}.png`);
+        const placeholderResult = await new Promise<boolean>((resolve) => {
+          const ffmpeg = spawn("ffmpeg", [
+            "-y",
+            "-f", "lavfi",
+            "-i", "color=c=black:s=1920x1080:d=1",
+            "-frames:v", "1",
+            placeholderPath
+          ]);
+          ffmpeg.on("close", (code) => resolve(code === 0));
+          ffmpeg.on("error", () => resolve(false));
+        });
+        
+        if (placeholderResult && fs.existsSync(placeholderPath)) {
+          console.log(`[TimelineRenderer] Created placeholder for video ${i}`);
+          localVideoClips.push({ clip, localPath: placeholderPath, index: i });
         } else {
-          console.log(`[TimelineRenderer] Skipping corrupt image ${i}: ${clip.src}`);
-          // Delete the corrupt file
-          try { await fs.promises.unlink(localPath); } catch {}
+          console.log(`[TimelineRenderer] Failed to create placeholder for video ${i}`);
         }
+      } else {
+        localVideoClips.push({ clip, localPath, index: i });
       }
       
       reportProgress({ 
