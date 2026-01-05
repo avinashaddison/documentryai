@@ -1856,7 +1856,7 @@ export async function registerRoutes(
       const audioClips: any[] = [];
       const textClips: any[] = [];
       let currentTime = 0;
-      const fadeDuration = 0.5;
+      const fadeDuration = 0.3;  // Faster transitions
       
       // Track years and places to avoid duplicates
       const yearsShown = new Set<string>();
