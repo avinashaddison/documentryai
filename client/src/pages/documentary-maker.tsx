@@ -2034,45 +2034,77 @@ export default function DocumentaryMaker() {
             </Label>
             
             {/* Story Style */}
-            <div className="space-y-2">
-              <span className="text-xs text-muted-foreground">Documentary Style</span>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-3">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Documentary Style</span>
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { value: "narrative", label: "Narrative", desc: "Story-driven" },
-                  { value: "investigative", label: "Investigative", desc: "Deep dive" },
-                  { value: "historical", label: "Historical", desc: "Timeline focus" },
-                  { value: "educational", label: "Educational", desc: "Informative" },
-                ].map((style) => (
-                  <button
-                    key={style.value}
-                    onClick={() => setConfig({ ...config, storyStyle: style.value as typeof config.storyStyle })}
-                    disabled={isGenerating}
-                    className={cn(
-                      "relative rounded-lg p-3 transition-all duration-200 text-left",
-                      "border",
-                      config.storyStyle === style.value
-                        ? "border-emerald-400/60 bg-emerald-500/15"
-                        : "border-border bg-card/50 hover:border-emerald-500/40 hover:bg-card/80",
-                      isGenerating && "opacity-50 cursor-not-allowed"
-                    )}
-                    data-testid={`button-style-${style.value}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className={cn(
-                          "text-sm font-medium",
-                          config.storyStyle === style.value ? "text-emerald-400" : "text-white/80"
-                        )}>
-                          {style.label}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">{style.desc}</div>
-                      </div>
-                      {config.storyStyle === style.value && (
-                        <Check className="h-4 w-4 text-emerald-400" />
+                  { value: "narrative", label: "Narrative", desc: "Story-driven", icon: "📖", color: "from-violet-500 via-purple-500 to-fuchsia-500", glow: "shadow-purple-500/40", text: "text-purple-400", accent: "text-fuchsia-300" },
+                  { value: "investigative", label: "Investigative", desc: "Deep dive", icon: "🔍", color: "from-emerald-400 via-teal-500 to-cyan-500", glow: "shadow-teal-500/40", text: "text-teal-400", accent: "text-emerald-300" },
+                  { value: "historical", label: "Historical", desc: "Timeline focus", icon: "⏳", color: "from-amber-400 via-orange-500 to-red-500", glow: "shadow-orange-500/40", text: "text-orange-400", accent: "text-amber-300" },
+                  { value: "educational", label: "Educational", desc: "Informative", icon: "🎓", color: "from-blue-400 via-indigo-500 to-violet-500", glow: "shadow-indigo-500/40", text: "text-indigo-400", accent: "text-blue-300" },
+                ].map((style) => {
+                  const isSelected = config.storyStyle === style.value;
+                  return (
+                    <button
+                      key={style.value}
+                      onClick={() => setConfig({ ...config, storyStyle: style.value as typeof config.storyStyle })}
+                      disabled={isGenerating}
+                      className={cn(
+                        "relative group overflow-hidden rounded-xl p-4 transition-all duration-500 ease-out text-left",
+                        "border-2",
+                        isSelected
+                          ? `border-transparent bg-gradient-to-r ${style.color} scale-[1.02] shadow-xl ${style.glow}`
+                          : "border-white/10 bg-gradient-to-br from-slate-800/80 to-slate-900/80 hover:border-white/20 hover:from-slate-800 hover:to-slate-900 hover:scale-[1.01]",
+                        isGenerating && "opacity-50 cursor-not-allowed"
                       )}
-                    </div>
-                  </button>
-                ))}
+                      style={{
+                        boxShadow: isSelected 
+                          ? `0 0 35px -8px var(--tw-shadow-color), inset 0 1px 0 0 rgba(255,255,255,0.15)`
+                          : undefined
+                      }}
+                      data-testid={`button-style-${style.value}`}
+                    >
+                      {/* Inner dark overlay for selected state */}
+                      {isSelected && (
+                        <div className="absolute inset-[3px] rounded-lg bg-slate-900/90 backdrop-blur-sm" />
+                      )}
+                      
+                      {/* Shimmer effect on hover */}
+                      <div className={cn(
+                        "absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000",
+                        isSelected && "hidden"
+                      )} />
+                      
+                      <div className="relative z-10 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{style.icon}</span>
+                          <div>
+                            <div className={cn(
+                              "text-sm font-bold transition-all duration-300",
+                              isSelected ? `${style.text} drop-shadow-[0_0_10px_currentColor]` : "text-white/70 group-hover:text-white"
+                            )}>
+                              {style.label}
+                            </div>
+                            <div className={cn(
+                              "text-[11px] transition-colors font-medium",
+                              isSelected ? style.accent : "text-white/40 group-hover:text-white/50"
+                            )}>
+                              {style.desc}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className={cn(
+                            "w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg ring-2 ring-white/20",
+                            style.color
+                          )}>
+                            <Check className="h-3.5 w-3.5 text-white drop-shadow-md" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             
