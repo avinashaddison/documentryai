@@ -1,3 +1,5 @@
+import { rankImages, selectBestImage, logRankingDetails, type RankableImage, type RankedImage } from './image-ranker';
+
 export interface GoogleImage {
   id: string;
   url: string;
@@ -11,14 +13,17 @@ export interface GoogleImage {
 export interface GoogleImageSearchResult {
   success: boolean;
   images: GoogleImage[];
+  rankedImages?: RankedImage[];
   error?: string;
 }
 
 export async function searchGoogleImages(
   query: string,
-  options: { limit?: number } = {}
+  options: { limit?: number; fetchMore?: boolean } = {}
 ): Promise<GoogleImageSearchResult> {
-  const { limit = 5 } = options;
+  // Fetch more images for better ranking, then return top ones
+  const { limit = 5, fetchMore = true } = options;
+  const fetchLimit = fetchMore ? Math.max(limit * 3, 15) : limit;
   
   const apiKey = process.env.SERPAPI_API_KEY;
   
@@ -80,7 +85,7 @@ export async function searchGoogleImages(
     const rawImages = data.images_results || [];
     
     const images: GoogleImage[] = rawImages
-      .slice(0, limit)
+      .slice(0, fetchLimit)
       .map((img, index) => ({
         id: `google_${index}_${Date.now()}`,
         url: img.original || img.thumbnail || "",
@@ -92,11 +97,33 @@ export async function searchGoogleImages(
       }))
       .filter(img => img.url);
     
-    console.log(`[GoogleImages] Found ${images.length} images for query: "${query}"`);
+    console.log(`[GoogleImages] Fetched ${images.length} raw images for query: "${query}"`);
+    
+    // Rank images for quality and relevance
+    const rankedImages = rankImages(images as RankableImage[], { query });
+    
+    // Log ranking details for debugging
+    if (rankedImages.length > 0) {
+      logRankingDetails(rankedImages, query);
+    }
+    
+    // Return top ranked images
+    const topImages = rankedImages.slice(0, limit).map(r => ({
+      id: r.id,
+      url: r.url,
+      thumbnailUrl: r.thumbnailUrl || '',
+      title: r.title || '',
+      source: r.source || 'Google Images',
+      width: r.width,
+      height: r.height,
+    }));
+    
+    console.log(`[GoogleImages] Selected top ${topImages.length} images after ranking`);
     
     return {
       success: true,
-      images,
+      images: topImages,
+      rankedImages,
     };
   } catch (error: any) {
     console.error("[GoogleImages] Search error:", error);
@@ -113,7 +140,7 @@ export async function fetchGoogleImageForScene(
   projectId: number,
   sceneId: string,
   narration?: string
-): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string }> {
+): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string; score?: number }> {
   // Combine imagePrompt with narration for better image matching
   const combinedText = narration 
     ? `${imagePrompt} ${narration.slice(0, 100)}` 
@@ -124,30 +151,54 @@ export async function fetchGoogleImageForScene(
   
   console.log(`[GoogleImages] Searching for scene ${sceneId}: "${searchQuery}"`);
   
-  const result = await searchGoogleImages(searchQuery, { limit: 5 });
+  // Fetch more images (15+) for intelligent ranking
+  const result = await searchGoogleImages(searchQuery, { limit: 5, fetchMore: true });
   
-  if (!result.success || result.images.length === 0) {
-    // Try fallback with fewer keywords
+  if (!result.success || !result.rankedImages || result.rankedImages.length === 0) {
+    // Try fallback with fewer keywords but still use ranking
     const fallbackQuery = keywords.slice(0, 4).join(" ");
-    console.log(`[GoogleImages] No results, trying fallback: "${fallbackQuery}"`);
+    console.log(`[GoogleImages] No ranked results, trying fallback: "${fallbackQuery}"`);
     
-    const fallbackResult = await searchGoogleImages(fallbackQuery, { limit: 5 });
+    const fallbackResult = await searchGoogleImages(fallbackQuery, { limit: 5, fetchMore: true });
     
-    if (!fallbackResult.success || fallbackResult.images.length === 0) {
+    if (!fallbackResult.success || !fallbackResult.rankedImages || fallbackResult.rankedImages.length === 0) {
       return {
         success: false,
         error: fallbackResult.error || "No images found for prompt",
       };
     }
     
-    const image = fallbackResult.images[0];
+    // Use the best-ranked image from fallback
+    const bestImage = selectBestImage(fallbackResult.rankedImages);
+    if (bestImage) {
+      console.log(`[GoogleImages] Scene ${sceneId}: Selected image with score ${bestImage.score.toFixed(1)}`);
+      return {
+        success: true,
+        imageUrl: bestImage.url,
+        attribution: `Image via Google Images`,
+        score: bestImage.score,
+      };
+    }
+    
     return {
-      success: true,
-      imageUrl: image.url,
-      attribution: `Image via Google Images`,
+      success: false,
+      error: "No suitable images found after ranking",
     };
   }
   
+  // Use the best-ranked image
+  const bestImage = selectBestImage(result.rankedImages);
+  if (bestImage) {
+    console.log(`[GoogleImages] Scene ${sceneId}: Selected BEST image with score ${bestImage.score.toFixed(1)} - "${bestImage.title?.slice(0, 50)}"`);
+    return {
+      success: true,
+      imageUrl: bestImage.url,
+      attribution: `Image via Google Images`,
+      score: bestImage.score,
+    };
+  }
+  
+  // Fallback to first image if no ranked selection
   const image = result.images[0];
   return {
     success: true,

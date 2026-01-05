@@ -1,3 +1,5 @@
+import { rankImages, selectBestImage, logRankingDetails, type RankableImage, type RankedImage } from './image-ranker';
+
 export interface StockImage {
   id: string;
   url: string;
@@ -5,19 +7,22 @@ export interface StockImage {
   source: "perplexity" | "pexels";
   width?: number;
   height?: number;
+  title?: string;
 }
 
 export interface StockImageSearchResult {
   success: boolean;
   images: StockImage[];
+  rankedImages?: RankedImage[];
   error?: string;
 }
 
 export async function searchPerplexityImages(
   query: string,
-  options: { limit?: number } = {}
+  options: { limit?: number; fetchMore?: boolean } = {}
 ): Promise<StockImageSearchResult> {
-  const { limit = 5 } = options;
+  // Fetch more images for better ranking
+  const { limit = 5, fetchMore = true } = options;
   
   // Read API key dynamically each time (not at module load)
   const apiKey = process.env.PERPLEXITY_API_KEY;
@@ -76,8 +81,8 @@ export async function searchPerplexityImages(
     
     const rawImages = data.images || [];
     
+    // Fetch all available images for ranking
     const images: StockImage[] = rawImages
-      .slice(0, limit)
       .map((img, index) => ({
         id: `perplexity_${index}_${Date.now()}`,
         url: img.imageUrl || img.image_url || img.url || "",
@@ -85,14 +90,37 @@ export async function searchPerplexityImages(
         source: "perplexity" as const,
         width: img.width,
         height: img.height,
+        title: "",
       }))
       .filter(img => img.url);
     
-    console.log(`[Perplexity] Found ${images.length} images for query: "${query}"`);
+    console.log(`[Perplexity] Fetched ${images.length} raw images for query: "${query}"`);
+    
+    // Rank images for quality and relevance
+    const rankedImages = rankImages(images as RankableImage[], { query });
+    
+    // Log ranking details
+    if (rankedImages.length > 0) {
+      logRankingDetails(rankedImages, query);
+    }
+    
+    // Return top ranked images
+    const topImages = rankedImages.slice(0, limit).map(r => ({
+      id: r.id,
+      url: r.url,
+      originUrl: r.originUrl || '',
+      source: "perplexity" as const,
+      width: r.width,
+      height: r.height,
+      title: r.title,
+    }));
+    
+    console.log(`[Perplexity] Selected top ${topImages.length} images after ranking`);
     
     return {
       success: true,
-      images,
+      images: topImages,
+      rankedImages,
     };
   } catch (error: any) {
     console.error("[Perplexity] Search error:", error);
@@ -109,7 +137,7 @@ export async function fetchStockImageForScene(
   projectId: number,
   sceneId: string,
   narration?: string
-): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string }> {
+): Promise<{ success: boolean; imageUrl?: string; error?: string; attribution?: string; score?: number }> {
   // Combine imagePrompt with narration for better image matching
   const combinedText = narration 
     ? `${imagePrompt} ${narration.slice(0, 100)}` 
@@ -120,29 +148,53 @@ export async function fetchStockImageForScene(
   
   console.log(`[StockImage] Searching Perplexity for: "${searchQuery}"`);
   
-  const result = await searchPerplexityImages(searchQuery, { limit: 5 });
+  // Fetch and rank images
+  const result = await searchPerplexityImages(searchQuery, { limit: 5, fetchMore: true });
   
-  if (!result.success || result.images.length === 0) {
+  if (!result.success || !result.rankedImages || result.rankedImages.length === 0) {
     const fallbackQuery = keywords.slice(0, 3).join(" ");
-    console.log(`[StockImage] No results, trying fallback: "${fallbackQuery}"`);
+    console.log(`[StockImage] No ranked results, trying fallback: "${fallbackQuery}"`);
     
-    const fallbackResult = await searchPerplexityImages(fallbackQuery, { limit: 3 });
+    const fallbackResult = await searchPerplexityImages(fallbackQuery, { limit: 3, fetchMore: true });
     
-    if (!fallbackResult.success || fallbackResult.images.length === 0) {
+    if (!fallbackResult.success || !fallbackResult.rankedImages || fallbackResult.rankedImages.length === 0) {
       return {
         success: false,
         error: fallbackResult.error || "No images found for prompt",
       };
     }
     
-    const image = fallbackResult.images[0];
+    // Use best-ranked image from fallback
+    const bestImage = selectBestImage(fallbackResult.rankedImages);
+    if (bestImage) {
+      console.log(`[StockImage] Scene ${sceneId}: Selected image with score ${bestImage.score.toFixed(1)}`);
+      return {
+        success: true,
+        imageUrl: bestImage.url,
+        attribution: `Image via Perplexity Search`,
+        score: bestImage.score,
+      };
+    }
+    
     return {
-      success: true,
-      imageUrl: image.url,
-      attribution: `Image via Perplexity Search`,
+      success: false,
+      error: "No suitable images found after ranking",
     };
   }
   
+  // Use the best-ranked image
+  const bestImage = selectBestImage(result.rankedImages);
+  if (bestImage) {
+    console.log(`[StockImage] Scene ${sceneId}: Selected BEST image with score ${bestImage.score.toFixed(1)}`);
+    return {
+      success: true,
+      imageUrl: bestImage.url,
+      attribution: `Image via Perplexity Search`,
+      score: bestImage.score,
+    };
+  }
+  
+  // Fallback to first image if no ranked selection
   const image = result.images[0];
   return {
     success: true,
