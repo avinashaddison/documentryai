@@ -1691,13 +1691,18 @@ export default function DocumentaryMaker() {
                 onClick={() => setConfig({ ...config, researchMethod: "perplexity" })}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
+                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
                   "border",
                   config.researchMethod === "perplexity"
-                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow"
+                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02]"
                     : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  boxShadow: config.researchMethod === "perplexity" 
+                    ? "0 0 30px -5px rgba(0, 200, 255, 0.4), inset 0 1px 0 0 rgba(0, 200, 255, 0.2)"
+                    : undefined
+                }}
                 data-testid="button-research-perplexity"
               >
                 <div className={cn(
@@ -1705,33 +1710,37 @@ export default function DocumentaryMaker() {
                   config.researchMethod === "perplexity" ? "opacity-15" : "group-hover:opacity-5"
                 )} />
                 
-                {config.researchMethod === "perplexity" && (
-                  <div className="absolute inset-0 rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 blur-md opacity-40" />
-                  </div>
-                )}
-                
-                <div className="relative z-10 text-center space-y-2">
+                <div className="relative z-10 flex flex-col items-center gap-3">
                   <div className={cn(
-                    "text-2xl font-bold transition-all duration-300",
-                    config.researchMethod === "perplexity" ? "text-cyan-400 neon-text" : "text-white/70 group-hover:text-white"
+                    "w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300",
+                    config.researchMethod === "perplexity" 
+                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30" 
+                      : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    Perplexity
+                    <Search className={cn(
+                      "h-7 w-7 transition-colors",
+                      config.researchMethod === "perplexity" ? "text-white" : "text-cyan-400/70"
+                    )} />
                   </div>
-                  <div className={cn(
-                    "text-xs transition-colors",
-                    config.researchMethod === "perplexity" ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
-                  )}>
-                    Web search + AI synthesis
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Real-time web data
+                  <div className="text-center space-y-1">
+                    <div className={cn(
+                      "text-lg font-bold transition-all duration-300",
+                      config.researchMethod === "perplexity" ? "text-cyan-400" : "text-white/70 group-hover:text-white"
+                    )}>
+                      Perplexity
+                    </div>
+                    <div className={cn(
+                      "text-xs transition-colors",
+                      config.researchMethod === "perplexity" ? "text-cyan-300/80" : "text-muted-foreground"
+                    )}>
+                      Web search + AI synthesis
+                    </div>
                   </div>
                 </div>
                 
                 {config.researchMethod === "perplexity" && (
                   <div className="absolute top-2 right-2">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
                       <Check className="h-3.5 w-3.5 text-white" />
                     </div>
                   </div>
@@ -1743,13 +1752,18 @@ export default function DocumentaryMaker() {
                 onClick={() => setConfig({ ...config, researchMethod: "claude" })}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-5 transition-all duration-300",
+                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
                   "border",
                   config.researchMethod === "claude"
-                    ? "border-purple-400/60 bg-purple-500/10 scale-[1.02] neon-glow"
+                    ? "border-purple-400/60 bg-purple-500/10 scale-[1.02]"
                     : "border-border bg-card/50 hover:border-purple-500/40 hover:bg-card/80",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  boxShadow: config.researchMethod === "claude" 
+                    ? "0 0 30px -5px rgba(168, 85, 247, 0.4), inset 0 1px 0 0 rgba(168, 85, 247, 0.2)"
+                    : undefined
+                }}
                 data-testid="button-research-claude"
               >
                 <div className={cn(
@@ -1757,33 +1771,37 @@ export default function DocumentaryMaker() {
                   config.researchMethod === "claude" ? "opacity-15" : "group-hover:opacity-5"
                 )} />
                 
-                {config.researchMethod === "claude" && (
-                  <div className="absolute inset-0 rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 blur-md opacity-40" />
-                  </div>
-                )}
-                
-                <div className="relative z-10 text-center space-y-2">
+                <div className="relative z-10 flex flex-col items-center gap-3">
                   <div className={cn(
-                    "text-2xl font-bold transition-all duration-300",
-                    config.researchMethod === "claude" ? "text-purple-400 neon-text" : "text-white/70 group-hover:text-white"
+                    "w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300",
+                    config.researchMethod === "claude" 
+                      ? "bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/30" 
+                      : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    Claude Opus 4.5
+                    <Sparkles className={cn(
+                      "h-7 w-7 transition-colors",
+                      config.researchMethod === "claude" ? "text-white" : "text-purple-400/70"
+                    )} />
                   </div>
-                  <div className={cn(
-                    "text-xs transition-colors",
-                    config.researchMethod === "claude" ? "text-purple-300" : "text-muted-foreground group-hover:text-white/70"
-                  )}>
-                    Deep AI reasoning
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Knowledge-based analysis
+                  <div className="text-center space-y-1">
+                    <div className={cn(
+                      "text-lg font-bold transition-all duration-300",
+                      config.researchMethod === "claude" ? "text-purple-400" : "text-white/70 group-hover:text-white"
+                    )}>
+                      Claude Opus 4.5
+                    </div>
+                    <div className={cn(
+                      "text-xs transition-colors",
+                      config.researchMethod === "claude" ? "text-purple-300/80" : "text-muted-foreground"
+                    )}>
+                      Deep AI reasoning
+                    </div>
                   </div>
                 </div>
                 
                 {config.researchMethod === "claude" && (
                   <div className="absolute top-2 right-2">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
                       <Check className="h-3.5 w-3.5 text-white" />
                     </div>
                   </div>
@@ -1805,13 +1823,18 @@ export default function DocumentaryMaker() {
                 onClick={() => setConfig({ ...config, imageSource: "google" })}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
                   "border",
                   config.imageSource === "google"
-                    ? "border-green-400/60 bg-green-500/10 scale-[1.02] neon-glow"
+                    ? "border-green-400/60 bg-green-500/10 scale-[1.02]"
                     : "border-border bg-card/50 hover:border-green-500/40 hover:bg-card/80",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  boxShadow: config.imageSource === "google" 
+                    ? "0 0 25px -5px rgba(34, 197, 94, 0.4)"
+                    : undefined
+                }}
                 data-testid="button-image-google"
               >
                 <div className={cn(
@@ -1819,33 +1842,37 @@ export default function DocumentaryMaker() {
                   config.imageSource === "google" ? "opacity-15" : "group-hover:opacity-5"
                 )} />
                 
-                {config.imageSource === "google" && (
-                  <div className="absolute inset-0 rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 blur-md opacity-40" />
-                  </div>
-                )}
-                
-                <div className="relative z-10 text-center space-y-1">
+                <div className="relative z-10 flex flex-col items-center gap-2">
                   <div className={cn(
-                    "text-lg font-bold transition-all duration-300",
-                    config.imageSource === "google" ? "text-green-400 neon-text" : "text-white/70 group-hover:text-white"
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    config.imageSource === "google" 
+                      ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30" 
+                      : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    Google Images
+                    <Search className={cn(
+                      "h-5 w-5 transition-colors",
+                      config.imageSource === "google" ? "text-white" : "text-green-400/70"
+                    )} />
                   </div>
-                  <div className={cn(
-                    "text-xs transition-colors",
-                    config.imageSource === "google" ? "text-green-300" : "text-muted-foreground group-hover:text-white/70"
-                  )}>
-                    Fast & Free
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    SerpAPI search
+                  <div className="text-center">
+                    <div className={cn(
+                      "text-sm font-bold transition-all duration-300",
+                      config.imageSource === "google" ? "text-green-400" : "text-white/70 group-hover:text-white"
+                    )}>
+                      Google
+                    </div>
+                    <div className={cn(
+                      "text-[10px] transition-colors",
+                      config.imageSource === "google" ? "text-green-300/80" : "text-muted-foreground"
+                    )}>
+                      Fast & Free
+                    </div>
                   </div>
                 </div>
                 
                 {config.imageSource === "google" && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                  <div className="absolute top-1.5 right-1.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   </div>
@@ -1857,13 +1884,18 @@ export default function DocumentaryMaker() {
                 onClick={() => setConfig({ ...config, imageSource: "stock" })}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
                   "border",
                   config.imageSource === "stock"
-                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02] neon-glow"
+                    ? "border-cyan-400/60 bg-cyan-500/10 scale-[1.02]"
                     : "border-border bg-card/50 hover:border-cyan-500/40 hover:bg-card/80",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  boxShadow: config.imageSource === "stock" 
+                    ? "0 0 25px -5px rgba(0, 200, 255, 0.4)"
+                    : undefined
+                }}
                 data-testid="button-image-stock"
               >
                 <div className={cn(
@@ -1871,33 +1903,37 @@ export default function DocumentaryMaker() {
                   config.imageSource === "stock" ? "opacity-15" : "group-hover:opacity-5"
                 )} />
                 
-                {config.imageSource === "stock" && (
-                  <div className="absolute inset-0 rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 blur-md opacity-40" />
-                  </div>
-                )}
-                
-                <div className="relative z-10 text-center space-y-1">
+                <div className="relative z-10 flex flex-col items-center gap-2">
                   <div className={cn(
-                    "text-lg font-bold transition-all duration-300",
-                    config.imageSource === "stock" ? "text-cyan-400 neon-text" : "text-white/70 group-hover:text-white"
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    config.imageSource === "stock" 
+                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30" 
+                      : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    Perplexity
+                    <Layers className={cn(
+                      "h-5 w-5 transition-colors",
+                      config.imageSource === "stock" ? "text-white" : "text-cyan-400/70"
+                    )} />
                   </div>
-                  <div className={cn(
-                    "text-xs transition-colors",
-                    config.imageSource === "stock" ? "text-cyan-300" : "text-muted-foreground group-hover:text-white/70"
-                  )}>
-                    Smart Search
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    AI-powered images
+                  <div className="text-center">
+                    <div className={cn(
+                      "text-sm font-bold transition-all duration-300",
+                      config.imageSource === "stock" ? "text-cyan-400" : "text-white/70 group-hover:text-white"
+                    )}>
+                      Perplexity
+                    </div>
+                    <div className={cn(
+                      "text-[10px] transition-colors",
+                      config.imageSource === "stock" ? "text-cyan-300/80" : "text-muted-foreground"
+                    )}>
+                      Smart Search
+                    </div>
                   </div>
                 </div>
                 
                 {config.imageSource === "stock" && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <div className="absolute top-1.5 right-1.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   </div>
@@ -1909,13 +1945,18 @@ export default function DocumentaryMaker() {
                 onClick={() => setConfig({ ...config, imageSource: "ai" })}
                 disabled={isGenerating}
                 className={cn(
-                  "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
+                  "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
                   "border",
                   config.imageSource === "ai"
-                    ? "border-pink-400/60 bg-pink-500/10 scale-[1.02] neon-glow"
+                    ? "border-pink-400/60 bg-pink-500/10 scale-[1.02]"
                     : "border-border bg-card/50 hover:border-pink-500/40 hover:bg-card/80",
                   isGenerating && "opacity-50 cursor-not-allowed"
                 )}
+                style={{
+                  boxShadow: config.imageSource === "ai" 
+                    ? "0 0 25px -5px rgba(236, 72, 153, 0.4)"
+                    : undefined
+                }}
                 data-testid="button-image-ai"
               >
                 <div className={cn(
@@ -1923,33 +1964,37 @@ export default function DocumentaryMaker() {
                   config.imageSource === "ai" ? "opacity-15" : "group-hover:opacity-5"
                 )} />
                 
-                {config.imageSource === "ai" && (
-                  <div className="absolute inset-0 rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 blur-md opacity-40" />
-                  </div>
-                )}
-                
-                <div className="relative z-10 text-center space-y-1">
+                <div className="relative z-10 flex flex-col items-center gap-2">
                   <div className={cn(
-                    "text-lg font-bold transition-all duration-300",
-                    config.imageSource === "ai" ? "text-pink-400 neon-text" : "text-white/70 group-hover:text-white"
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                    config.imageSource === "ai" 
+                      ? "bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/30" 
+                      : "bg-white/5 group-hover:bg-white/10"
                   )}>
-                    AI Generated
+                    <Wand2 className={cn(
+                      "h-5 w-5 transition-colors",
+                      config.imageSource === "ai" ? "text-white" : "text-pink-400/70"
+                    )} />
                   </div>
-                  <div className={cn(
-                    "text-xs transition-colors",
-                    config.imageSource === "ai" ? "text-pink-300" : "text-muted-foreground group-hover:text-white/70"
-                  )}>
-                    Unique Visuals
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Flux / Ideogram
+                  <div className="text-center">
+                    <div className={cn(
+                      "text-sm font-bold transition-all duration-300",
+                      config.imageSource === "ai" ? "text-pink-400" : "text-white/70 group-hover:text-white"
+                    )}>
+                      AI Generate
+                    </div>
+                    <div className={cn(
+                      "text-[10px] transition-colors",
+                      config.imageSource === "ai" ? "text-pink-300/80" : "text-muted-foreground"
+                    )}>
+                      Flux / Ideogram
+                    </div>
                   </div>
                 </div>
                 
                 {config.imageSource === "ai" && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg">
+                  <div className="absolute top-1.5 right-1.5">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shadow-lg animate-in zoom-in duration-200">
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   </div>
@@ -2009,45 +2054,78 @@ export default function DocumentaryMaker() {
             </div>
             
             {/* Narrator Voice Selection */}
-            <div className="space-y-2">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Mic className="h-3 w-3" />
+            <div className="space-y-3">
+              <span className="text-sm text-violet-300 flex items-center gap-2">
+                <Mic className="h-4 w-4" />
                 Narrator Voice
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {voiceOptions.map((voice) => (
-                  <div
-                    key={voice.value}
-                    onClick={() => !isGenerating && setConfig({ ...config, narratorVoice: voice.value })}
-                    className={cn(
-                      "relative rounded-lg p-3 transition-all duration-200 text-left cursor-pointer",
-                      "border",
-                      config.narratorVoice === voice.value
-                        ? "border-violet-400/60 bg-violet-500/15"
-                        : "border-border bg-card/50 hover:border-violet-500/40 hover:bg-card/80",
-                      isGenerating && "opacity-50 cursor-not-allowed"
-                    )}
-                    data-testid={`button-voice-${voice.value}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {voiceOptions.map((voice, index) => {
+                  const voiceIcons = [
+                    { gradient: "from-violet-500 to-purple-600", icon: Mic },
+                    { gradient: "from-blue-500 to-cyan-600", icon: Volume2 },
+                    { gradient: "from-emerald-500 to-teal-600", icon: Mic },
+                    { gradient: "from-pink-500 to-rose-600", icon: Volume2 },
+                    { gradient: "from-cyan-500 to-blue-600", icon: Mic },
+                    { gradient: "from-purple-500 to-indigo-600", icon: Volume2 },
+                  ];
+                  const voiceStyle = voiceIcons[index % voiceIcons.length];
+                  const VoiceIcon = voiceStyle.icon;
+                  
+                  return (
+                    <div
+                      key={voice.value}
+                      onClick={() => !isGenerating && setConfig({ ...config, narratorVoice: voice.value })}
+                      className={cn(
+                        "relative rounded-xl p-3 transition-all duration-300 cursor-pointer group",
+                        "border",
+                        config.narratorVoice === voice.value
+                          ? "border-violet-400/60 bg-violet-500/10 scale-[1.02]"
+                          : "border-border bg-card/50 hover:border-violet-500/40 hover:bg-card/80",
+                        isGenerating && "opacity-50 cursor-not-allowed"
+                      )}
+                      style={{
+                        boxShadow: config.narratorVoice === voice.value 
+                          ? "0 0 25px -5px rgba(139, 92, 246, 0.4)"
+                          : undefined
+                      }}
+                      data-testid={`button-voice-${voice.value}`}
+                    >
+                      <div className={cn(
+                        "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 rounded-xl",
+                        voiceStyle.gradient,
+                        config.narratorVoice === voice.value ? "opacity-10" : "group-hover:opacity-5"
+                      )} />
+                      
+                      <div className="relative z-10 flex flex-col items-center gap-2">
                         <div className={cn(
-                          "text-sm font-medium",
-                          config.narratorVoice === voice.value ? "text-violet-400" : "text-white/80"
+                          "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                          config.narratorVoice === voice.value 
+                            ? `bg-gradient-to-br ${voiceStyle.gradient} shadow-lg` 
+                            : "bg-white/5 group-hover:bg-white/10"
                         )}>
-                          {voice.label}
+                          <VoiceIcon className={cn(
+                            "h-5 w-5 transition-colors",
+                            config.narratorVoice === voice.value ? "text-white" : "text-violet-400/70"
+                          )} />
                         </div>
-                        <div className="text-[10px] text-muted-foreground truncate">{voice.description}</div>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="text-center w-full">
+                          <div className={cn(
+                            "text-sm font-medium transition-colors",
+                            config.narratorVoice === voice.value ? "text-violet-400" : "text-white/80"
+                          )}>
+                            {voice.label}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">{voice.description}</div>
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-7 w-7 rounded-full",
+                            "h-7 w-7 rounded-full transition-all duration-200",
                             previewingVoice === voice.value 
-                              ? "bg-violet-500/30 text-violet-300" 
-                              : "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20"
+                              ? "bg-violet-500/40 text-white scale-110" 
+                              : "bg-violet-500/10 text-violet-400 hover:bg-violet-500/30 hover:scale-105"
                           )}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2056,18 +2134,26 @@ export default function DocumentaryMaker() {
                           data-testid={`button-preview-${voice.value}`}
                         >
                           {previewingVoice === voice.value ? (
-                            <Pause className="h-3 w-3" />
+                            <Pause className="h-3.5 w-3.5" />
                           ) : (
-                            <Play className="h-3 w-3 ml-0.5" />
+                            <Play className="h-3.5 w-3.5 ml-0.5" />
                           )}
                         </Button>
-                        {config.narratorVoice === voice.value && (
-                          <Check className="h-4 w-4 text-violet-400" />
-                        )}
                       </div>
+                      
+                      {config.narratorVoice === voice.value && (
+                        <div className="absolute top-1.5 right-1.5">
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in duration-200 bg-gradient-to-br",
+                            voiceStyle.gradient
+                          )}>
+                            <Check className="h-3 w-3 text-white" />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
