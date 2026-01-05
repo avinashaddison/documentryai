@@ -178,10 +178,11 @@ function generateColorGradeFilter(colorGrade: string): string {
 
 // Professional film grain filter for authentic documentary look
 function generateFilmGrainFilter(intensity: number = 15): string {
-  // Use noise filter with temporal component for organic film grain
-  // alls = all-planes strength (0-100), allf = flags (t=temporal, u=uniform)
+  // Use noise filter for organic film grain
+  // alls = all-planes strength (0-100)
+  // Simple noise without flags works more reliably across FFmpeg versions
   const strength = Math.min(100, Math.max(0, intensity));
-  return `noise=alls=${strength}:allf=tu`;
+  return `noise=alls=${strength}`;
 }
 
 // Vignette effect for cinematic darkened corners
