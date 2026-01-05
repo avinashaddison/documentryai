@@ -111,10 +111,10 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
           )}
         </Button>
 
-        <nav className="flex-1 px-2 py-4 space-y-2 relative z-10">
+        <nav className="flex-1 px-3 py-4 space-y-1.5 relative z-10">
           {navItems.map((item, index) => {
             const isActive = location === item.href || 
-              (item.href === "/create" && location === "/");
+              (item.href === "/create" && (location === "/" || location === "/documentary-maker" || location.startsWith("/create") || location.startsWith("/documentary-maker/")));
             const isHovered = hoveredItem === item.href;
             
             return (
@@ -123,10 +123,10 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
                   onMouseEnter={() => setHoveredItem(item.href)}
                   onMouseLeave={() => setHoveredItem(null)}
                   className={cn(
-                    "relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-300 group cursor-pointer overflow-hidden",
+                    "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 group cursor-pointer overflow-hidden",
                     isActive
                       ? "text-white"
-                      : "text-muted-foreground hover:text-white",
+                      : "text-white/60 hover:text-white",
                     isCollapsed && "justify-center px-2"
                   )}
                   style={{
@@ -134,55 +134,52 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
                   }}
                   data-testid={`nav-${item.href.replace("/", "")}`}
                 >
+                  {/* Active state background */}
                   {isActive && (
                     <>
-                      <div className={cn(
-                        "absolute inset-0 bg-gradient-to-r opacity-20",
-                        item.gradient
-                      )} />
-                      <div className={cn(
-                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b",
-                        item.gradient
-                      )} />
-                      <div className={cn(
-                        "absolute inset-0 border border-white/10 rounded-xl"
-                      )} />
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/30 via-blue-500/20 to-cyan-500/30 rounded-xl blur-sm" />
+                      {/* Main background */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-600/40 via-blue-600/30 to-cyan-600/40 rounded-xl" />
+                      {/* Border */}
+                      <div className="absolute inset-0 border border-cyan-400/30 rounded-xl" />
+                      {/* Inner highlight */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-xl" />
                     </>
                   )}
                   
+                  {/* Hover state */}
                   {(isHovered && !isActive) && (
                     <div className="absolute inset-0 bg-white/5 transition-all duration-300 rounded-xl" />
                   )}
                   
+                  {/* Icon */}
                   <div className={cn(
-                    "relative flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300",
+                    "relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300",
                     isActive 
-                      ? `bg-gradient-to-br ${item.gradient} shadow-lg` 
+                      ? "bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/40" 
                       : "bg-white/5 group-hover:bg-white/10"
                   )}>
                     <item.icon className={cn(
                       "h-4 w-4 transition-all duration-300",
-                      isActive ? "text-white" : "text-muted-foreground group-hover:text-cyan-400"
+                      isActive ? "text-white" : "text-white/50 group-hover:text-cyan-400"
                     )} />
                   </div>
                   
+                  {/* Text */}
                   {!isCollapsed && (
                     <div className="flex-1 min-w-0 relative z-10">
                       <span className={cn(
-                        "block truncate transition-colors duration-300",
-                        isActive && "font-semibold"
+                        "block truncate transition-colors duration-300 text-[13px]",
+                        isActive ? "font-semibold text-white" : "font-medium"
                       )}>{item.label}</span>
                       <span className={cn(
                         "text-[10px] truncate block transition-colors duration-300",
-                        isActive ? "text-white/60" : "text-muted-foreground"
+                        isActive ? "text-cyan-200/70" : "text-white/40"
                       )}>
                         {item.description}
                       </span>
                     </div>
-                  )}
-                  
-                  {isActive && !isCollapsed && (
-                    <Zap className="h-3 w-3 text-cyan-400 animate-pulse" />
                   )}
                 </div>
               </Link>
