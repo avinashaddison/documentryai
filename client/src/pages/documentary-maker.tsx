@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import claudeIconPath from "@assets/claude-ai-icon_1767588099802.png";
 import perplexityIconPath from "@assets/perplexity-ai-icon_1767590005100.png";
 import googleIconPath from "@assets/google-color-icon_1767590050980.png";
+
+const clickSoundUrl = "/audio/click-sound.mp3";
 import {
   Select,
   SelectContent,
@@ -477,6 +479,18 @@ export default function DocumentaryMaker() {
   }>>([]);
   const [showLogs, setShowLogs] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const clickSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  const playClickSound = useCallback(() => {
+    try {
+      if (!clickSoundRef.current) {
+        clickSoundRef.current = new Audio(clickSoundUrl);
+        clickSoundRef.current.volume = 0.3;
+      }
+      clickSoundRef.current.currentTime = 0;
+      clickSoundRef.current.play().catch(() => {});
+    } catch (e) {}
+  }, []);
 
   const storyLengthToChapters: Record<string, number> = {
     short: 3,
@@ -1625,6 +1639,7 @@ export default function DocumentaryMaker() {
                   <button
                     key={preset.count}
                     onClick={() => {
+                      playClickSound();
                       setTotalChapters(preset.count);
                       const lengthMap: Record<number, string> = { 3: "short", 5: "medium", 8: "long", 12: "feature" };
                       setConfig({ ...config, storyLength: lengthMap[preset.count] || "medium" });
@@ -1733,7 +1748,7 @@ export default function DocumentaryMaker() {
             <div className="grid grid-cols-2 gap-4">
               {/* Perplexity Option */}
               <button
-                onClick={() => setConfig({ ...config, researchMethod: "perplexity" })}
+                onClick={() => { playClickSound(); setConfig({ ...config, researchMethod: "perplexity" }); }}
                 disabled={isGenerating}
                 className={cn(
                   "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
@@ -1798,7 +1813,7 @@ export default function DocumentaryMaker() {
               
               {/* Claude Opus 4.5 Option */}
               <button
-                onClick={() => setConfig({ ...config, researchMethod: "claude" })}
+                onClick={() => { playClickSound(); setConfig({ ...config, researchMethod: "claude" }); }}
                 disabled={isGenerating}
                 className={cn(
                   "relative group overflow-hidden rounded-xl p-4 transition-all duration-300",
@@ -1873,7 +1888,7 @@ export default function DocumentaryMaker() {
             <div className="grid grid-cols-3 gap-3">
               {/* Google Images Option */}
               <button
-                onClick={() => setConfig({ ...config, imageSource: "google" })}
+                onClick={() => { playClickSound(); setConfig({ ...config, imageSource: "google" }); }}
                 disabled={isGenerating}
                 className={cn(
                   "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
@@ -1938,7 +1953,7 @@ export default function DocumentaryMaker() {
               
               {/* Perplexity Stock Option */}
               <button
-                onClick={() => setConfig({ ...config, imageSource: "stock" })}
+                onClick={() => { playClickSound(); setConfig({ ...config, imageSource: "stock" }); }}
                 disabled={isGenerating}
                 className={cn(
                   "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
@@ -2003,7 +2018,7 @@ export default function DocumentaryMaker() {
               
               {/* AI Generated Option */}
               <button
-                onClick={() => setConfig({ ...config, imageSource: "ai" })}
+                onClick={() => { playClickSound(); setConfig({ ...config, imageSource: "ai" }); }}
                 disabled={isGenerating}
                 className={cn(
                   "relative group overflow-hidden rounded-xl p-3 transition-all duration-300",
@@ -2085,7 +2100,7 @@ export default function DocumentaryMaker() {
                   return (
                     <button
                       key={style.value}
-                      onClick={() => setConfig({ ...config, storyStyle: style.value as typeof config.storyStyle })}
+                      onClick={() => { playClickSound(); setConfig({ ...config, storyStyle: style.value as typeof config.storyStyle }); }}
                       disabled={isGenerating}
                       className={cn(
                         "relative group overflow-hidden rounded-xl p-4 transition-all duration-500 ease-out text-left",
@@ -2168,7 +2183,7 @@ export default function DocumentaryMaker() {
                   return (
                     <div
                       key={voice.value}
-                      onClick={() => !isGenerating && setConfig({ ...config, narratorVoice: voice.value })}
+                      onClick={() => { if (!isGenerating) { playClickSound(); setConfig({ ...config, narratorVoice: voice.value }); } }}
                       className={cn(
                         "relative rounded-xl p-3 transition-all duration-300 cursor-pointer group",
                         "border",
