@@ -2070,11 +2070,11 @@ export async function registerRoutes(
               id: `sfx_char_${scene.chapterNumber}_${scene.sceneNumber}`,
               src: "/public/audio/typewriter_sfx.mp3",
               start: currentTime + 0.3,
-              end: currentTime + 2.5,
-              duration: 2.2,
-              volume: 0.6,
+              end: currentTime + 3.5,
+              duration: 3.2,
+              volume: 1.0,
               fade_in: 0,
-              fade_out: 0.3,
+              fade_out: 0.5,
               audioType: "sfx"
             });
           }
