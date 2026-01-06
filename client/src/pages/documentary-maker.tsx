@@ -2819,28 +2819,86 @@ export default function DocumentaryMaker() {
 
         {/* Generated Images Gallery */}
         {Object.keys(generatedImages).length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-primary" />
-                Generated Scene Images ({Object.keys(generatedImages).length})
-              </h2>
-            </div>
+          <div className="relative overflow-hidden rounded-2xl border border-fuchsia-500/20 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl shadow-2xl">
+            {/* Decorative gradient glow */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-500"></div>
+            <div className="absolute -top-20 -left-20 w-40 h-40 bg-fuchsia-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none"></div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto">
-              {Object.entries(generatedImages).map(([key, url]) => (
-                <div key={key} className="relative group rounded-lg overflow-hidden border border-border">
-                  <img 
-                    src={url} 
-                    alt={key}
-                    className="w-full aspect-video object-cover transition-transform group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                    <span className="text-xs text-white/80 font-mono">{key}</span>
+            {/* Header */}
+            <div className="relative p-6 border-b border-white/5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-violet-500/20 border border-fuchsia-500/30">
+                    <ImageIcon className="h-5 w-5 text-fuchsia-400" />
+                    <div className="absolute inset-0 rounded-xl bg-fuchsia-400/20 blur-sm"></div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-display font-bold bg-gradient-to-r from-white via-fuchsia-100 to-white bg-clip-text text-transparent">
+                      Generated Scene Images
+                    </h2>
+                    <p className="text-xs text-fuchsia-400/70">Visual assets for your documentary</p>
                   </div>
                 </div>
-              ))}
+                <Badge className="bg-gradient-to-r from-fuchsia-500/20 to-violet-500/20 text-fuchsia-300 border border-fuchsia-400/30 px-3 py-1.5 font-semibold">
+                  {Object.keys(generatedImages).length} Images
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Gallery Grid */}
+            <div className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[550px] overflow-y-auto scrollbar-thin scrollbar-thumb-fuchsia-500/20 scrollbar-track-transparent pr-2">
+                {Object.entries(generatedImages).map(([key, url], index) => (
+                  <div 
+                    key={key} 
+                    className="group relative rounded-xl overflow-hidden border border-white/10 hover:border-fuchsia-500/40 transition-all duration-300 hover:shadow-xl hover:shadow-fuchsia-500/10 hover:-translate-y-1"
+                  >
+                    {/* Image number badge */}
+                    <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-gradient-to-br from-fuchsia-500/80 to-violet-500/80 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
+                      <span className="text-xs font-bold text-white">{index + 1}</span>
+                    </div>
+                    
+                    {/* Image */}
+                    <div className="relative aspect-video bg-slate-800/50">
+                      <img 
+                        src={url} 
+                        alt={key}
+                        className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.error-placeholder')) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'error-placeholder absolute inset-0 flex items-center justify-center bg-slate-800/80';
+                            placeholder.innerHTML = '<span class="text-fuchsia-400/50 text-sm">Image unavailable</span>';
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                      {/* Gradient overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-fuchsia-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    </div>
+                    
+                    {/* Label */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-3 pt-8">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse"></div>
+                        <span className="text-xs text-white/90 font-mono tracking-wide">{key}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Hover overlay with action hint */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10">
+                        <span className="text-xs text-white/80">Click to preview</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
