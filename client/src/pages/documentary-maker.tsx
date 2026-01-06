@@ -6,6 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import claudeIconPath from "@assets/claude-ai-icon_1767588099802.png";
 import perplexityIconPath from "@assets/perplexity-ai-icon_1767590005100.png";
 import googleIconPath from "@assets/google-color-icon_1767590050980.png";
@@ -457,6 +467,7 @@ export default function DocumentaryMaker() {
   const [forceRerender, setForceRerender] = useState(false);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [editingChapterValue, setEditingChapterValue] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   const [config, setConfig] = useState({
     narratorVoice: "aura-2-mars-en",
@@ -1661,7 +1672,7 @@ export default function DocumentaryMaker() {
               data-testid="input-title"
             />
             <Button
-              onClick={handleGenerateFramework}
+              onClick={() => { if (title.trim()) setShowConfirmDialog(true); }}
               disabled={!title.trim() || isGenerating}
               className="group relative h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] border-0 shadow-lg shadow-[#7163EB]/50 hover:shadow-[#7163EB]/70 hover:scale-105 transition-all duration-300 text-white overflow-hidden"
               data-testid="button-generate-framework"
@@ -2971,6 +2982,56 @@ export default function DocumentaryMaker() {
 
       </div>
       </div>
+      
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent className="border-[#7163EB]/30 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 backdrop-blur-xl max-w-md overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-cyan-500" />
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#7163EB]/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <AlertDialogHeader className="relative z-10">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div className="absolute inset-[-8px] rounded-full bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-cyan-500 blur-lg opacity-60 animate-pulse" />
+                <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-[#7163EB] to-fuchsia-500 flex items-center justify-center shadow-2xl">
+                  <Wand2 className="h-8 w-8 text-white animate-pulse" />
+                </div>
+                <div className="absolute top-0 right-0 w-3 h-3 bg-cyan-400 rounded-full animate-ping" />
+                <div className="absolute bottom-1 left-0 w-2 h-2 bg-fuchsia-300 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+              </div>
+            </div>
+            <AlertDialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-white via-[#7163EB] to-white bg-clip-text text-transparent">
+              Ready to Create Magic?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-white/60 mt-2 space-y-3">
+              <p>You're about to generate a documentary about:</p>
+              <div className="bg-[#7163EB]/10 border border-[#7163EB]/30 rounded-xl p-3 mx-4">
+                <p className="text-white font-semibold text-sm truncate">{title || "Your Documentary Topic"}</p>
+              </div>
+              <p className="text-xs text-white/40">This will use AI to create research, scripts, images, and voiceover.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <AlertDialogFooter className="relative z-10 flex gap-3 mt-6">
+            <AlertDialogCancel className="flex-1 h-12 rounded-xl bg-slate-800/80 border-white/10 text-white/70 hover:text-white hover:bg-slate-700 hover:border-white/20 transition-all duration-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmDialog(false);
+                handleGenerateFramework();
+              }}
+              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] text-white font-bold shadow-lg shadow-[#7163EB]/40 hover:shadow-[#7163EB]/60 transition-all duration-300 gap-2 group overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+              <Sparkles className="h-4 w-4 relative z-10 group-hover:rotate-12 transition-transform" />
+              <span className="relative z-10">Yes, Generate!</span>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </WorkspaceSidebar>
   );
 }
