@@ -1383,29 +1383,61 @@ export default function DocumentaryMaker() {
                 
                 return (
                   <div key={step.id} className="flex items-center">
-                    <div className="relative">
-                      {/* Glow ring for active step */}
+                    <div className="relative group">
+                      {/* Outer glow ring for active step */}
                       {isActive && (
-                        <div className="absolute inset-0 rounded-xl bg-violet-500/50 blur-md animate-pulse" />
+                        <>
+                          <div className="absolute -inset-2 rounded-2xl bg-gradient-to-r from-[#7163EB] via-cyan-400 to-[#7163EB] opacity-60 blur-lg animate-pulse" />
+                          <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-[#7163EB] to-cyan-400 opacity-40 animate-spin-slow" style={{ animationDuration: '3s' }} />
+                        </>
+                      )}
+                      {/* Complete step glow */}
+                      {isComplete && (
+                        <div className="absolute -inset-1 rounded-xl bg-[#7163EB]/30 blur-md" />
                       )}
                       <div className={cn(
-                        "relative w-12 h-12 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-500 transform",
-                        isComplete ? "bg-gradient-to-br from-green-400 via-emerald-500 to-green-600 text-white shadow-lg shadow-green-500/40 scale-100" :
-                        isActive ? "bg-gradient-to-br from-violet-400 via-cyan-500 to-violet-600 text-white shadow-lg shadow-violet-500/50 scale-110 animate-bounce-subtle" :
-                        "bg-card/80 border-2 border-border text-muted-foreground scale-95 opacity-60"
+                        "relative w-14 h-14 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-500 transform border-2",
+                        isComplete ? "bg-gradient-to-br from-[#7163EB] via-[#8B7CF7] to-[#6355D8] text-white shadow-lg shadow-[#7163EB]/50 scale-100 border-[#7163EB]/50" :
+                        isActive ? "bg-gradient-to-br from-[#7163EB]/20 to-cyan-500/20 text-white shadow-lg shadow-[#7163EB]/50 scale-110 border-[#7163EB]/60" :
+                        "bg-slate-800/80 border-slate-600/50 text-slate-400 scale-95 opacity-50"
                       )}>
-                        {isComplete ? <Check className="h-5 w-5 animate-in zoom-in duration-300" /> : <step.icon className="h-5 w-5" />}
+                        {isComplete ? (
+                          <div className="relative">
+                            <Check className="h-6 w-6 animate-in zoom-in duration-300" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full border-2 border-white/30 animate-ping opacity-50" />
+                            </div>
+                          </div>
+                        ) : isActive ? (
+                          <div className="relative">
+                            <step.icon className="h-6 w-6 animate-pulse" />
+                            <div className="absolute -inset-1">
+                              <div className="w-8 h-8 rounded-full border-2 border-t-[#7163EB] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                            </div>
+                          </div>
+                        ) : (
+                          <step.icon className="h-5 w-5" />
+                        )}
+                      </div>
+                      {/* Step label on hover */}
+                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        <span className="text-[10px] text-slate-400 font-medium">{step.label}</span>
                       </div>
                     </div>
                     {i < steps.length - 1 && (
-                      <div className="relative w-12 h-1 mx-1">
-                        <div className="absolute inset-0 rounded-full bg-border" />
+                      <div className="relative w-10 h-1.5 mx-2">
+                        <div className="absolute inset-0 rounded-full bg-slate-700/50" />
                         <div 
                           className={cn(
                             "absolute inset-y-0 left-0 rounded-full transition-all duration-700",
-                            isComplete ? "bg-gradient-to-r from-green-400 to-emerald-500 w-full" : "w-0"
+                            isComplete ? "bg-gradient-to-r from-[#7163EB] to-[#8B7CF7] w-full shadow-lg shadow-[#7163EB]/30" : 
+                            isActive ? "bg-gradient-to-r from-[#7163EB]/50 to-cyan-400/50 w-1/2 animate-pulse" : "w-0"
                           )}
                         />
+                        {/* Animated dot traveling along connector */}
+                        {isActive && (
+                          <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 animate-bounce" style={{ left: '25%' }} />
+                        )}
                       </div>
                     )}
                   </div>
@@ -1414,33 +1446,56 @@ export default function DocumentaryMaker() {
             </div>
             
             {/* Enhanced Progress Bar */}
-            <div className="relative h-4 bg-black/40 rounded-full overflow-hidden border border-white/10 shadow-inner">
+            <div className="relative h-5 bg-slate-900/80 rounded-full overflow-hidden border border-[#7163EB]/30 shadow-inner shadow-black/50">
               {/* Background glow */}
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-600/30 via-cyan-500/20 to-transparent blur-sm transition-all duration-700"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#7163EB]/40 via-cyan-500/30 to-transparent blur-sm transition-all duration-700"
                 style={{ width: `${Math.min(progress + 10, 100)}%` }}
               />
               {/* Main progress fill */}
               <div 
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 via-cyan-400 to-yellow-400 rounded-full transition-all duration-500 ease-out"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#7163EB] via-[#8B7CF7] via-cyan-400 to-amber-400 rounded-full transition-all duration-500 ease-out shadow-lg shadow-[#7163EB]/40"
                 style={{ width: `${progress}%` }}
               >
                 {/* Animated shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shine" />
+                {/* Inner glow */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent rounded-full" />
               </div>
               {/* Leading edge glow */}
               {progress > 0 && progress < 100 && (
                 <div 
-                  className="absolute top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-white/60 blur-sm animate-pulse"
-                  style={{ left: `calc(${progress}% - 8px)` }}
+                  className="absolute top-0 bottom-0 w-6 bg-gradient-to-r from-transparent via-white/80 to-white/40 blur-sm animate-pulse"
+                  style={{ left: `calc(${progress}% - 12px)` }}
                 />
+              )}
+              {/* Sparkle particles */}
+              {progress > 0 && progress < 100 && (
+                <>
+                  <div 
+                    className="absolute top-1 w-1 h-1 bg-white rounded-full animate-ping opacity-60"
+                    style={{ left: `calc(${progress}% - 5px)` }}
+                  />
+                  <div 
+                    className="absolute bottom-1 w-0.5 h-0.5 bg-cyan-300 rounded-full animate-ping opacity-40"
+                    style={{ left: `calc(${progress}% - 10px)`, animationDelay: '0.5s' }}
+                  />
+                </>
               )}
             </div>
             
             {/* Progress percentage */}
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-muted-foreground font-mono">{Math.round(progress)}%</span>
-              <span className="text-xs text-violet-400/80 font-medium">
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#7163EB] animate-pulse shadow-lg shadow-[#7163EB]/50" />
+                <span className="text-sm text-white/80 font-mono font-semibold">{Math.round(progress)}%</span>
+              </div>
+              <span className={cn(
+                "text-sm font-semibold px-3 py-1 rounded-full",
+                currentStep === "complete" 
+                  ? "bg-[#7163EB]/20 text-[#8B7CF7] border border-[#7163EB]/30" 
+                  : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 animate-pulse"
+              )}>
                 {currentStep === "complete" ? "Complete!" : "Processing..."}
               </span>
             </div>
