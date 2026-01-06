@@ -17,11 +17,11 @@ export function Snowfall() {
     const flakes: Snowflake[] = Array.from({ length: 50 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
-      size: Math.random() * 3 + 1,
+      size: Math.random() * 5 + 2,
       duration: Math.random() * 10 + 8,
       delay: Math.random() * 10,
-      opacity: Math.random() * 0.5 + 0.2,
-      drift: Math.random() * 20 - 10
+      opacity: Math.random() * 0.5 + 0.3,
+      drift: Math.random() * 30 - 15
     }));
     setSnowflakes(flakes);
   }, []);
