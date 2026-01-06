@@ -1,8 +1,25 @@
 {
-  "name": "rest-express",
+  "name": "petr-ai-documentary-studio",
   "version": "1.0.0",
+  "description": "AI-powered documentary video generation platform with research, narration, visuals, and professional editing",
   "type": "module",
   "license": "MIT",
+  "author": "Petr AI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/petr-ai-documentary-studio"
+  },
+  "keywords": [
+    "ai",
+    "documentary",
+    "video-generation",
+    "anthropic",
+    "claude",
+    "replicate",
+    "deepgram",
+    "react",
+    "typescript"
+  ],
   "scripts": {
     "dev:client": "vite dev --port 5000",
     "dev": "NODE_ENV=development tsx server/index.ts",

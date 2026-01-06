@@ -1,6 +1,53 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Temporary files
+temp_audio/
+temp_timeline/
+*.TEMP_MPY_*
+chapter_*.mp4
+
+# Generated content (optional - uncomment to include)
+# generated_assets/
+# generated_videos/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Server public (built files)
 server/public
+
+# Vite
 vite.config.ts.*
+
+# Archives
 *.tar.gz
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Replit
+.replit
+replit.nix
+.upm/
+.cache/
