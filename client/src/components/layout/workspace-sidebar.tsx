@@ -2,65 +2,16 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { 
-  Film, 
-  PlusCircle, 
-  Video, 
-  Save,
   ChevronLeft,
   ChevronRight,
-  FolderOpen,
   Sparkles,
   Zap,
-  Play,
   Wand2,
   Layers,
-  Cloud,
-  Activity,
-  ExternalLink,
-  ChevronDown,
-  CircleDot
+  Cloud
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
 import magicWandIcon from "@assets/magic-wand_1767591284061.png";
-
-interface ApiUsage {
-  anthropic: number;
-  replicate: number;
-  deepgram: number;
-  perplexity: number;
-}
-
-const apiServices = [
-  { 
-    id: "anthropic", 
-    name: "Anthropic", 
-    color: "#D97757", 
-    billingUrl: "https://console.anthropic.com/settings/billing",
-    icon: "🧠"
-  },
-  { 
-    id: "replicate", 
-    name: "Replicate", 
-    color: "#0EA5E9", 
-    billingUrl: "https://replicate.com/account/billing",
-    icon: "🎨"
-  },
-  { 
-    id: "deepgram", 
-    name: "Deepgram", 
-    color: "#22C55E", 
-    billingUrl: "https://console.deepgram.com/billing",
-    icon: "🎙️"
-  },
-  { 
-    id: "perplexity", 
-    name: "Perplexity", 
-    color: "#A855F7", 
-    billingUrl: "https://www.perplexity.ai/settings/billing",
-    icon: "🔍"
-  },
-];
 
 interface WorkspaceSidebarProps {
   children: React.ReactNode;
@@ -71,17 +22,6 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
-  const [isApiMenuOpen, setIsApiMenuOpen] = useState(false);
-
-  const { data: apiUsage } = useQuery<ApiUsage>({
-    queryKey: ["/api/usage"],
-    queryFn: async () => {
-      const res = await fetch("/api/usage");
-      if (!res.ok) return { anthropic: 0, replicate: 0, deepgram: 0, perplexity: 0 };
-      return res.json();
-    },
-    refetchInterval: 10000,
-  });
 
   useEffect(() => {
     const newParticles = Array.from({ length: 12 }, (_, i) => ({
@@ -326,82 +266,6 @@ export function WorkspaceSidebar({ children }: WorkspaceSidebarProps) {
             );
           })}
         </nav>
-
-        {/* API Status Section */}
-        <div className={cn(
-          "px-3 py-2 border-t border-[#7163EB]/10 relative z-10",
-          isCollapsed && "flex justify-center"
-        )}>
-          {!isCollapsed ? (
-            <div className="space-y-2">
-              <button
-                onClick={() => setIsApiMenuOpen(!isApiMenuOpen)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 border border-white/10 hover:border-[#7163EB]/30 transition-all duration-300 group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-[#7163EB]/20 to-fuchsia-500/20 flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-[#7163EB]" />
-                    <div className="absolute top-0 right-0 w-2 h-2 rounded-full bg-emerald-500 animate-pulse border border-black/20" />
-                  </div>
-                  <div className="text-left">
-                    <span className="block text-xs font-semibold text-white/90">API Status</span>
-                    <span className="block text-[10px] text-white/40">Usage & billing</span>
-                  </div>
-                </div>
-                <ChevronDown className={cn(
-                  "w-4 h-4 text-white/40 transition-transform duration-300",
-                  isApiMenuOpen && "rotate-180"
-                )} />
-              </button>
-              
-              {isApiMenuOpen && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {apiServices.map((service) => {
-                    const usage = apiUsage?.[service.id as keyof ApiUsage] || 0;
-                    return (
-                      <div
-                        key={service.id}
-                        className="group relative flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.02] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-base">{service.icon}</span>
-                          <div>
-                            <span className="block text-[11px] font-medium text-white/80">{service.name}</span>
-                            <div className="flex items-center gap-1">
-                              <CircleDot className="w-2.5 h-2.5" style={{ color: service.color }} />
-                              <span className="text-[9px] text-white/40">{usage} calls</span>
-                            </div>
-                          </div>
-                        </div>
-                        <a
-                          href={service.billingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] text-white/60 hover:text-white transition-all duration-200"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink className="w-2.5 h-2.5" />
-                          Billing
-                        </a>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsApiMenuOpen(!isApiMenuOpen)}
-              className="relative group"
-            >
-              <div className="absolute inset-[-4px] bg-gradient-to-br from-[#7163EB] to-fuchsia-500 rounded-xl blur-md opacity-0 group-hover:opacity-40 transition-opacity duration-300" />
-              <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-[#7163EB]/20 to-fuchsia-500/20 border border-[#7163EB]/30 flex items-center justify-center group-hover:border-[#7163EB]/60 group-hover:scale-110 transition-all duration-300">
-                <Activity className="h-4 w-4 text-[#7163EB]" />
-                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-            </button>
-          )}
-        </div>
 
         {/* Pro Tip section */}
         <div className={cn(
