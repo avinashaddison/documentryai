@@ -2,6 +2,7 @@ import { createClient } from "@deepgram/sdk";
 import { objectStorageClient } from "./replit_integrations/object_storage";
 import * as fs from "fs";
 import * as path from "path";
+import { apiUsageTracker } from "./api-usage-tracker";
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 const USE_LOCAL_STORAGE = true; // Fallback to local storage when Object Storage has issues
@@ -68,6 +69,7 @@ export async function generateSpeechToStorage(
         sample_rate: 24000,
       }
     );
+    apiUsageTracker.increment("deepgram");
 
     const stream = await response.getStream();
     
@@ -179,6 +181,7 @@ export async function generateVoicePreview(voice: string): Promise<Buffer> {
       sample_rate: 24000,
     }
   );
+  apiUsageTracker.increment("deepgram");
 
   const stream = await response.getStream();
   if (!stream) {

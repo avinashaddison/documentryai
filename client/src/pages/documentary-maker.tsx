@@ -469,6 +469,8 @@ export default function DocumentaryMaker() {
   const [editingChapterValue, setEditingChapterValue] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [creditError, setCreditError] = useState<{service: string; message: string} | null>(null);
+  const [isPreflightChecking, setIsPreflightChecking] = useState(false);
+  const [preflightErrors, setPreflightErrors] = useState<Array<{service: string; error: string}>>([]);
   
   const [config, setConfig] = useState({
     narratorVoice: "aura-2-mars-en",
@@ -1758,7 +1760,7 @@ export default function DocumentaryMaker() {
               data-testid="input-title"
             />
             <Button
-              onClick={() => { if (title.trim()) setShowConfirmDialog(true); }}
+              onClick={() => { if (title.trim()) { setPreflightErrors([]); setShowConfirmDialog(true); } }}
               disabled={!title.trim() || isGenerating}
               className="group relative h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] border-0 shadow-lg shadow-[#7163EB]/50 hover:shadow-[#7163EB]/70 hover:scale-105 transition-all duration-300 text-white overflow-hidden"
               data-testid="button-generate-framework"
@@ -3097,23 +3099,93 @@ export default function DocumentaryMaker() {
                 <p className="text-white font-semibold text-sm truncate">{title || "Your Documentary Topic"}</p>
               </div>
               <p className="text-xs text-white/40">This will use AI to create research, scripts, images, and voiceover.</p>
+              
+              {preflightErrors.length > 0 && (
+                <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3 mx-4 text-left">
+                  <p className="text-red-400 font-semibold text-xs mb-2 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    API Issues Detected
+                  </p>
+                  {preflightErrors.map((err, i) => (
+                    <div key={i} className="text-xs text-red-300/80 py-1 border-t border-red-500/20 first:border-0">
+                      <span className="font-medium">{err.service}:</span> {err.error}
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-white/40 mt-2">Please check your API keys and billing status.</p>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           
           <AlertDialogFooter className="relative z-10 flex gap-3 mt-6">
-            <AlertDialogCancel className="flex-1 h-12 rounded-xl bg-slate-800/80 border-white/10 text-white/70 hover:text-white hover:bg-slate-700 hover:border-white/20 transition-all duration-300">
+            <AlertDialogCancel 
+              className="flex-1 h-12 rounded-xl bg-slate-800/80 border-white/10 text-white/70 hover:text-white hover:bg-slate-700 hover:border-white/20 transition-all duration-300"
+              disabled={isPreflightChecking}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                setShowConfirmDialog(false);
-                handleGenerateFramework();
+              onClick={async (e) => {
+                e.preventDefault();
+                setIsPreflightChecking(true);
+                setPreflightErrors([]);
+                
+                try {
+                  const res = await fetch("/api/preflight-check");
+                  if (!res.ok) {
+                    setPreflightErrors([{ service: "System", error: "Failed to check API status. Please try again." }]);
+                    setIsPreflightChecking(false);
+                    return;
+                  }
+                  
+                  const results = await res.json();
+                  
+                  const errors: Array<{service: string; error: string}> = [];
+                  const serviceNames: Record<string, string> = {
+                    anthropic: "Anthropic (Claude)",
+                    replicate: "Replicate (Images)",
+                    deepgram: "Deepgram (Voice)",
+                    perplexity: "Perplexity (Research)"
+                  };
+                  
+                  for (const [key, value] of Object.entries(results)) {
+                    const v = value as { ok: boolean; error?: string };
+                    if (!v.ok) {
+                      errors.push({ service: serviceNames[key] || key, error: v.error || "Unknown error" });
+                    }
+                  }
+                  
+                  setIsPreflightChecking(false);
+                  
+                  if (errors.length > 0) {
+                    setPreflightErrors(errors);
+                    return;
+                  }
+                  
+                  setShowConfirmDialog(false);
+                  handleGenerateFramework();
+                } catch (err) {
+                  setPreflightErrors([{ service: "Network", error: "Could not connect to server. Please check your connection." }]);
+                  setIsPreflightChecking(false);
+                }
               }}
-              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] text-white font-bold shadow-lg shadow-[#7163EB]/40 hover:shadow-[#7163EB]/60 transition-all duration-300 gap-2 group overflow-hidden relative"
+              disabled={isPreflightChecking}
+              className="flex-1 h-12 rounded-xl bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] text-white font-bold shadow-lg shadow-[#7163EB]/40 hover:shadow-[#7163EB]/60 transition-all duration-300 gap-2 group overflow-hidden relative disabled:opacity-50"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-              <Sparkles className="h-4 w-4 relative z-10 group-hover:rotate-12 transition-transform" />
-              <span className="relative z-10">Yes, Generate!</span>
+              {isPreflightChecking ? (
+                <>
+                  <Loader2 className="h-4 w-4 relative z-10 animate-spin" />
+                  <span className="relative z-10">Checking APIs...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 relative z-10 group-hover:rotate-12 transition-transform" />
+                  <span className="relative z-10">Yes, Generate!</span>
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

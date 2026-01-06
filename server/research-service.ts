@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { sseBroadcaster } from "./sse-broadcaster";
+import { apiUsageTracker } from "./api-usage-tracker";
 
 // Lazy initialization to ensure env vars are loaded
 let anthropicClient: Anthropic | null = null;
@@ -98,6 +99,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") throw new Error("Unexpected response format");
@@ -150,6 +152,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") throw new Error("Unexpected response format");
@@ -213,6 +216,7 @@ Be thorough and precise. Cite your sources.`
     }
 
     const data = await response.json();
+    apiUsageTracker.increment("perplexity");
     return {
       content: data.choices?.[0]?.message?.content || "",
       citations: data.citations || [],
@@ -250,6 +254,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") return [];
@@ -308,6 +313,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") return [];
@@ -381,6 +387,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 6000,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") throw new Error("Unexpected response format");
@@ -815,6 +822,7 @@ Be thorough, accurate, and provide as much detail as possible. Respond ONLY with
     max_tokens: 8192,
     messages: [{ role: "user", content: researchPrompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") throw new Error("Unexpected response format");

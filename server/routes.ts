@@ -24,6 +24,7 @@ import { sseBroadcaster } from "./sse-broadcaster";
 import { renderTimeline } from "./timeline-renderer";
 import { buildTimelineFromAssets, buildDocumentaryTimeline } from "./auto-editor";
 import { generateAIEditPlan, applyEditPlanToTimeline } from "./ai-editor";
+import { apiUsageTracker } from "./api-usage-tracker";
 
 // Global render progress tracker
 let currentRenderProgress = {
@@ -86,6 +87,80 @@ export async function registerRoutes(
   await ensureDbConnected();
   
   registerObjectStorageRoutes(app);
+
+  app.get("/api/usage", (_req, res) => {
+    res.json(apiUsageTracker.getUsage());
+  });
+
+  app.get("/api/preflight-check", async (_req, res) => {
+    const results: Record<string, { ok: boolean; error?: string }> = {};
+    
+    // Check Anthropic - use lightweight key validation, not API call
+    const anthropicKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      results.anthropic = { ok: false, error: "No API key configured" };
+    } else {
+      try {
+        const Anthropic = (await import("@anthropic-ai/sdk")).default;
+        const anthropic = new Anthropic({
+          apiKey: anthropicKey,
+          baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+        });
+        await anthropic.messages.create({
+          model: "claude-haiku-4-5",
+          max_tokens: 5,
+          messages: [{ role: "user", content: "1" }],
+        });
+        results.anthropic = { ok: true };
+      } catch (e: any) {
+        const msg = e.message || String(e);
+        const isCredit = msg.toLowerCase().includes("credit") || msg.toLowerCase().includes("billing") || msg.toLowerCase().includes("balance") || msg.toLowerCase().includes("quota");
+        results.anthropic = { ok: false, error: isCredit ? "Insufficient credits or quota exceeded" : "API error" };
+      }
+    }
+
+    // Check Replicate - use account endpoint (no billing)
+    const replicateToken = process.env.REPLICATE_API_TOKEN;
+    if (!replicateToken) {
+      results.replicate = { ok: false, error: "No API token configured" };
+    } else {
+      try {
+        const resp = await fetch("https://api.replicate.com/v1/account", {
+          headers: { Authorization: `Bearer ${replicateToken}` },
+        });
+        if (!resp.ok) throw new Error("Invalid token");
+        results.replicate = { ok: true };
+      } catch (e: any) {
+        results.replicate = { ok: false, error: "API error or invalid token" };
+      }
+    }
+
+    // Check Deepgram - use projects endpoint (no billing)
+    const deepgramKey = process.env.DEEPGRAM_API_KEY;
+    if (!deepgramKey) {
+      results.deepgram = { ok: false, error: "No API key configured" };
+    } else {
+      try {
+        const resp = await fetch("https://api.deepgram.com/v1/projects", {
+          headers: { Authorization: `Token ${deepgramKey}` },
+        });
+        if (!resp.ok) throw new Error("Invalid key");
+        results.deepgram = { ok: true };
+      } catch (e: any) {
+        results.deepgram = { ok: false, error: "API error or invalid key" };
+      }
+    }
+
+    // Check Perplexity - key presence check only (no free endpoint)
+    const perplexityKey = process.env.PERPLEXITY_API_KEY;
+    if (!perplexityKey) {
+      results.perplexity = { ok: false, error: "No API key configured" };
+    } else {
+      results.perplexity = { ok: true };
+    }
+
+    res.json(results);
+  });
 
   app.get("/api/projects", async (_req, res) => {
     try {

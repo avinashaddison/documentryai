@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { apiUsageTracker } from "./api-usage-tracker";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -90,6 +91,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") {
@@ -203,6 +205,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") {
@@ -282,6 +285,7 @@ Respond ONLY with valid JSON.`;
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") {
@@ -339,6 +343,7 @@ Respond ONLY with valid JSON with exactly ${totalChapters} chapter${totalChapter
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });
+  apiUsageTracker.increment("anthropic");
 
   const content = message.content[0];
   if (content.type !== "text") {

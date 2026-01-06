@@ -4,6 +4,7 @@ import path from "path";
 import https from "https";
 import http from "http";
 import { Readable } from "stream";
+import { apiUsageTracker } from "./api-usage-tracker";
 
 const OUTPUT_DIR = path.join(process.cwd(), "generated_assets", "images");
 
@@ -136,6 +137,7 @@ export async function generateImage(
           prompt_upsampling: true,
         },
       });
+      apiUsageTracker.increment("replicate");
     } else if (model === "flux-schnell") {
       modelId = "black-forest-labs/flux-schnell" as const;
       output = await replicate.run(modelId, {
@@ -147,6 +149,7 @@ export async function generateImage(
           num_outputs: 1,
         },
       });
+      apiUsageTracker.increment("replicate");
     } else {
       modelId = "ideogram-ai/ideogram-v2-turbo" as const;
       // Use valid Ideogram V2 resolutions - 1280x768 for landscape, 768x1280 for portrait
@@ -159,6 +162,7 @@ export async function generateImage(
           resolution: ideogramResolution,
         },
       });
+      apiUsageTracker.increment("replicate");
     }
 
     const filename = `${projectId}_${sceneId}.${outputFormat}`;
