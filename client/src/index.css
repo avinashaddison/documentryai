@@ -348,6 +348,18 @@
     animation: shine 2s ease-in-out infinite;
   }
   
+  /* Slide down animation for notifications */
+  @keyframes slideDown {
+    0% { 
+      transform: translateX(-50%) translateY(-100%);
+      opacity: 0;
+    }
+    100% { 
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+  
   /* Cyberpunk Video Editor Styles */
   .editor-panel {
     background: linear-gradient(180deg, hsl(var(--editor-surface)) 0%, hsl(var(--editor-bg)) 100%);

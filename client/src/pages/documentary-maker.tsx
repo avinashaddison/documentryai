@@ -468,6 +468,7 @@ export default function DocumentaryMaker() {
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [editingChapterValue, setEditingChapterValue] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [creditError, setCreditError] = useState<{service: string; message: string} | null>(null);
   
   const [config, setConfig] = useState({
     narratorVoice: "aura-2-mars-en",
@@ -1293,6 +1294,26 @@ export default function DocumentaryMaker() {
         if (res.ok) {
           const data = await res.json();
           setGenerationLogs(data.logs || []);
+          
+          // Check for credit-related errors in logs
+          const logs = data.logs || [];
+          for (const log of logs) {
+            if (log.status === "failed" && log.message) {
+              const msg = log.message.toLowerCase();
+              if (msg.includes("credit") || msg.includes("billing") || msg.includes("balance is too low") || msg.includes("insufficient") || msg.includes("quota")) {
+                let service = "AI Service";
+                if (msg.includes("anthropic") || msg.includes("claude")) service = "Anthropic (Claude)";
+                else if (msg.includes("openai") || msg.includes("gpt")) service = "OpenAI";
+                else if (msg.includes("replicate")) service = "Replicate";
+                else if (msg.includes("deepgram")) service = "Deepgram";
+                else if (msg.includes("perplexity")) service = "Perplexity";
+                
+                setCreditError({ service, message: "Credit balance is too low. Please add credits to continue." });
+                setCurrentStep("idle");
+                break;
+              }
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to fetch logs:", error);
@@ -1319,6 +1340,71 @@ export default function DocumentaryMaker() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+
+        {/* Credit Error Notification */}
+        {creditError && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.5s_ease-out]">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 rounded-2xl blur-lg opacity-60 animate-pulse" />
+              <div className="relative bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border border-red-500/40 rounded-2xl p-5 shadow-2xl max-w-md overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500" />
+                <div className="absolute -top-10 -right-10 w-24 h-24 bg-red-500/20 rounded-full blur-2xl" />
+                <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-orange-500/20 rounded-full blur-2xl" />
+                
+                <div className="flex items-start gap-4 relative z-10">
+                  <div className="relative flex-shrink-0">
+                    <div className="absolute inset-[-4px] rounded-full bg-gradient-to-r from-red-500 to-orange-500 blur-md opacity-60 animate-pulse" />
+                    <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="absolute top-0 right-0 w-2 h-2 bg-amber-400 rounded-full animate-ping" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold bg-gradient-to-r from-red-400 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+                      Credits Unavailable
+                    </h3>
+                    <p className="text-white/80 text-sm mt-1">
+                      <span className="font-semibold text-orange-300">{creditError.service}</span>
+                    </p>
+                    <p className="text-white/60 text-xs mt-1">
+                      {creditError.message}
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={() => setCreditError(null)}
+                    className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all hover:scale-110 hover:rotate-90"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="mt-4 flex gap-2 relative z-10">
+                  <a 
+                    href="https://console.anthropic.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex-1 h-9 rounded-lg bg-gradient-to-r from-red-500/20 to-orange-500/20 hover:from-red-500/30 hover:to-orange-500/30 border border-red-500/30 flex items-center justify-center gap-2 text-xs font-medium text-white/90 transition-all hover:scale-[1.02]"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Add Credits
+                  </a>
+                  <button
+                    onClick={() => setCreditError(null)}
+                    className="px-4 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-white/70 transition-all"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="relative z-10 max-w-5xl mx-auto py-8 px-4 space-y-8">
         
