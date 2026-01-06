@@ -2770,49 +2770,87 @@ export default function DocumentaryMaker() {
         
         {/* Rendered Video Section - Shows prominently when video is available */}
         {renderedVideoUrl && (
-          <div className="bg-gradient-to-br from-card via-card to-green-500/10 border-2 border-green-500/40 rounded-xl p-6 space-y-4 shadow-lg shadow-green-500/5">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-xl font-display font-bold text-white flex items-center gap-2">
-                <Video className="h-6 w-6 text-green-400" />
-                Your Documentary is Ready
-              </h2>
-              <Badge variant="outline" className="text-green-400 border-green-400/30 bg-green-400/10">
-                <Check className="h-3 w-3 mr-1" />
-                Complete
-              </Badge>
+          <div className="relative overflow-hidden rounded-3xl border border-[#7163EB]/30 bg-gradient-to-br from-[#0f0f1a]/95 via-[#1a1a2e]/90 to-[#0f0f1a]/95 p-8 space-y-6 shadow-2xl">
+            {/* Animated background effects */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#7163EB]/10 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-fuchsia-500/10 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-60 h-60 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+            
+            {/* Top gradient border */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#7163EB] to-transparent" />
+            
+            {/* Celebration particles */}
+            <div className="absolute top-4 left-8 w-2 h-2 bg-[#7163EB] rounded-full animate-ping opacity-60" />
+            <div className="absolute top-8 right-12 w-1.5 h-1.5 bg-fuchsia-400 rounded-full animate-pulse" />
+            <div className="absolute bottom-12 right-8 w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDuration: '2s' }} />
+            
+            {/* Header */}
+            <div className="relative flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-[-6px] bg-gradient-to-br from-emerald-500 via-[#7163EB] to-fuchsia-500 rounded-2xl blur-lg opacity-50 animate-pulse" />
+                  <div className="relative h-14 w-14 rounded-xl bg-gradient-to-br from-emerald-500/30 to-[#7163EB]/30 flex items-center justify-center border border-emerald-400/40 overflow-hidden">
+                    <div className="absolute inset-[-1px] rounded-xl overflow-hidden">
+                      <div className="absolute inset-[-100%] bg-[conic-gradient(from_0deg,#10b981,#7163EB,#d946ef,#10b981)] animate-[spin_3s_linear_infinite] opacity-40" />
+                    </div>
+                    <Video className="h-7 w-7 text-emerald-400 relative z-10" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black bg-gradient-to-r from-white via-emerald-300 to-[#7163EB] bg-clip-text text-transparent flex items-center gap-2">
+                    Your Documentary is Ready
+                    <Sparkles className="h-5 w-5 text-[#7163EB] animate-pulse" />
+                  </h2>
+                  <p className="text-sm text-white/50">Your masterpiece awaits</p>
+                </div>
+              </div>
+              
+              <div className="relative group">
+                <div className="absolute inset-[-2px] bg-gradient-to-r from-emerald-500 via-[#7163EB] to-emerald-500 rounded-full blur-sm opacity-60 group-hover:opacity-100 transition-opacity" />
+                <Badge className="relative bg-gradient-to-r from-emerald-500/20 to-[#7163EB]/20 text-emerald-300 border border-emerald-400/40 px-4 py-2 font-bold text-sm backdrop-blur-sm">
+                  <Check className="h-4 w-4 mr-2" />
+                  Complete
+                </Badge>
+              </div>
             </div>
             
-            <div className="aspect-video bg-black rounded-lg overflow-hidden border border-border">
-              <video
-                controls
-                autoPlay={false}
-                className="w-full h-full"
-                src={renderedVideoUrl}
-                poster={Object.values(generatedImages)[0] || undefined}
-                data-testid="video-rendered-documentary"
-              >
-                Your browser does not support the video tag.
-              </video>
+            {/* Video Player */}
+            <div className="relative group">
+              <div className="absolute inset-[-2px] bg-gradient-to-r from-[#7163EB]/40 via-fuchsia-500/40 to-emerald-500/40 rounded-2xl blur-md opacity-0 group-hover:opacity-100 transition-all duration-500" />
+              <div className="relative aspect-video bg-black rounded-xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
+                <video
+                  controls
+                  autoPlay={false}
+                  className="w-full h-full"
+                  src={renderedVideoUrl}
+                  poster={Object.values(generatedImages)[0] || undefined}
+                  data-testid="video-rendered-documentary"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
             </div>
             
-            <div className="flex gap-3">
+            {/* Action Buttons */}
+            <div className="relative flex gap-4">
               <a
                 href={renderedVideoUrl}
                 download={`documentary_${projectId}.mp4`}
                 className="flex-1"
               >
                 <Button 
-                  className="w-full h-14 gap-3 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-lg font-bold shadow-lg"
+                  className="group relative w-full h-16 gap-3 rounded-xl text-lg font-bold bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] border-0 shadow-lg shadow-[#7163EB]/40 hover:shadow-[#7163EB]/60 hover:scale-[1.02] transition-all duration-300 text-white overflow-hidden"
                   data-testid="button-download-video"
                 >
-                  <Download className="h-6 w-6" />
-                  Download Documentary
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  <Download className="h-6 w-6 relative z-10 group-hover:animate-bounce" />
+                  <span className="relative z-10">Download Documentary</span>
                 </Button>
               </a>
               
               <Button 
                 variant="outline"
-                className="h-14 gap-2 border-violet-400/30 text-violet-400"
+                className="h-16 px-6 gap-3 rounded-xl border-2 border-[#7163EB]/40 text-[#7163EB] hover:bg-[#7163EB]/10 hover:border-[#7163EB]/60 hover:scale-105 transition-all duration-300 font-bold"
                 onClick={() => setForceRerender(true)}
                 disabled={forceRerender}
                 data-testid="button-rerender-video"
@@ -2822,9 +2860,14 @@ export default function DocumentaryMaker() {
               </Button>
             </div>
             
-            <p className="text-sm text-muted-foreground text-center">
-              Grayscale documentary with smooth fade transitions • Click Re-render to apply changes
-            </p>
+            {/* Footer text */}
+            <div className="relative text-center">
+              <p className="text-sm text-white/40 flex items-center justify-center gap-2">
+                <span className="w-8 h-[1px] bg-gradient-to-r from-transparent to-white/20" />
+                Professional documentary with cinematic transitions
+                <span className="w-8 h-[1px] bg-gradient-to-l from-transparent to-white/20" />
+              </p>
+            </div>
           </div>
         )}
 
