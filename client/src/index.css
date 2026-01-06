@@ -351,6 +351,57 @@
     will-change: transform;
   }
   
+  /* Confetti animation */
+  @keyframes confetti {
+    0% {
+      transform: translateY(-20px) translateX(0) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(50vh) translateX(calc(var(--drift, 0px) * 0.5)) rotate(180deg);
+    }
+    90% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: translateY(100vh) translateX(var(--drift, 0px)) rotate(var(--rotation, 360deg));
+      opacity: 0;
+    }
+  }
+  
+  .animate-confetti {
+    animation: confetti ease-in-out infinite;
+    will-change: transform;
+  }
+  
+  /* Sparkle animation */
+  @keyframes sparkle {
+    0%, 100% {
+      transform: scale(0) rotate(0deg);
+      opacity: 0;
+    }
+    25% {
+      transform: scale(1.2) rotate(45deg);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(0.8) rotate(90deg);
+      opacity: 0.8;
+    }
+    75% {
+      transform: scale(1) rotate(135deg);
+      opacity: 1;
+    }
+  }
+  
+  .animate-sparkle {
+    animation: sparkle ease-in-out infinite;
+    will-change: transform;
+  }
+  
   /* Subtle bounce for active step */
   @keyframes bounce-subtle {
     0%, 100% { transform: scale(1.1) translateY(0); }
