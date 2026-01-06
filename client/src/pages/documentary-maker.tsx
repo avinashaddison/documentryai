@@ -1663,18 +1663,29 @@ export default function DocumentaryMaker() {
             <Button
               onClick={handleGenerateFramework}
               disabled={!title.trim() || isGenerating}
-              className="h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-violet-500 via-cyan-500 to-violet-600 hover:from-violet-400 hover:via-cyan-400 hover:to-violet-500 border-0 shadow-lg shadow-violet-500/40 hover:shadow-violet-500/60 hover:scale-105 transition-all duration-300 text-white"
+              className="group relative h-14 px-10 gap-3 rounded-xl text-base font-bold bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] hover:from-[#8B7CF7] hover:via-fuchsia-400 hover:to-[#8B7CF7] border-0 shadow-lg shadow-[#7163EB]/50 hover:shadow-[#7163EB]/70 hover:scale-105 transition-all duration-300 text-white overflow-hidden"
               data-testid="button-generate-framework"
             >
+              {/* Animated shimmer effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+              
+              {/* Sparkle particles */}
+              <div className="absolute top-1 left-3 w-1 h-1 bg-white rounded-full animate-ping opacity-60" />
+              <div className="absolute bottom-2 right-4 w-1.5 h-1.5 bg-cyan-300 rounded-full animate-pulse" />
+              <div className="absolute top-2 right-6 w-0.5 h-0.5 bg-fuchsia-300 rounded-full animate-ping" style={{ animationDelay: '0.3s' }} />
+              
+              {/* Outer glow */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-[#7163EB] via-fuchsia-500 to-[#7163EB] rounded-xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-300" />
+              
               {isGenerating && currentStep !== "chapters" ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Generating...
+                  <Loader2 className="h-5 w-5 animate-spin relative z-10" />
+                  <span className="relative z-10">Generating...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="h-5 w-5" />
-                  Generate
+                  <Wand2 className="h-5 w-5 relative z-10 group-hover:rotate-12 transition-transform duration-300 drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+                  <span className="relative z-10 tracking-wide">Generate</span>
                 </>
               )}
             </Button>
