@@ -2244,7 +2244,7 @@ export default function DocumentaryMaker() {
                 <Mic className="h-4 w-4" />
                 Narrator Voice
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {voiceOptions.map((voice, index) => {
                   const voiceIcons = [
                     { gradient: "from-violet-500 to-purple-600", icon: Mic },
@@ -2262,7 +2262,7 @@ export default function DocumentaryMaker() {
                       key={voice.value}
                       onClick={() => { if (!isGenerating) { playClickSound(); setConfig({ ...config, narratorVoice: voice.value }); } }}
                       className={cn(
-                        "relative rounded-xl p-3 transition-all duration-300 cursor-pointer group",
+                        "relative rounded-lg p-2.5 transition-all duration-300 cursor-pointer group",
                         "border",
                         config.narratorVoice === voice.value
                           ? "border-violet-400/60 bg-violet-500/10 scale-[1.02]"
@@ -2271,43 +2271,43 @@ export default function DocumentaryMaker() {
                       )}
                       style={{
                         boxShadow: config.narratorVoice === voice.value 
-                          ? "0 0 25px -5px rgba(139, 92, 246, 0.4)"
+                          ? "0 0 20px -5px rgba(139, 92, 246, 0.4)"
                           : undefined
                       }}
                       data-testid={`button-voice-${voice.value}`}
                     >
                       <div className={cn(
-                        "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 rounded-xl",
+                        "absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-300 rounded-lg",
                         voiceStyle.gradient,
                         config.narratorVoice === voice.value ? "opacity-10" : "group-hover:opacity-5"
                       )} />
                       
-                      <div className="relative z-10 flex flex-col items-center gap-2">
+                      <div className="relative z-10 flex flex-col items-center gap-1.5">
                         <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-300",
+                          "w-8 h-8 rounded-md flex items-center justify-center transition-all duration-300",
                           config.narratorVoice === voice.value 
                             ? `bg-gradient-to-br ${voiceStyle.gradient} shadow-lg` 
                             : "bg-white/5 group-hover:bg-white/10"
                         )}>
                           <VoiceIcon className={cn(
-                            "h-5 w-5 transition-colors",
+                            "h-4 w-4 transition-colors",
                             config.narratorVoice === voice.value ? "text-white" : "text-violet-400/70"
                           )} />
                         </div>
                         <div className="text-center w-full">
                           <div className={cn(
-                            "text-sm font-medium transition-colors",
+                            "text-xs font-semibold transition-colors",
                             config.narratorVoice === voice.value ? "text-violet-400" : "text-white/80"
                           )}>
                             {voice.label}
                           </div>
-                          <div className="text-[10px] text-muted-foreground truncate">{voice.description}</div>
+                          <div className="text-[9px] text-muted-foreground truncate leading-tight">{voice.description}</div>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            "h-7 w-7 rounded-full transition-all duration-200",
+                            "h-6 w-6 rounded-full transition-all duration-200",
                             previewingVoice === voice.value 
                               ? "bg-violet-500/40 text-white scale-110" 
                               : "bg-violet-500/10 text-violet-400 hover:bg-violet-500/30 hover:scale-105"
@@ -2321,7 +2321,7 @@ export default function DocumentaryMaker() {
                           {previewingVoice === voice.value ? (
                             <Pause className="h-3.5 w-3.5" />
                           ) : (
-                            <Play className="h-3.5 w-3.5 ml-0.5" />
+                            <Play className="h-3 w-3 ml-0.5" />
                           )}
                         </Button>
                       </div>
