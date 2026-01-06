@@ -2665,28 +2665,58 @@ export default function DocumentaryMaker() {
 
         {/* Generated Scripts Preview - Full Script with Audio */}
         {generatedChapters.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Full Script & Audio
-              </h2>
-              <Badge variant="outline" className="text-violet-400 border-violet-400/30">
-                {generatedChapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0)} Scenes
-              </Badge>
+          <div className="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 backdrop-blur-xl shadow-2xl">
+            {/* Decorative gradient glow */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500"></div>
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            {/* Header */}
+            <div className="relative p-6 border-b border-white/5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-cyan-500/20 to-violet-500/20 border border-cyan-500/30">
+                    <FileText className="h-5 w-5 text-cyan-400" />
+                    <div className="absolute inset-0 rounded-xl bg-cyan-400/20 blur-sm"></div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-display font-bold bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent">
+                      Full Script & Audio
+                    </h2>
+                    <p className="text-xs text-cyan-400/70">Complete documentary narration</p>
+                  </div>
+                </div>
+                <Badge className="bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-violet-300 border border-violet-400/30 px-3 py-1.5 font-semibold">
+                  {generatedChapters.reduce((sum, ch) => sum + (ch.scenes?.length || 0), 0)} Scenes
+                </Badge>
+              </div>
             </div>
             
-            <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+            {/* Content */}
+            <div className="p-6 space-y-6 max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
               {generatedChapters.map((chapter) => (
-                <div key={chapter.chapterNumber} className="space-y-3">
-                  <div className="sticky top-0 bg-card/95 backdrop-blur py-2 z-10 border-b border-border space-y-3">
-                    <div>
-                      <h3 className="font-bold text-white text-lg">
-                        Chapter {chapter.chapterNumber}: {chapter.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {chapter.scenes?.length || 0} scenes • ~{Math.round((chapter.estimatedDuration || 0) / 60)} minutes
-                      </p>
+                <div key={chapter.chapterNumber} className="space-y-4">
+                  {/* Chapter Header */}
+                  <div className="sticky top-0 z-10 -mx-6 px-6 py-4 bg-gradient-to-r from-slate-900/98 via-slate-800/98 to-slate-900/98 backdrop-blur-lg border-b border-cyan-500/10">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/30 to-violet-500/30 border border-cyan-500/40 flex items-center justify-center">
+                        <span className="text-lg font-bold text-cyan-300">{chapter.chapterNumber}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white text-lg leading-tight mb-1">
+                          {chapter.title}
+                        </h3>
+                        <div className="flex items-center gap-3 text-sm text-cyan-400/70">
+                          <span className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
+                            {chapter.scenes?.length || 0} scenes
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-violet-400"></div>
+                            ~{Math.round((chapter.estimatedDuration || 0) / 60)} minutes
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     
                     {/* Full Chapter Audio Player */}
@@ -2698,57 +2728,65 @@ export default function DocumentaryMaker() {
                       if (chapterAudioUrls.length === 0) return null;
                       
                       return (
-                        <ChapterAudioPlayer 
-                          chapterNumber={chapter.chapterNumber}
-                          audioUrls={chapterAudioUrls}
-                          sceneCount={chapterAudioUrls.length}
-                        />
+                        <div className="mt-4">
+                          <ChapterAudioPlayer 
+                            chapterNumber={chapter.chapterNumber}
+                            audioUrls={chapterAudioUrls}
+                            sceneCount={chapterAudioUrls.length}
+                          />
+                        </div>
                       );
                     })()}
                   </div>
                   
-                  <div className="space-y-3 pl-4 border-l-2 border-primary/30">
-                    {chapter.scenes?.map((scene: any) => {
+                  {/* Scenes */}
+                  <div className="space-y-3 ml-6 pl-6 border-l-2 border-gradient-to-b from-cyan-500/40 via-violet-500/40 to-fuchsia-500/40" style={{ borderImage: 'linear-gradient(to bottom, rgb(6 182 212 / 0.4), rgb(139 92 246 / 0.4), rgb(217 70 239 / 0.4)) 1' }}>
+                    {chapter.scenes?.map((scene: any, sceneIndex: number) => {
                       const audioUrl = scene.audioUrl || generatedAudio[`ch${chapter.chapterNumber}_sc${scene.sceneNumber}`];
                       
                       return (
                         <div 
                           key={scene.sceneNumber} 
-                          className="bg-background/50 rounded-lg p-4 border border-border space-y-3"
+                          className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] rounded-xl p-5 border border-white/5 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5"
                         >
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">
+                          {/* Scene number indicator */}
+                          <div className="absolute -left-9 top-5 w-4 h-4 rounded-full bg-gradient-to-br from-cyan-500 to-violet-500 border-2 border-slate-800 shadow-lg shadow-cyan-500/30"></div>
+                          
+                          <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge className="bg-gradient-to-r from-cyan-500/20 to-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-semibold">
                                 Scene {scene.sceneNumber}
                               </Badge>
                               {scene.mood && (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                <Badge variant="outline" className="text-violet-300 border-violet-400/30 bg-violet-500/5">
                                   {scene.mood}
                                 </Badge>
                               )}
                               {scene.shotType && (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                <Badge variant="outline" className="text-fuchsia-300 border-fuchsia-400/30 bg-fuchsia-500/5">
                                   {scene.shotType}
                                 </Badge>
                               )}
                             </div>
                             {scene.duration && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-sm font-medium text-white/50 bg-white/5 px-2.5 py-1 rounded-lg">
                                 ~{scene.duration}s
                               </span>
                             )}
                           </div>
                           
-                          <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
+                          <p className="text-sm text-white/85 leading-relaxed whitespace-pre-wrap font-light">
                             {scene.narrationSegment || scene.narration || scene.voiceoverScript || "No narration"}
                           </p>
                           
                           {audioUrl && (
-                            <div className="flex items-center gap-3 pt-2 border-t border-border/50">
-                              <Volume2 className="h-4 w-4 text-cyan-400 flex-shrink-0" />
+                            <div className="flex items-center gap-3 pt-4 mt-4 border-t border-white/5">
+                              <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                                <Volume2 className="h-4 w-4 text-cyan-400" />
+                              </div>
                               <audio 
                                 controls 
-                                className="h-8 flex-1"
+                                className="h-8 flex-1 [&::-webkit-media-controls-panel]:bg-slate-800/80 [&::-webkit-media-controls-current-time-display]:text-cyan-300 [&::-webkit-media-controls-time-remaining-display]:text-cyan-300"
                                 style={{ maxWidth: "100%" }}
                                 data-testid={`audio-ch${chapter.chapterNumber}-sc${scene.sceneNumber}`}
                               >
@@ -2759,11 +2797,12 @@ export default function DocumentaryMaker() {
                           )}
                           
                           {scene.imagePrompt && (
-                            <details className="text-xs">
-                              <summary className="cursor-pointer text-muted-foreground hover:text-white transition-colors">
+                            <details className="text-xs mt-3 group/details">
+                              <summary className="cursor-pointer text-white/40 hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                                <span className="group-open/details:rotate-90 transition-transform">▶</span>
                                 View image prompt
                               </summary>
-                              <p className="mt-2 text-muted-foreground italic pl-2 border-l border-border">
+                              <p className="mt-2 text-white/30 italic pl-3 border-l-2 border-violet-500/30 py-2 bg-violet-500/5 rounded-r-lg">
                                 {scene.imagePrompt}
                               </p>
                             </details>
